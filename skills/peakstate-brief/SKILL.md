@@ -58,6 +58,30 @@ worth more than the same content in prose.
 - **A process, a flow or a topology gets a diagram.** Inline SVG or CSS boxes and
   arrows, no image files and no external assets, so the brief stays one portable
   file.
+- **Data that has a shape gets a chart, not just a table.** A trend over time, a
+  distribution, a share of a whole, a before/after gap, a ranking — these are read
+  in one glance from a chart and reconstructed line by line from a table. Give the
+  chart when the shape *is* the point, and keep the table when the reader needs the
+  exact figures; a chart above its own table is often the right answer.
+  - **Hand-roll it in inline SVG.** No Chart.js, no D3, no CDN — a brief is one
+    self-contained file and a chart that needs the network is a blank rectangle in
+    the environments this skill exists to work in. Bar, column, line, dot plot,
+    stacked proportion and small multiples are all a few `<rect>`, `<line>`,
+    `<polyline>` and `<text>` elements. A `viewBox` with no fixed width scales to
+    the column.
+  - **Colour through the CSS variables**, never hardcoded hex: `var(--accent)`,
+    `var(--muted)`, `var(--line)`, or `currentColor`, so the chart reads in light,
+    dark and system. A dark-only chart in a light brief is worse than no chart.
+  - **Label the marks directly** rather than through a legend the eye has to hop
+    to, put the units in the axis title, and start a bar axis at zero — a truncated
+    axis makes a small difference look decisive, which is the one thing a brief
+    must never do to its own evidence.
+  - **State what the chart cannot show.** A tiny sample, a missing period, an
+    estimate among measurements — say it in a caption under the chart, not only in
+    the prose beside it.
+  - **Give every chart a text equivalent**, either the table it came from or one
+    sentence naming the takeaway, so the point survives print, a screen reader and a
+    reader who does not trust pictures.
 - **Before and after belong next to each other**, in one table or one pair of
   panels, with the changed cells highlighted using `hl-focus` / `hl-warn` /
   `hl-info` and a `.legend` naming what each colour means here.
