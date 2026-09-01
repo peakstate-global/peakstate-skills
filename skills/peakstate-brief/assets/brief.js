@@ -229,6 +229,17 @@
     var el = document.getElementById('progress');
     if (!el) return;
     var next = qs.find(function (s) { return !resolved(s.dataset.q); });
+    /* A brief with nothing to answer says so plainly. "0/0 questions resolved"
+       reads as a broken counter; "0 questions for you" is the actual message,
+       and it tells a reader this document is to be read, not filled in. */
+    if (!qs.length) {
+      el.textContent = '0 questions for you';
+      el.removeAttribute('href');
+      el.removeAttribute('title');
+      el.setAttribute('aria-label', 'This brief asks no questions.');
+      el.classList.add('all-done', 'no-questions');
+      return;
+    }
     el.textContent = done + '/' + qs.length + ' questions resolved';
     if (next) {
       el.setAttribute('href', '#' + (next.id || (next.id = 'q-' + next.dataset.q)));

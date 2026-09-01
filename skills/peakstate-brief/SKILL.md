@@ -119,10 +119,56 @@ still doing all the work.
    sources outside itself (documents, videos, transcripts, papers, web pages, other
    repo files). See the next section; it is not optional and not a nice-to-have.
 
-Self-check before sending: open the file, confirm you can see numbered questions,
-a "Your answer" box under each, the comments / width / theme / copy+download icons
-top-right, and — if the brief cites anything — footnote markers that jump to a References section carrying
-the quoted passages. If any is missing, you didn't build it as a brief — fix it.
+6. **One H1, H2 parts, H3 sections** — see "Heading structure" below. A brief
+   whose only headings are section titles has no skimmable shape.
+7. **A Contents section**, first in `<main>` after the title block, on any brief
+   with more than about four sections.
+
+Self-check before sending: open the file, confirm you can see the H1 title block,
+the Contents, numbered questions with a "Your answer" box under each, the comments /
+width / theme / copy+download icons top-right, and — if the brief cites anything —
+footnote markers that jump to a References section carrying the quoted passages.
+If any is missing, you didn't build it as a brief — fix it.
+
+**A brief with no questions is a legitimate brief.** A research write-up, a findings
+report or a delivered plan may ask nothing. Do not invent questions to fill the
+section — the runtime prints **"0 questions for you"** in the top bar, which tells the
+reader this document is to be read, not filled in.
+
+## Heading structure — H1 once, H2 parts, H3 sections
+
+**Three levels, always in this order.** A brief is a document, not a list of cards, and
+the heading levels are what let a reader skim it, print it, or hear it read aloud in
+the right order.
+
+- **`<h1>`, exactly once**, inside `<header class="brief-title">` at the top of `<main>`,
+  with an `.eyebrow` kicker above it and a `.sub` standfirst below. The kicker carries
+  the document type and date; the standfirst says in one sentence what the brief is about.
+- **`<h2 class="part">` opens each major part.** Use one per subject the brief covers —
+  if a brief answers two questions, that is two parts. Give it a `<span class="pnum">`
+  ("Part one") and follow it with a `<p class="partlede">`. Optional on a single-subject
+  brief; **required the moment there is more than one subject**.
+- **`<h3>` is every tickable section's heading**, inside `.sec-head` or `.q-head`.
+
+**Never put the part name in the section heading too.** A section called "Part 2 — the
+four setups" sitting under an H2 called "Part two" gives the reader two competing claims
+to the same label, and the real H2 stops registering as structure. The section heading
+names the section only.
+
+**Do not add a `max-width` to anything in the title block.** `main` already holds the
+measure; a second, narrower cap makes the standfirst look accidentally indented against
+the body text beneath it.
+
+## Contents — a brief over about four sections gets one
+
+First section in `<main>` after the title block, `data-sec="toc"`, so it ticks off and
+collapses like anything else. Nest an `<ol>` per part inside `<nav class="toc">`, one
+`<li>` per section, each with a `<span class="tnote">` saying in a few words what is in
+it — a bare list of section names tells the reader nothing they cannot see by scrolling.
+
+Link to `#part-n` for parts and `#s-<slug>` for sections, which means **every section
+needs an `id`** as well as its `data-sec`. Check every anchor resolves before sending;
+a dead ToC link is worse than no ToC.
 
 ## References and footnotes — every sourced claim is traceable
 
@@ -178,6 +224,25 @@ Markup:
 **Say how many sources the brief rests on, and where the gaps are.** If the user
 expected five sources and you found three, state that in the brief — a silently
 incomplete evidence base is worse than a stated one.
+
+### The house reference format — APA entry, then its quotes beneath it
+
+**One `<li>` per source, never one per quote.** The APA entry comes first, then every
+passage that source supports, stacked underneath it as `<blockquote class="pull">`
+elements with their own ids (`ref7-q4`) and a `<span class="qref">` naming where in the
+source it sits — the section heading, page, timestamp or cell. A source cited eleven
+times has eleven blockquotes under one entry, numbered `q1…q11`.
+
+This is the format, and it is not optional, because it is what makes the References
+section *checkable* rather than decorative: the reader lands on the exact sentence the
+footnote was claiming, not on a link to a page they now have to search. It also makes
+the author's own overreach visible — if you cannot find a passage to sit under the
+entry, the claim was an inference and must be relabelled in the body.
+
+Where a source could not be retrieved, or was retrieved but its body could not be read,
+say so in an `<span class="apa-note">` on that entry rather than quietly omitting the
+quote. Same for a community forum thread or any non-authoritative source: the note says
+what it is, so a reader knows not to lean on it.
 
 ## How to build one
 
@@ -539,6 +604,45 @@ processing, update whatever register/doc the questions came from and, if
 questions remain, regenerate the SAME brief file (same `{{BRIEF_ID}}`, same
 path) with resolved questions removed or marked, so their saved state stays
 meaningful.
+
+## SOURCED — run it when it is available, and show your working
+
+**If the `sourced` skill is installed, run it on any brief that makes claims a reader
+might act on** — research, analysis, findings, anything citing outside sources. A brief
+is exactly the artefact SOURCED exists for. It is not needed for a brief that only asks
+questions about the reader's own data.
+
+What that adds to the document:
+
+- **A `.sourced` sidecar beside the HTML**, same basename plus `.sourced`. It carries
+  every load-bearing claim with its status (sourced / inferred / recalled), the evidence
+  rows with source hashes and archive URLs, the decision log, and the record of the
+  adversarial pass.
+- **A Provenance statement section**, immediately **before** References, built from the
+  sidecar's `disclosure` object rather than written by hand. Use a `<dl class="provblock">`
+  with the four labels as `<dt>`: **Attribution · Accountable · Limitations · References**.
+- **A "What I could not verify" section** before it, if anything failed to ground. Lead
+  with how many sources the brief rests on, then a table of the weak claims, each with
+  what you would do about it.
+
+### Attribution links — make the toolchain checkable
+
+**Attribution names the tools, and links them wherever a public URL exists.** A reader
+who wants to know how a document was made should be one click away, not one search away.
+
+- **Link each skill that shaped the brief.** This skill lives at
+  <https://github.com/peakstate-global/peakstate-skills/tree/main/skills/peakstate-brief>.
+  The SOURCED standard publishes its own canonical URL — take it from that skill's
+  sidecar `$schema` namespace rather than typing it from memory, so the link tracks the
+  standard if it moves. If a skill has no public URL, name it in plain text — never
+  invent one, and never link a private host from a document that may travel.
+- **Link the sidecar relatively**, never absolutely: `<a href="my-brief.html.sourced">`.
+  It sits beside the HTML, so a relative link survives being moved, copied or emailed
+  as a pair. An absolute `file:///Users/...` path breaks for every reader but you, and
+  leaks a local directory structure into a document that may go outside.
+- **Name the model, harness and version** in C2PA's `softwareAgent` shape, and say which
+  model ran the adversarial pass and at what grade. "Reviewed" without naming the
+  reviewer is the thing SOURCED's U rule exists to prevent.
 
 ## Template changes
 

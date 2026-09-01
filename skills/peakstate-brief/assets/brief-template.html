@@ -15,19 +15,19 @@
    3. If neither loads, a visible notice saying how to repair it, instead of a
       blank page. The runtime re-initialises when it arrives late, so a fallback
       load behaves exactly like a local one. */
-var BRIEF_CDN = 'https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@peakstate-brief-v1/skills/peakstate-brief/assets';
+var BRIEF_CDN = 'https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@peakstate-brief-v2/skills/peakstate-brief/assets';
 function briefCdnCss(el) {
   el.remove();
   var l = document.createElement('link');
   l.rel = 'stylesheet'; l.href = BRIEF_CDN + '/brief.css';
-  l.integrity = 'sha384-dRvvSaiTeCurJzTY/GCH2246mFZ/fT2Kw528F9jGdKFyUiJ0BHgkyf2DpsIwIS2f'; l.crossOrigin = 'anonymous';
+  l.integrity = 'sha384-nDTisT+ddnocN7NbtsFK7rdG2S8qOjr2lZiYX49QdXjrPRoRZhyjQyIdkGJUQTC8'; l.crossOrigin = 'anonymous';
   document.head.appendChild(l);
 }
 function briefCdnJs(el) {
   el.remove();
   var s = document.createElement('script');
   s.src = BRIEF_CDN + '/brief.js';
-  s.integrity = 'sha384-SYnN7i2uSYl06g0fpblZhGI0UEhWt9lDrBbXlJbhoNh8YubMlt10edVjbP/EkuhR'; s.crossOrigin = 'anonymous';
+  s.integrity = 'sha384-PRXjNpjEioyV+agwy20V3gLZNiXbvAjnLXZhcUTfGeys9VWJhhWATo6odpYsiOMR'; s.crossOrigin = 'anonymous';
   s.onerror = briefNoRuntime;
   document.body.appendChild(s);
 }
@@ -47,33 +47,68 @@ function briefNoRuntime() {
 </head>
 <body data-brief-id="{{BRIEF_ID}}">
 <main>
+
 <!-- ===================================================================
-  {{CONTENT}} — REPLACE the two live sample sections below with your own.
-  brief.js auto-creates the top bar, progress counter, "Copy responses"
-  button, per-question answer textareas, selection comments and toast —
-  author ONLY the sections. Markup contract:
+  {{CONTENT}} — REPLACE the samples below with your own.
+  brief.js auto-creates the top bar, progress counter, copy/download
+  buttons, per-question answer textareas, selection comments and toast —
+  author ONLY the structure and content.
+
+  HEADING STRUCTURE (use all three levels):
+    h1   — once, in <header class="brief-title">. The document's name.
+    h2   — <h2 class="part"> opens each major part. Optional in a short
+           brief; required once a brief has more than one subject.
+    h3   — every tickable section's heading, inside .sec-head / .q-head.
 
   Non-question section (tickable → collapses):
-    <section class="brief-section" data-sec="slug">
+    <section class="brief-section" id="s-slug" data-sec="slug">
       <div class="sec-head">
         <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
-        <h2>Section title</h2>
+        <h3>Section title</h3>
       </div>
       <div class="sec-body"> …content… </div>
     </section>
 
   Question: numbered data-q="Qn" + visible <span class="qid">Qn</span>, lead
   with the plain-English ask, assumption first. The answer textarea is
-  AUTO-INJECTED — add <div class="answerwrap">…</div> manually only to pin its
-  placement. Examples collapsed in <details class="example">, E-numbers globally
-  unique. See SKILL.md "Hard requirements".
+  AUTO-INJECTED. Examples collapsed in <details class="example">, E-numbers
+  globally unique. A brief with NO questions is fine — the counter then
+  reads "0 questions for you". See SKILL.md "Hard requirements".
 ==================================================================== -->
 
+<header class="brief-title">
+  <p class="eyebrow">{{KICKER}}</p>
+  <h1>{{TITLE}}</h1>
+  <p class="sub">{{STANDFIRST}}</p>
+</header>
+
 <!-- SAMPLE — delete once you've added real content -->
-<section class="brief-section" data-sec="overview">
+<section class="brief-section" id="s-toc" data-sec="toc">
   <div class="sec-head">
     <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
-    <h2>Overview</h2>
+    <h3>Contents</h3>
+  </div>
+  <div class="sec-body">
+    <nav class="toc" aria-label="Table of contents">
+      <ol>
+        <li><a href="#part-1">Part 1 — the first subject</a>
+          <ol>
+            <li><a href="#s-overview">Overview</a> <span class="tnote">— what this is about</span></li>
+            <li><a href="#s-q1">The question</a> <span class="tnote">— one line on why it matters</span></li>
+          </ol>
+        </li>
+      </ol>
+    </nav>
+  </div>
+</section>
+
+<h2 class="part" id="part-1"><span class="pnum">Part one</span>The first subject</h2>
+<p class="partlede">One line saying what this part covers, so the heading is not doing the work alone.</p>
+
+<section class="brief-section" id="s-overview" data-sec="overview">
+  <div class="sec-head">
+    <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
+    <h3>Overview</h3>
   </div>
   <div class="sec-body">
     <p>One or two sentences framing what this brief asks and why, so the reader
@@ -81,10 +116,10 @@ function briefNoRuntime() {
   </div>
 </section>
 
-<section class="q" data-q="Q1">
+<section class="q" id="s-q1" data-q="Q1">
   <div class="q-head">
     <label class="tick"><input type="checkbox" aria-label="Mark Q1 resolved"></label>
-    <h2><span class="qid">Q1</span> Confirm: does M=No on a purchase row mean the item was bought second-hand?</h2>
+    <h3><span class="qid">Q1</span> Confirm: does M=No on a purchase row mean the item was bought second-hand?</h3>
   </div>
   <div class="q-body">
     <p class="assume"><strong>My assumption:</strong> M=No means second-hand, GST claimed under Div 66 when sold. <strong>If wrong:</strong> the BAS export mislabels ~40 rows.</p>
@@ -101,9 +136,10 @@ function briefNoRuntime() {
         <tr><th>Row</th><th>M</th><th>X</th></tr>
         <tr><td>8</td><td class="hl-focus">Yes</td><td>X</td></tr>
       </table></div>
-      <!-- header row + first column pin automatically; first col = identifier.
-           .tblwrap.nopin disables the column pin. Legend REQUIRED whenever
-           hl-focus/hl-warn/hl-info highlights are used. -->
+      <!-- Header row + first column pin automatically; the FIRST COLUMN MUST BE
+           A SHORT IDENTIFIER. If it holds prose, add .nopin to the .tblwrap or
+           the pinned cell will blow out and squash every other column.
+           Legend REQUIRED whenever hl-focus/hl-warn/hl-info are used. -->
     </details>
   </div>
 </section>
