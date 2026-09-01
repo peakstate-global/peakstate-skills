@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "peakstate-skills",
+  "description": "Portable Agent Skills from Peak State Global — interactive HTML briefs a reader answers in the browser, and slide decks that export to PowerPoint.",
+  "owner": {
+    "name": "Peak State Global",
+    "url": "https://github.com/peakstate-global"
+  },
+  "plugins": [
+    {
+      "name": "peakstate-skills",
+      "description": "peakstate-brief: build an interactive HTML brief with tick-off questions, persisted inline answers, selection comments and one-click Copy/Download responses.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
