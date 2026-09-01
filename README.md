@@ -46,4 +46,6 @@ git config core.hooksPath .githooks
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). The licence
+covers the code; the Peak State name and marks are trademarks and are not
+granted by it (Apache 2.0 § 6).
