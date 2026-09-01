@@ -186,16 +186,15 @@ be built from `assets/brief-template.html` in this skill directory. All
 interactivity lives in the reusable drop-in runtime — **never regenerate that
 logic inline**:
 
-- **Copy `brief.css` and `brief.js` from `<skill-dir>/assets/` into
-  `<output-dir>/`** — by whatever means the host has (`cp` on macOS/Linux,
-  `copy` in `cmd.exe`, `Copy-Item` in PowerShell, or a plain file copy). Do not
-  assume a Unix shell. `<skill-dir>` is the directory holding this SKILL.md —
-  never a hardcoded home path, because this skill also installs as a plugin, as
-  a project `.claude/skills/` folder, on Windows, and in OneDrive for Copilot
-  CoWork. (Copy alongside so the brief folder is portable; overwrite freely —
-  newer skill assets are always backwards compatible with stored state.)
-  **No filesystem, or no way to copy the assets? Use the CDN build below
-  instead** — same runtime, one file, nothing to copy.
+- **Copy `brief.css` and `brief.js` from `<skill-dir>/assets/` into `<output-dir>/`
+  when you can** — by whatever means the host has (`cp` on macOS/Linux, `copy` in
+  `cmd.exe`, `Copy-Item` in PowerShell, or a plain file copy). Do not assume a
+  Unix shell. `<skill-dir>` is the directory holding this SKILL.md, resolved from
+  wherever the skill was loaded — never a hardcoded home path.
+  **This step is now an optimisation, not a precondition.** The template loads
+  those two files if they are beside the brief and falls back to the pinned CDN
+  copies if they are not, so a brief works either way. Copy them when you can:
+  it is faster, works offline, and no third party sees the brief being opened.
 - Author ONLY content: fill `{{TITLE}}`, `{{BRIEF_ID}}` (stable slug;
   localStorage key — keep identical across regenerations so saved answers
   survive), and **replace the two live SAMPLE sections** in the template's
@@ -212,38 +211,46 @@ logic inline**:
 Deliver the result per the global rule: full `file:///…` URL in a fenced code
 block.
 
-## Building one where you cannot copy files (the CDN build)
+## One template, every environment — how the runtime loads
 
-**Use `assets/brief-standalone.html` when the agent has no filesystem to copy
-into** — a chat tool the brief is pasted or attached into, Microsoft 365 Copilot
-CoWork, or any host that reads this SKILL.md but cannot place sibling files next
-to the output. It is the same template with the two `<link>`/`<script>` tags
-pointed at the public copies of the runtime instead of at sibling files:
+**There is one template. It works whether or not the assets are beside it**, so
+you never have to decide which build to produce. `brief-template.html` carries a
+short bootstrap in its `<head>` that tries three things in order:
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@peakstate-brief-v1/skills/peakstate-brief/assets/brief.css"
-          integrity="sha384-dRvvSaiTeCurJzTY/GCH2246mFZ/fT2Kw528F9jGdKFyUiJ0BHgkyf2DpsIwIS2f" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@peakstate-brief-v1/skills/peakstate-brief/assets/brief.js"
-            integrity="sha384-SYnN7i2uSYl06g0fpblZhGI0UEhWt9lDrBbXlJbhoNh8YubMlt10edVjbP/EkuhR" crossorigin="anonymous"></script>
+| Order | Source | When it wins | Cost |
+|---|---|---|---|
+| 1 | `brief.css` / `brief.js` beside the file | They were copied, or the reader saved them there | Nothing fetched, works offline, no third party sees the brief open |
+| 2 | The pinned CDN copies, verified by Subresource Integrity | The brief was generated with no filesystem, emailed on its own, or moved out of its folder | Two requests on first open, then the browser caches them |
+| 3 | A visible notice naming the two files to save beside it | Neither is reachable | The brief is still complete and readable, just not interactive |
 
-Everything else is identical — same markup contract, same `data-brief-id`, same
-four requirements. Answers still persist in the reader's own browser
-localStorage and the brief content never leaves their machine; only the two
-static assets are fetched.
+**Local first, CDN second — not the other way round.** Preferring the CDN would
+mean failing a network request before using a perfectly good file sitting right
+there: slower on every open, broken offline, and a request to a third party every
+time anyone opens any brief. The fallback exists for when the local files are
+genuinely absent, which is exactly the case a chat tool or CoWork produces.
 
-**Copy the tags from `assets/brief-standalone.html` — do not retype them.** They
-carry Subresource Integrity hashes, so a tampered or wrong file fails loudly
-instead of running. The hashes belong to the pinned tag: if the tag ever moves,
-recompute both (`openssl dgst -sha384 -binary <file> | openssl base64 -A`) and
-update the template, or every new brief silently refuses to load its runtime.
+**Copy the whole `<head>` bootstrap verbatim from `brief-template.html`. Never
+retype it, and never retype the integrity hashes.** They pin a specific published
+version, so a wrong character means the CDN copy is refused. That failure is safe
+— the reader gets the notice rather than a blank page — but it costs them the
+interactivity. If the pinned tag ever moves, recompute both hashes
+(`openssl dgst -sha384 -binary <file> | openssl base64 -A`) and update the
+template.
 
-**Three things to know before choosing it.** The version is pinned to a tag on
-purpose — never point a delivered brief at `@main`, or a later runtime change
-rewrites every brief anyone has already generated. A CDN brief does not work
-offline, which the copied-assets build always does; the template carries a
-visible fallback that tells a blocked or offline reader exactly how to repair it,
-so they see an instruction rather than an unstyled page. And when you *can* copy
-the files, copy them: local assets stay correct forever with no network and no
-third party in the path.
+**Never point a delivered brief at a moving branch.** The tag is pinned so a brief
+made today still renders the way it did when it was made.
+
+### Attaching the skill to a chat tool
+
+**For ChatGPT, Copilot chat, or Microsoft 365 Copilot CoWork, attach two files:
+this `SKILL.md` and `assets/brief-template.html`.** That is the whole skill for
+those hosts. The model fills in the content and emits one HTML file; because the
+template already knows how to reach its runtime, the result works when the reader
+opens it, with nothing to copy and no second build to choose.
+
+CoWork reads a skill's `SKILL.md` from `Documents/Cowork/Skills/<skill-name>/` in
+OneDrive and needs no install step. Its handling of a skill's other bundled files
+is undocumented, which is the second reason the template stands alone.
 
 ## End-of-phase brief — required section order
 

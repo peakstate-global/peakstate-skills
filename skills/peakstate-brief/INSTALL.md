@@ -11,8 +11,10 @@ directory, a project's `.claude/skills/`, or a plugin. Nothing inside the skill
 assumes a location: it copies its runtime from `<skill-dir>/assets/`, resolved
 from wherever the SKILL.md was loaded.
 
-Generated briefs are a folder: `<name>.html` + `brief.css` + `brief.js`. They
-work offline and forever, because nothing is fetched.
+Generated briefs are a folder: `<name>.html` + `brief.css` + `brief.js`. Nothing
+is fetched, so they work offline and forever. If the HTML is later separated from
+those two files — emailed on its own, or moved — it falls back to the pinned CDN
+copies rather than breaking.
 
 ## 2. Microsoft 365 Copilot CoWork
 
@@ -21,24 +23,24 @@ discovers `SKILL.md` on its own and shows the skill as a chip in the side panel;
 there is no install step and no terminal. CoWork allows up to 20 custom skills
 and 1 MB per `SKILL.md`, so this one fits with room to spare.
 
-CoWork's handling of a skill's bundled sibling files is not documented, so
-**briefs here should use the standalone build** (`assets/brief-standalone.html`)
-and depend on nothing but the SKILL.md itself.
+CoWork's handling of a skill's bundled sibling files is not documented, which is
+why the template stands alone: it fetches its runtime from the pinned CDN copies
+when there is nothing beside it. Attach `SKILL.md` and
+`assets/brief-template.html` and nothing else is needed.
 
 ## 3. A chat tool with no filesystem (ChatGPT, Copilot chat)
 
-Attach or paste `SKILL.md` and ask for a brief. Because there is nowhere to copy
-the runtime to, the answer must be the **standalone build**: a single HTML file
-whose two tags point at the version-pinned CDN copies of `brief.css` and
-`brief.js`. Save it, open it, and every feature works — tick-off, persisted
-answers, selection comments, Copy/Download responses.
+Attach `SKILL.md` and `assets/brief-template.html`, then ask for a brief. There is
+nowhere to copy the runtime to, so the file falls back to the version-pinned CDN
+copies on its own. Save the HTML, open it, and every feature works — tick-off,
+persisted answers, selection comments, Copy/Download responses.
 
 Answers live in that browser's own localStorage and the brief's content is never
 sent anywhere; only the two static assets are fetched.
 
 ## Versioning the CDN build
 
-The standalone template pins a git tag, never `@main`:
+The template pins a git tag, never `@main`:
 
     https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@peakstate-brief-v1/skills/peakstate-brief/assets/brief.js
 
@@ -62,5 +64,5 @@ the CDN actually serves and check it against the template.
     curl -s https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@<tag>/skills/peakstate-brief/assets/brief.js \
       | openssl dgst -sha384 -binary | openssl base64 -A
 
-That value must appear verbatim in `brief-standalone.html`. A mistyped hash and a
+That value must appear verbatim in `brief-template.html`. A mistyped hash and a
 genuinely wrong file look identical to the browser.
