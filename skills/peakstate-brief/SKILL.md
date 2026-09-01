@@ -38,6 +38,46 @@ Do not add a border, background or radius back onto a section in a custom
 `<style>` block. Prose is serif, UI chrome is sans; keep that split in any
 extras you add.
 
+## Show it — a brief is an HTML page, so use the page
+
+**Reach for a visual before a paragraph, every time one would land faster.** The
+brief is rendered HTML in a browser, not a text file: it can draw the thing being
+decided. A reader scans a brief before they read it, so anything that survives a
+scan — a table, a diagram, a rendered mockup, a colour-coded comparison — is
+worth more than the same content in prose.
+
+- **A UI decision gets a mockup, not a description.** If the question is what a
+  screen, component, state or layout should be, build a small static rendering of
+  it inline with `<style>` and markup, and put the options side by side. Asking
+  someone to picture two layouts from a paragraph each is asking them to do the
+  work the file exists to do. Label it plainly as a static illustration — it is a
+  picture of the thing, not the working thing.
+- **Enumerable options render as a visual comparison**, not as a list of
+  sentences. A row per option and a column per property scans in seconds; three
+  paragraphs do not.
+- **A process, a flow or a topology gets a diagram.** Inline SVG or CSS boxes and
+  arrows, no image files and no external assets, so the brief stays one portable
+  file.
+- **Before and after belong next to each other**, in one table or one pair of
+  panels, with the changed cells highlighted using `hl-focus` / `hl-warn` /
+  `hl-info` and a `.legend` naming what each colour means here.
+- **Numbers go in a table with the units in the header**, never scattered through
+  a sentence.
+- **Structure the prose too.** Bold the load-bearing clause, break a wall of text
+  into short paragraphs with meaningful subheadings, and let `<details>` hold the
+  evidence a reader only sometimes wants.
+
+**Stay inside the house style while doing it.** Theme extras with brief.css's CSS
+variables (`--bg --fg --card --line --accent --muted …`) so light, dark and system
+all work; keep prose serif and UI chrome sans; never put a border, background or
+radius back around a `section`. Boxes are for things the reader acts on or reads
+as data. Never load a font, an image or a script from the network — a brief is one
+self-contained file, and a mockup that needs the internet is not a mockup.
+
+**The test:** could the reader answer the question from the visuals alone, and
+read the prose only to check? If not, the visual is decoration and the prose is
+still doing all the work.
+
 ## Hard requirements — every brief MUST render all four (verify before delivering)
 
 1. **Numbered questions** — each question is `<section class="q" data-q="Qn">`
