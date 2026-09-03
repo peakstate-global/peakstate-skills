@@ -262,12 +262,36 @@ def ledger_read() -> dict:
 
 
 def ledger_write(opid: str, record: dict) -> None:
-    all_records = ledger_read()
-    all_records[opid] = {**all_records.get(opid, {}), **record}
+    """Merge one record into the ledger, under an exclusive lock.
+
+    The write was read-modify-write with nothing holding the gap. `tmp.replace`
+    is atomic, so the file could never be corrupted — but two publishes running
+    at once would both read, both merge only their own row, and the later writer
+    would silently drop the earlier one's. The lost row is not cosmetic: it is
+    what makes a re-run idempotent and what `reconcile` reads to spot an
+    unfinished publish, so losing it turns a completed publish into phantom
+    drift.
+
+    This is not hypothetical. Several sessions run against this machine at once,
+    and the interleaving showed up in PRIMA's own ingest log: two of them
+    publishing the same briefs minutes apart.
+
+    flock is advisory and process-wide, which is exactly the scope of the race —
+    the ledger is a local file and every writer is this script.
+    """
     LEDGER.parent.mkdir(parents=True, exist_ok=True)
-    tmp = LEDGER.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(all_records, indent=2, sort_keys=True))
-    tmp.replace(LEDGER)
+    lock = LEDGER.with_suffix(".json.lock")
+    with open(lock, "w") as fh:
+        try:
+            import fcntl
+            fcntl.flock(fh, fcntl.LOCK_EX)
+        except (ImportError, OSError):
+            pass  # no flock (Windows, odd filesystem): the old behaviour, not worse
+        all_records = ledger_read()  # inside the lock, or the read is stale again
+        all_records[opid] = {**all_records.get(opid, {}), **record}
+        tmp = LEDGER.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(all_records, indent=2, sort_keys=True))
+        tmp.replace(LEDGER)
 
 
 def operation_id(origin: str, target_id: str, slug: str) -> str:
@@ -822,6 +846,26 @@ def self_check() -> int:
         assert sidecar_for(md).name == "b.html.sourced"
         (Path(d) / "b.md.sourced").write_text("{}")
         assert sidecar_for(md).name == "b.md.sourced"
+
+    # P5: two publishes at once must not lose each other's ledger rows. The old
+    # read-modify-write dropped whichever row was written first.
+    import subprocess
+    with tempfile.TemporaryDirectory() as d:
+        global LEDGER
+        keep, LEDGER = LEDGER, Path(d) / "l.json"
+        try:
+            code = ("import sys,time;sys.path.insert(0,%r);import publish_brief as pb;"
+                    "from pathlib import Path;pb.LEDGER=Path(%r);"
+                    "time.sleep(0.05);pb.ledger_write(sys.argv[1],{'slug':sys.argv[1]})"
+                    % (str(Path(__file__).resolve().parent), str(LEDGER)))
+            procs = [subprocess.Popen([sys.executable, "-c", code, f"op{i}"]) for i in range(8)]
+            for pr in procs:
+                pr.wait()
+            got = ledger_read()
+            assert sorted(got) == [f"op{i}" for i in range(8)], \
+                f"concurrent writers lost rows: {sorted(got)}"
+        finally:
+            LEDGER = keep
 
     # P4: the ledger renders as its own artefact, because a filename is not a
     # link once the brief is a note and there is no sibling to be relative to.
