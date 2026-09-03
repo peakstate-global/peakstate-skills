@@ -7,6 +7,7 @@ CLI and anything else that reads the format.
 | Skill | What it does | Portable without a filesystem? |
 |---|---|---|
 | [peakstate-brief](skills/peakstate-brief/) | Builds an interactive HTML brief the reader answers in the browser — tick-off questions, inline answers that persist, selection comments, and one-click Copy/Download of the responses as JSON | **Yes.** One template: it uses `brief.css`/`brief.js` beside the file when they are there, falls back to a version-pinned CDN copy when they are not, and says how to repair itself when neither is reachable. Attach `SKILL.md` + `assets/brief-template.html` to a chat tool and the output just works. See [INSTALL.md](skills/peakstate-brief/INSTALL.md) |
+| [publish-brief](skills/publish-brief/) | Ingests a brief's markdown into the PRIMA knowledge base as a tagged note, then links the resulting artefact to a Navigator project or action, in one idempotent step that reports partial success rather than claiming done | **No.** It is a Python CLI over two HTTP APIs, so it needs a filesystem, `python3`, the `prima` skill for credentials, and two environment variables. See [SKILL.md](skills/publish-brief/SKILL.md) |
 
 ## Conventions every skill here follows
 
