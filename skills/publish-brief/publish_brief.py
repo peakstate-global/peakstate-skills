@@ -121,8 +121,19 @@ def first_sentence(text: str, limit: int = 220) -> str:
     return (cut[: limit - 1] + "…") if len(cut) > limit else cut
 
 
-SKIP_SECTIONS = {"contents", "provenance", "references"}
 BLOCK_STARTS = ("|", "-", "<", ":::", ">", "!", "[", "a)", "b)", "c)")
+
+
+def first_prose(content: str) -> str:
+    """The first paragraph a reader would call prose: no heading, table, list or quote."""
+    for para in content.split("\n\n"):
+        block = para.strip()
+        if block and not block.startswith(("#",) + BLOCK_STARTS):
+            return " ".join(block.splitlines())
+    return ""
+
+
+SKIP_SECTIONS = {"contents", "provenance", "references"}
 FENCE = re.compile(r"^(```|~~~)")
 
 
@@ -171,7 +182,9 @@ def content_and_insights(body: str):
                 flush()
                 section = title
                 want_lede = title.strip().lower() not in SKIP_SECTIONS
-            out.append(f"{h.group(1)} {title}")
+            # A body H1 would END the artefact's `# Content` section in PRIMA's
+            # parser, so everything under it is dropped: demote it to H2.
+            out.append(f"{'##' if len(h.group(1)) == 1 else h.group(1)} {title}")
             current_ref = None
             continue
         ref = REFDEF.match(line)
@@ -211,8 +224,11 @@ def to_artefact_markdown(source: str, *, tags, author=None, sidecar_url=None, pr
     title = meta.get("title")
     if not title:
         sys.exit("the brief has no `title` in its front matter")
-    tldr = meta.get("sub") or first_sentence(body.strip().splitlines()[0] if body.strip() else title)
     content, insights = content_and_insights(body)
+    # The standfirst leads the body. A consumer that summarises a note from its
+    # first segment would otherwise show the sidecar line and the contents list.
+    standfirst = meta.get("sub") or first_prose(content)
+    tldr = standfirst or first_sentence(title)
     lines = ["---", "type: note", f"title: {json.dumps(title, ensure_ascii=False)}"]
     if author:
         lines.append(f"author: {json.dumps(author, ensure_ascii=False)}")
@@ -220,6 +236,8 @@ def to_artefact_markdown(source: str, *, tags, author=None, sidecar_url=None, pr
     lines += ["---", "", "## ❤️ TLDR", "", tldr, "", "## ☝ Insights", ""]
     lines += [f"- {i}" for i in insights] or [f"- {tldr}"]
     lines += ["", "# Content", ""]
+    if standfirst:
+        lines += [standfirst, ""]
     if provenance:
         lines += [f"Source of record: {provenance}", ""]
     if sidecar_url:
@@ -722,6 +740,17 @@ def self_check() -> int:
     assert "type: note" in out and 'title: "A test brief"' in out, out
     assert "tags: [brief, x]" in out, out
     assert "One standfirst sentence." in out, out
+    # P1: the body LEADS with the standfirst, so a consumer summarising from the
+    # first body segment shows the brief, not the sidecar line or the contents.
+    lead = out.split("\n# Content\n", 1)[1].strip()
+    assert lead.startswith("One standfirst sentence."), lead[:120]
+    assert 0 < lead.index("SOURCED provenance sidecar") < lead.index("## Contents"), lead[:200]
+    nosub = to_artefact_markdown(
+        "---\ntitle: T\n---\n\n## Contents\n\n- a\n\n## S\n\nReal prose here.\n",
+        tags=["b"])
+    assert nosub.split("\n# Content\n", 1)[1].strip().startswith("Real prose here."), nosub
+    bare = to_artefact_markdown("---\ntitle: T\n---\n\n## Contents\n\n- a\n", tags=["b"])
+    assert bare.split("\n# Content\n", 1)[1].strip().startswith("## Contents"), bare
     assert "## Finding\n" in out, "heading machinery survived"
     body = out.split("\n# Content\n", 1)[1]  # "## Contents" also contains "# Content"
     assert "{#s-f1}" not in out and "::" not in body, out
@@ -739,6 +768,9 @@ def self_check() -> int:
     # P2: the insight is derived from the whole section, not the first line, and
     # a section that opens with a table still yields one.
     assert "- Wrapped: A sentence that the author wrapped over two lines." in out, out
+
+    # P1: a body H1 is demoted, or PRIMA's parser truncates the stored note at it.
+    assert "## Part one" in body and "\n# Part one" not in body, body
 
     # P2: a fenced code block is copied through untouched.
     assert "# heading-looking [^9] line" in body and "## not a heading" in body, body
