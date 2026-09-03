@@ -22,12 +22,12 @@
    and permanent: the reader sees a brief with no runtime and no way to know why.
    A commit SHA cannot move, so the SHA and the two hashes below pin the same
    bytes forever. Recompute all three together or none of them. */
-var BRIEF_CDN = 'https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@88e7809cc186ef39094cd64824fea75c64ef0b7d/skills/peakstate-brief/assets';
+var BRIEF_CDN = 'https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@b5f8f4d89211d0dc0c7f858025c1bd9bb6bbc03f/skills/peakstate-brief/assets';
 function briefCdnCss(el) {
   el.remove();
   var l = document.createElement('link');
   l.rel = 'stylesheet'; l.href = BRIEF_CDN + '/brief.css';
-  l.integrity = 'sha384-nDTisT+ddnocN7NbtsFK7rdG2S8qOjr2lZiYX49QdXjrPRoRZhyjQyIdkGJUQTC8'; l.crossOrigin = 'anonymous';
+  l.integrity = 'sha384-K9TeCJueJOGRNF84cZbfTYLUxmiM7bTOfrjEN9k3g3Nc/HVDfuQ5ZA7uiC7hwlQm'; l.crossOrigin = 'anonymous';
   document.head.appendChild(l);
 }
 function briefCdnJs(el) {
