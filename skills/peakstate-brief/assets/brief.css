@@ -595,3 +595,22 @@ nav.toc .tnote { color: var(--muted); font-size: .9rem; }
 
 /* A brief that asks nothing says so, rather than showing a 0/0 counter. */
 #progress.no-questions { cursor: default; }
+
+/* ── inline SVG diagrams and charts ──
+   The skill tells authors to hand-roll charts and diagrams in inline SVG, so the
+   defaults have to be right here rather than in every brief's own <style> block.
+
+   SVG text defaults to black fill, NOT to the inherited colour, so a diagram that
+   looks correct in light mode disappears entirely on a dark background. That is
+   how a brief ships an unreadable chart without anyone seeing it: the author is
+   in light mode, the reader is not. Setting `color` on the <svg> and `fill:
+   currentColor` on its text makes the whole diagram theme-aware by default, and
+   an explicit fill="var(--accent)" or fill="var(--muted)" still overrides it. */
+main svg { color: var(--fg); max-width: 100%; height: auto; font-family: var(--font-ui); }
+main svg text { fill: currentColor; }
+main svg [stroke="currentColor"] { stroke: currentColor; }
+
+/* .diag is the conventional class for a full-width figure; .cap is its caption.
+   Both are optional — the rules above hold with or without them. */
+.diag { display: block; width: 100%; height: auto; margin: 1rem 0; }
+.cap { font: 400 12.5px/1.5 var(--font-ui); color: var(--muted); margin: .3rem 0 1.2rem; }

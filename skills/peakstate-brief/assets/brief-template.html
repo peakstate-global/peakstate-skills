@@ -14,8 +14,15 @@
       verified by Subresource Integrity.
    3. If neither loads, a visible notice saying how to repair it, instead of a
       blank page. The runtime re-initialises when it arrives late, so a fallback
-      load behaves exactly like a local one. */
-var BRIEF_CDN = 'https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@peakstate-brief-v2/skills/peakstate-brief/assets';
+      load behaves exactly like a local one.
+
+   The CDN ref is a FULL COMMIT SHA, never a tag. A tag can be moved, and when it
+   moves every brief already delivered under it keeps its old integrity hashes,
+   so the browser fetches the new bytes and refuses them. That failure is silent
+   and permanent: the reader sees a brief with no runtime and no way to know why.
+   A commit SHA cannot move, so the SHA and the two hashes below pin the same
+   bytes forever. Recompute all three together or none of them. */
+var BRIEF_CDN = 'https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@88e7809cc186ef39094cd64824fea75c64ef0b7d/skills/peakstate-brief/assets';
 function briefCdnCss(el) {
   el.remove();
   var l = document.createElement('link');
@@ -31,6 +38,13 @@ function briefCdnJs(el) {
   s.onerror = briefNoRuntime;
   document.body.appendChild(s);
 }
+/* The notice never guesses at the cause. A <script> error event fires the same
+   way whether the network failed or the integrity digest was refused, and
+   reporting the wrong one sends the reader to fix their firewall when the real
+   fault is a stale hash in this file. So: probe the URL once. If it fetches, the
+   network is fine and the digest was the problem. Both paths end in the same
+   one-line repair, which is why the notice is shown immediately rather than
+   waiting on the probe. */
 function briefNoRuntime() {
   if (document.getElementById('no-runtime')) return;
   var d = document.createElement('p');
@@ -38,10 +52,23 @@ function briefNoRuntime() {
   d.setAttribute('role', 'status');
   d.style.cssText = 'font:14px/1.55 system-ui,sans-serif;max-width:62ch;margin:1rem auto;' +
     'padding:.75rem 1rem;border:1px solid #c9821f;border-radius:6px;background:#fdf3e3;color:#5a3c0a';
-  d.textContent = 'The interactive runtime did not load — this file has no brief.css and brief.js ' +
-    'beside it, and the network is blocking or unreachable. Everything below is still complete and ' +
-    'readable. To restore ticking, answers and Copy responses, save those two files next to this one.';
+  var fix = ' Everything below is complete and readable either way. To restore ticking, ' +
+    'answers and Copy responses, save brief.css and brief.js next to this file.';
+  d.textContent = 'The interactive runtime did not load, and this file has no brief.css and ' +
+    'brief.js beside it. Checking why…' + fix;
   document.body.insertBefore(d, document.body.firstChild);
+  try {
+    fetch(BRIEF_CDN + '/brief.js', { mode: 'no-cors', cache: 'no-store' }).then(function () {
+      d.textContent = 'The interactive runtime did not load. The network is reachable, so the ' +
+        'copy on the CDN was refused by its integrity check — this file carries an integrity ' +
+        'hash that no longer matches what is published, which happens when a brief outlives the ' +
+        'version it was built against. Nothing is blocking you and nothing is wrong with the ' +
+        'content.' + fix;
+    }).catch(function () {
+      d.textContent = 'The interactive runtime did not load. The CDN could not be reached, so ' +
+        'the network is offline or blocking cdn.jsdelivr.net.' + fix;
+    });
+  } catch (e) { /* no fetch: leave the neutral message, which is still true */ }
 }
 </script>
 </head>

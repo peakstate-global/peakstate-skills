@@ -72,6 +72,17 @@ worth more than the same content in prose.
   - **Colour through the CSS variables**, never hardcoded hex: `var(--accent)`,
     `var(--muted)`, `var(--line)`, or `currentColor`, so the chart reads in light,
     dark and system. A dark-only chart in a light brief is worse than no chart.
+  - **Never set a fill on `<text>` unless you mean a specific colour.** SVG text
+    defaults to black — it does *not* inherit the page colour — so an unstyled
+    diagram is invisible on a dark background. `brief.css` fixes this globally
+    (`main svg text { fill: currentColor }`), which means the right move is to
+    leave text unstyled and let it inherit. **Do not re-declare `.diag text` or
+    `.cap` in a brief's own `<style>` block**; those rules ship in `brief.css`
+    now, and a local copy is one more thing to get wrong.
+  - **Check the diagram in dark mode before delivering.** Click the theme toggle
+    in the top bar. This failure is invisible to an author working in light mode
+    and total for a reader who is not — it shipped once, on a four-box diagram
+    whose every label rendered black on black.
   - **Label the marks directly** rather than through a legend the eye has to hop
     to, put the units in the axis title, and start a bar axis at zero — a truncated
     axis makes a small difference look decisive, which is the one thing a brief
@@ -381,7 +392,7 @@ short bootstrap in its `<head>` that tries three things in order:
 |---|---|---|---|
 | 1 | `brief.css` / `brief.js` beside the file | They were copied, or the reader saved them there | Nothing fetched, works offline, no third party sees the brief open |
 | 2 | The pinned CDN copies, verified by Subresource Integrity | The brief was generated with no filesystem, emailed on its own, or moved out of its folder | Two requests on first open, then the browser caches them |
-| 3 | A visible notice naming the two files to save beside it | Neither is reachable | The brief is still complete and readable, just not interactive |
+| 3 | A visible notice naming the two files to save beside it, and saying which of the two things went wrong | Neither is reachable | The brief is still complete and readable, just not interactive |
 
 **Local first, CDN second — not the other way round.** Preferring the CDN would
 mean failing a network request before using a perfectly good file sitting right
