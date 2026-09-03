@@ -39,7 +39,7 @@ the HTML is a render of it.
 | `--tags` | extra tags, comma separated. `brief` is always present |
 | `--author` | byline for the artefact |
 | `--provenance` | the source of record, e.g. `<repo>, <path> @ <sha>` |
-| `--sidecar-url` | URL of the SOURCED sidecar. Referenced, never inlined. Unset, a `<brief>.md.sourced` or `<brief>.html.sourced` file beside the source is used |
+| `--sidecar-url` | URL of an already-published sidecar. Unset, a `<brief>.md.sourced` or `<brief>.html.sourced` beside the source is rendered and published as a companion artefact |
 | `--no-sidecar` | publish with no claim ledger. **Requires a reason**, which is printed into the artefact |
 | `--nav-env` | an env file holding the two variables below |
 | `--convert-only` | print the artefact markdown and write nothing |
@@ -84,6 +84,26 @@ rather than looking like one whose sidecar merely went unlooked-for. A gate with
 no escape gets worked around; a gate whose escape is on the record gets used
 honestly. Giving both a sidecar and `--no-sidecar` is refused — a brief cannot
 have a ledger and not have one.
+
+**The ledger is published, not merely named.** A filename is not a link once the
+brief is a note: there is no sibling in the knowledge base, and a relative href
+resolves against `/artefact/<slug>`, which is a route rather than a directory. So
+an auto-detected sidecar is rendered as its own artefact — `Provenance — <brief
+title>` — and the brief points at its URL. The ledger goes in **first**, for the
+same reason the artefact precedes the pointer: a link to something not yet
+published is wrong for as long as the second write takes, and forever if it
+fails. If the ledger will not publish, neither does the brief.
+
+It is rendered rather than attached raw. The claims become insights, so they
+embed and are searchable; every quote keeps its locator, URL and retrieval date
+**on the quote line**, because a retrieval chunk can be cut anywhere and a bare
+quote arrives looking like the author's own conclusion. The adversarial pass's
+grade travels with it.
+
+**A ledger is never tagged `brief`.** `reconcile.py` reads a brief-tagged
+artefact with no nav pointer as drift, and a ledger is reached through its brief
+rather than attached to the work. It carries the brief's topical tags plus
+`provenance` and `sourced`, so the evidence stays findable by subject.
 
 Legitimate reasons, for what it is worth: `no external sources` on a brief that
 only asks questions about the reader's own data; `superseded, kept for the

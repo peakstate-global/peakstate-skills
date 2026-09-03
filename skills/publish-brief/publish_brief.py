@@ -213,9 +213,9 @@ def to_artefact_markdown(source: str, *, tags, author=None, sidecar_url=None, pr
         sys.exit("the brief has no `title` in its front matter")
     tldr = meta.get("sub") or first_sentence(body.strip().splitlines()[0] if body.strip() else title)
     content, insights = content_and_insights(body)
-    lines = ["---", "type: note", f"title: {json.dumps(title)}"]
+    lines = ["---", "type: note", f"title: {json.dumps(title, ensure_ascii=False)}"]
     if author:
-        lines.append(f"author: {json.dumps(author)}")
+        lines.append(f"author: {json.dumps(author, ensure_ascii=False)}")
     lines.append("tags: [" + ", ".join(sorted(set(tags))) + "]")
     lines += ["---", "", "## ❤️ TLDR", "", tldr, "", "## ☝ Insights", ""]
     lines += [f"- {i}" for i in insights] or [f"- {tldr}"]
@@ -286,8 +286,83 @@ def sidecar_for(src: Path):
     so the html sibling is checked as well as this file's own name."""
     for cand in (src.with_name(src.name + ".sourced"), src.with_suffix(".html.sourced")):
         if cand.exists():
-            return cand.name  # referenced, never inlined
+            return cand
     return None
+
+
+def plural(n: int, word: str) -> str:
+    return word if n == 1 else word + "s"
+
+
+def sidecar_to_artefact(sidecar: Path, brief_title: str, brief_slug: str, tags):
+    """Render a .sourced sidecar as its own artefact, so the ledger is reachable.
+
+    A filename is not a link once the brief is a note in the knowledge base:
+    there is no sibling there, and a relative href resolves against
+    `/artefact/<slug>`, which is a route rather than a directory. The only way a
+    reader can reach the evidence is if the evidence is in the knowledge base
+    too — so the sidecar is published as a companion artefact and the brief
+    points at its URL.
+
+    It is rendered, not attached raw: the quotes and their locators are the part
+    worth embedding and searching, and a wall of JSON would be neither.
+    """
+    d = json.loads(sidecar.read_text(encoding="utf-8"))
+    claims, evidence = d.get("claims", []), d.get("evidence", [])
+    by_id = {e.get("id"): e for e in evidence}
+    counts = {}
+    for c in claims:
+        counts[c.get("status", "unknown")] = counts.get(c.get("status", "unknown"), 0) + 1
+    tally = ", ".join(f"{v} {k}" for k, v in sorted(counts.items())) or "no claims recorded"
+    op = d.get("opposed") or {}
+
+    def yaml_str(v):
+        return json.dumps(v, ensure_ascii=False)
+
+    lines = ["---", "type: note", f"title: {yaml_str('Provenance — ' + brief_title)}",
+             # Never tagged `brief`: reconcile treats a brief-tagged artefact with
+             # no nav pointer as drift, and a ledger is reached through its brief
+             # rather than attached to the work itself. The topical tags carry
+             # over so the evidence is still findable by subject.
+             "tags: [" + ", ".join(sorted({t for t in tags if t != "brief"}
+                                          | {"provenance", "sourced"})) + "]",
+             "---", "", "## ❤️ TLDR", "",
+             f"The claim ledger behind the brief “{brief_title}”: {len(claims)} "
+             f"load-bearing {plural(len(claims), 'claim')} ({tally}) resting on "
+             f"{len(evidence)} quoted {plural(len(evidence), 'passage')}.", "",
+             "## ☝ Insights", ""]
+
+    for c in claims:
+        if c.get("status") in ("sourced", "inferred", "recalled"):
+            lines.append(f"- [{c.get('status').upper()}] {c.get('statement', '').strip()}")
+    if not any(l.startswith("- ") for l in lines):
+        lines.append(f"- {tally}")
+
+    lines += ["", "# Content", "",
+              f"Ledger for [{brief_title}](artefact/{brief_slug}). "
+              f"Generated from the SOURCED sidecar `{sidecar.name}`; not written by hand.", ""]
+    if op:
+        lines += [f"**Adversarial pass:** {op.get('grade', 'not-performed')} on "
+                  f"{op.get('at', 'an unrecorded date')}, {op.get('raised', 0)} finding(s), "
+                  f"model {op.get('model', 'unnamed')}. {op.get('note', '')}".strip(), ""]
+
+    lines += ["## Claims", ""]
+    for c in claims:
+        lines += [f"### {c.get('id')} — {c.get('status', 'unknown').upper()}", "",
+                  c.get("statement", "").strip(), ""]
+        if c.get("basis"):
+            lines += [f"*Basis:* {c['basis']}", ""]
+        if c.get("would_settle"):
+            lines += [f"*What would settle it:* {c['would_settle']}", ""]
+        for eid in c.get("evidence", []):
+            e = by_id.get(eid)
+            if not e:
+                continue
+            # The attribution rides on the quote line: retrieval chunks the body
+            # and can separate a quote from any heading above it.
+            lines += [f"> {e.get('quote', '').strip()} — {e.get('locator', 'no locator')}, "
+                      f"{e.get('url', 'no URL')} (retrieved {e.get('retrievedAt', 'undated')})", ""]
+    return "\n".join(lines)
 
 
 def sidecar_gate(src: Path, sidecar_url, no_sidecar):
@@ -441,10 +516,24 @@ def run(a) -> int:
     source_text = src.read_text(encoding="utf-8")
     meta, _ = front_matter(source_text)
     tags = ["brief"] + [t.strip().lower() for t in (a.tags or "").split(",") if t.strip()]
-    sidecar_url = a.sidecar_url or sidecar_for(src)
-    if err := sidecar_gate(src, sidecar_url, a.no_sidecar):
+    sidecar_file = None if a.sidecar_url else sidecar_for(src)
+    if err := sidecar_gate(src, a.sidecar_url or sidecar_file, a.no_sidecar):
         print(err, file=sys.stderr)
         return 1
+
+    title = meta["title"]
+    slug = slugify(title)
+    prima = prima_module()
+    env = prima.load_env()
+    prima_base = env["PRIMA_BASE"].rstrip("/")
+
+    # The brief's reference has to be a URL the reader can follow. An auto-detected
+    # sidecar is a file on someone's disk, so it is published as its own artefact
+    # first and the brief points at that. Sidecar before brief, for the same reason
+    # the artefact precedes the pointer: nothing may reference what does not exist.
+    sidecar_slug = slugify("Provenance — " + title) if sidecar_file else None
+    sidecar_url = a.sidecar_url or (f"{prima_base}/artefact/{sidecar_slug}" if sidecar_slug else None)
+
     artefact_md = to_artefact_markdown(
         source_text, tags=tags, author=a.author, sidecar_url=sidecar_url,
         provenance=a.provenance, unsourced_reason=a.no_sidecar,
@@ -452,11 +541,6 @@ def run(a) -> int:
     if a.convert_only:
         print(artefact_md)
         return 0
-
-    title = meta["title"]
-    slug = slugify(title)
-    prima = prima_module()
-    env = prima.load_env()
     origin = None
 
     # ---- nav side: resolve the target and the origin BEFORE writing to PRIMA.
@@ -497,6 +581,25 @@ def run(a) -> int:
                                        f"project {project_id}", f"action {action_id}",
                                        f"artefact markdown {len(artefact_md)} chars",
                                        f"ledger: {prior or 'no prior attempt'}"])
+
+    # ---- The ledger goes in before the brief that cites it. Same discipline as
+    # artefact-before-pointer: a link to something not yet published is a link
+    # that is wrong for as long as the second write takes, or forever if it
+    # fails. Its ingest upserts by slug, so a re-run is free.
+    sidecar_note = None
+    if sidecar_file:
+        s_status, s_payload = prima_ingest(
+            env, f"{sidecar_slug}.md",
+            sidecar_to_artefact(sidecar_file, title, slug, tags))
+        if s_status == 200 and isinstance(s_payload, dict) and s_payload.get("videoId"):
+            sidecar_note = (f"{sidecar_url} ({s_payload.get('mode')} · "
+                            f"{s_payload.get('insights')} insights)")
+        else:
+            return report("FAILED", [
+                f"the claim ledger did not publish (HTTP {s_status})",
+                "nothing was written: the brief is not published either, because it would",
+                "have carried a link to a ledger that is not there.",
+                f"detail: {str(s_payload)[:200]}"])
 
     # ---- PRIMA first. An artefact with no nav row is recoverable; the reverse
     # is a card pointing at nothing, so the pointer is never written first.
@@ -591,6 +694,10 @@ def run(a) -> int:
              + (f" action {action_id}" if action_id else "")
              + ("" if created else " (already linked; no duplicate created)"),
              f"operation {opid}", f"ingest: {ingest_note}"]
+    if sidecar_note:
+        lines.append(f"ledger: {sidecar_note}")
+    elif a.no_sidecar:
+        lines.append(f"ledger: none — published unledgered: {a.no_sidecar}")
     if ingest_note and ingest_note.startswith("UNCONFIRMED"):
         return report("PARTIAL", lines, "run the verb again to re-ingest and complete the derived insights")
     return report("OK", lines)
@@ -671,16 +778,38 @@ def self_check() -> int:
     assert (pid, aid) == (None, None) and "does not belong" in err[0], err
     assert resolve_target(nav, "OWNER", None, "P1")[:2] == ("P1", None)
 
-    # P2: the documented sidecar name is `<artefact>.sourced` on the full filename.
+    # P2: the documented sidecar name is `<artefact>.sourced` on the full
+    # filename. It returns a Path, not a name: the file has to be READ now, to
+    # render the ledger artefact, not merely mentioned.
     import tempfile
     with tempfile.TemporaryDirectory() as d:
         md = Path(d) / "b.md"
         md.write_text("x")
         assert sidecar_for(md) is None
         (Path(d) / "b.html.sourced").write_text("{}")
-        assert sidecar_for(md) == "b.html.sourced"
+        assert sidecar_for(md).name == "b.html.sourced"
         (Path(d) / "b.md.sourced").write_text("{}")
-        assert sidecar_for(md) == "b.md.sourced"
+        assert sidecar_for(md).name == "b.md.sourced"
+
+    # P4: the ledger renders as its own artefact, because a filename is not a
+    # link once the brief is a note and there is no sibling to be relative to.
+    with tempfile.TemporaryDirectory() as d:
+        sc = Path(d) / "b.html.sourced"
+        sc.write_text(json.dumps({
+            "claims": [{"id": "c1", "status": "sourced", "statement": "The sky is blue.",
+                        "evidence": ["e1"], "would_settle": "a grey sky"}],
+            "evidence": [{"id": "e1", "quote": "the sky is blue", "locator": "p. 1",
+                          "url": "https://example.org/x", "retrievedAt": "2026-09-03"}],
+            "opposed": {"grade": "cross-model-fresh-thread", "raised": 1, "model": "m"},
+        }))
+        art = sidecar_to_artefact(sc, "A brief", "a-brief", ["brief"])
+        assert 'title: "Provenance — A brief"' in art
+        assert "tags: [provenance, sourced]" in art, \
+            "never tagged `brief`: reconcile would read a ledger as an unlinked brief"
+        assert "[SOURCED] The sky is blue." in art, "claims become insights, so they embed"
+        assert "https://example.org/x" in art and "p. 1" in art, "quote carries its own locator"
+        assert "cross-model-fresh-thread" in art, "the adversarial grade travels"
+        assert "artefact/a-brief" in art, "the ledger links back to its brief"
 
     # P3: a brief cannot reach the knowledge base without a claim ledger, and an
     # unledgered one says so in the artefact rather than looking merely quiet.
