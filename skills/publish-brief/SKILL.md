@@ -40,6 +40,7 @@ the HTML is a render of it.
 | `--author` | byline for the artefact |
 | `--provenance` | the source of record, e.g. `<repo>, <path> @ <sha>` |
 | `--sidecar-url` | URL of the SOURCED sidecar. Referenced, never inlined. Unset, a `<brief>.md.sourced` or `<brief>.html.sourced` file beside the source is used |
+| `--no-sidecar` | publish with no claim ledger. **Requires a reason**, which is printed into the artefact |
 | `--nav-env` | an env file holding the two variables below |
 | `--convert-only` | print the artefact markdown and write nothing |
 | `--dry-run` | resolve everything, write nothing |
@@ -61,6 +62,32 @@ not hold a second copy of them and does not implement a second client.
 **Why a service key.** Navigator's token API attaches *files*: it uploads bytes.
 There is no endpoint that creates an external pointer row. When one exists, this
 becomes a bearer-token POST and the service key goes away.
+
+## The sidecar is a precondition, not a nicety
+
+**A brief cannot reach the knowledge base without a SOURCED sidecar.** With no
+`--sidecar-url` and no `<brief>.md.sourced` / `<brief>.html.sourced` beside the
+source, the verb refuses and names both ways forward. It is a gate in the code,
+not a line in a checklist, because a line in a checklist is a thing you find out
+you skipped.
+
+**Why here and not at authoring time.** A published brief is retrieved later, by
+an agent, out of the context that produced it. Whatever it asserts then arrives
+with no route back to the evidence unless the ledger travelled with it — so the
+moment provenance is worth the most is the moment nobody is left to add it.
+Publishing is the last point at which the two can still be joined.
+
+**The escape hatch costs one sentence.** `--no-sidecar "reason"` publishes anyway
+and prints `No SOURCED sidecar. Published unledgered because: …` into the
+artefact body. So an unledgered brief reads as unledgered wherever it is found,
+rather than looking like one whose sidecar merely went unlooked-for. A gate with
+no escape gets worked around; a gate whose escape is on the record gets used
+honestly. Giving both a sidecar and `--no-sidecar` is refused — a brief cannot
+have a ledger and not have one.
+
+Legitimate reasons, for what it is worth: `no external sources` on a brief that
+only asks questions about the reader's own data; `superseded, kept for the
+record`. "I did not run it" is not one — run `/sourced <brief>.html` instead.
 
 ## Idempotency
 

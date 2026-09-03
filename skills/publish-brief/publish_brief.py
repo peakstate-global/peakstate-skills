@@ -205,7 +205,8 @@ def content_and_insights(body: str):
     return text, insights
 
 
-def to_artefact_markdown(source: str, *, tags, author=None, sidecar_url=None, provenance=None):
+def to_artefact_markdown(source: str, *, tags, author=None, sidecar_url=None, provenance=None,
+                         unsourced_reason=None):
     meta, body = front_matter(source)
     title = meta.get("title")
     if not title:
@@ -223,6 +224,12 @@ def to_artefact_markdown(source: str, *, tags, author=None, sidecar_url=None, pr
         lines += [f"Source of record: {provenance}", ""]
     if sidecar_url:
         lines += [f"SOURCED provenance sidecar: {sidecar_url}", ""]
+    elif unsourced_reason:
+        # Visible in the artefact, not just in a flag nobody sees again. A brief
+        # published without a claim ledger has to READ as unledgered wherever it
+        # is later found, or the absence becomes indistinguishable from a brief
+        # whose sidecar simply was not looked for.
+        lines += [f"No SOURCED sidecar. Published unledgered because: {unsourced_reason}", ""]
     lines += [content, ""]
     return "\n".join(lines)
 
@@ -281,6 +288,41 @@ def sidecar_for(src: Path):
         if cand.exists():
             return cand.name  # referenced, never inlined
     return None
+
+
+def sidecar_gate(src: Path, sidecar_url, no_sidecar):
+    """Refuse to publish a brief with no claim ledger. Returns an error, or None.
+
+    A brief in the knowledge base is retrieved later, by an agent, out of the
+    context that produced it — so whatever it asserts arrives with no way back to
+    the evidence unless the sidecar travels with it. That is the moment the
+    provenance is worth the most and the moment nobody is around to add it.
+
+    So the ledger is a precondition of publishing, not a nicety, and the escape
+    hatch costs a sentence: --no-sidecar "reason" publishes anyway and prints the
+    reason into the artefact, so an unledgered brief is visibly unledgered rather
+    than merely quiet. A gate with no escape gets worked around; a gate whose
+    escape is recorded gets used honestly.
+    """
+    if sidecar_url and no_sidecar:
+        return (f"FAILED\n  a sidecar was found ({sidecar_url}) and --no-sidecar was also given.\n"
+                "  Drop --no-sidecar; the ledger is there.")
+    if sidecar_url or no_sidecar:
+        return None
+    return "\n".join([
+        "FAILED",
+        f"  no SOURCED sidecar for {src.name}, and none given with --sidecar-url.",
+        "",
+        "  A published brief outlives the thread that wrote it. Without the ledger,",
+        "  every claim in it is unattributable the moment it is retrieved.",
+        "",
+        "  Create one:",
+        f"    /sourced {src.with_suffix('.html')}",
+        f"  which writes {src.with_suffix('.html').name}.sourced beside it. Then re-run.",
+        "",
+        "  Or publish unledgered, on the record:",
+        '    --no-sidecar "why this brief has no claim ledger"',
+    ])
 
 
 def resolve_target(nav, user_id: str, action, project):
@@ -400,8 +442,12 @@ def run(a) -> int:
     meta, _ = front_matter(source_text)
     tags = ["brief"] + [t.strip().lower() for t in (a.tags or "").split(",") if t.strip()]
     sidecar_url = a.sidecar_url or sidecar_for(src)
+    if err := sidecar_gate(src, sidecar_url, a.no_sidecar):
+        print(err, file=sys.stderr)
+        return 1
     artefact_md = to_artefact_markdown(
-        source_text, tags=tags, author=a.author, sidecar_url=sidecar_url, provenance=a.provenance
+        source_text, tags=tags, author=a.author, sidecar_url=sidecar_url,
+        provenance=a.provenance, unsourced_reason=a.no_sidecar,
     )
     if a.convert_only:
         print(artefact_md)
@@ -635,6 +681,26 @@ def self_check() -> int:
         assert sidecar_for(md) == "b.html.sourced"
         (Path(d) / "b.md.sourced").write_text("{}")
         assert sidecar_for(md) == "b.md.sourced"
+
+    # P3: a brief cannot reach the knowledge base without a claim ledger, and an
+    # unledgered one says so in the artefact rather than looking merely quiet.
+    src = Path("b.md")
+    assert sidecar_gate(src, "b.html.sourced", None) is None, "a sidecar passes"
+    assert sidecar_gate(src, None, "no external sources") is None, "a stated reason passes"
+    refusal = sidecar_gate(src, None, None)
+    assert refusal and refusal.startswith("FAILED"), "no ledger and no reason is refused"
+    assert "/sourced" in refusal and "--no-sidecar" in refusal, "the refusal names both ways out"
+    both = sidecar_gate(src, "b.html.sourced", "reason")
+    assert both and "Drop --no-sidecar" in both, "claiming no ledger while one exists is refused"
+
+    ledgered = to_artefact_markdown("---\ntitle: T\n---\nBody.\n", tags=["brief"],
+                                    sidecar_url="b.html.sourced")
+    assert "SOURCED provenance sidecar: b.html.sourced" in ledgered
+    bare = to_artefact_markdown("---\ntitle: T\n---\nBody.\n", tags=["brief"],
+                                unsourced_reason="notes only, no external sources")
+    assert "Published unledgered because: notes only, no external sources" in bare, \
+        "the reason travels in the artefact, where a later reader will find it"
+
     print("publish-brief: all checks passed")
     return 0
 
@@ -649,6 +715,8 @@ def main() -> int:
     p.add_argument("--author")
     p.add_argument("--provenance", help="the source of record, e.g. 'repo path @ commit'")
     p.add_argument("--sidecar-url", help="URL of the SOURCED sidecar; never inlined")
+    p.add_argument("--no-sidecar", metavar="REASON",
+                   help="publish without a claim ledger; the reason is printed into the artefact")
     p.add_argument("--nav-env", help="env file holding NAV_SUPABASE_URL / NAV_SERVICE_KEY")
     p.add_argument("--convert-only", action="store_true", help="print the artefact markdown, write nothing")
     p.add_argument("--dry-run", action="store_true", help="resolve everything, write nothing")
