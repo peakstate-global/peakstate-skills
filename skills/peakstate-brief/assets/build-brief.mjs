@@ -37,6 +37,11 @@ function esc(t) {
   return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/* Attribute values need the quote too. A raw " in data-addressed closes the
+   attribute early, and the truncated prefix left behind matches — and silently
+   resolves — comments the author never addressed. */
+const escAttr = (t) => esc(t).replace(/"/g, '&quot;');
+
 /* Code spans are lifted out before any other rule runs, so `**not bold**`
    inside backticks stays literal. A fence of two or more backticks lets a span
    hold a backtick, the same way CommonMark does. */
@@ -48,8 +53,13 @@ function inline(text, refs) {
   });
   t = esc(t);
   t = t.replace(/\[\^(\d+)(?:q(\d+))?\]/g, (m, n, q) => {
-    const id = 'ref' + n + '-q' + (q || 1);
-    if (refs && !refs.anchors.has(id)) refs.missing.push(m + ' -> #' + id);
+    let id = 'ref' + n + '-q' + (q || 1);
+    /* A source with no pull quote has no quote anchor, so a bare marker lands
+       on the entry itself rather than on an id nothing renders. */
+    if (refs && !refs.anchors.has(id)) {
+      if (!q && refs.anchors.has('ref' + n)) id = 'ref' + n;
+      else refs.missing.push(m + ' -> #' + id);
+    }
     return '<sup class="fn"><a href="#' + id + '">' + n + '</a></sup>';
   });
   /* Lazy, so bold may hold emphasis: `**a *b* c**` is one bold run, not two. */
@@ -414,7 +424,7 @@ function collectAnchors(parts) {
       for (const b of blocks(s.lines)) {
         if (!/^\[\^\d+\]:/.test(b[0].trim())) continue;
         for (const r of parseRefs(b)) {
-          anchors.add('ref' + r.n + '-q1');
+          anchors.add('ref' + r.n);
           r.quotes.forEach((_, i) => anchors.add('ref' + r.n + '-q' + (i + 1)));
         }
       }
@@ -455,11 +465,11 @@ export function render(source, opts = {}) {
   }
 
   const template = opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8');
-  const addressed = meta.addressed ? ' data-addressed="' + esc(meta.addressed) + '"' : '';
+  const addressed = meta.addressed ? ' data-addressed="' + escAttr(meta.addressed) + '"' : '';
   return template
-    .replace(/\{\{TITLE\}\}/g, esc(meta['head-title'] || meta.title || 'Brief'))
+    .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      esc(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + '>')
     .replace(/<main>[\s\S]*<\/main>/, '<main>\n\n' + out.join('\n\n') + '\n\n</main>');
 }
 

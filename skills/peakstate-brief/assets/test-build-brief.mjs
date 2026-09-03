@@ -21,7 +21,7 @@ const has = (needle, why) => assert.ok(main.includes(needle), why + ' — missin
 
 /* ── the four hard requirements ──────────────────────────────────────────── */
 
-assert.ok(html.includes('<body data-brief-id="renderer-fixture">'), 'brief id lands on <body>');
+assert.ok(html.includes('<body data-brief-id="renderer-fixture"'), 'brief id lands on <body>');
 assert.ok(html.includes('<title>Renderer fixture brief</title>'), 'title lands in <head>');
 assert.ok(html.includes('brief.js'), 'the runtime script tag survives');
 has('data-q="Q1"', 'question 1 is a real section.q');
@@ -68,6 +68,13 @@ has('<sup class="fn"><a href="#ref1-q2">1</a></sup>', 'a marker may point at a l
 has('<blockquote class="pull" id="ref1-q2">', 'each quote gets its own anchor');
 has('<span class="qref">Standfirst, second sentence</span>', 'a quote carries its locator');
 has('<span class="apa-note">', 'an unretrievable source says so');
+has('<sup class="fn"><a href="#ref3">3</a></sup>', 'a quoteless source is cited on its entry');
+assert.ok(!main.includes('id="ref3-q1"'), 'no quote means no quote anchor');
+
+/* ── attribute escaping ──────────────────────────────────────────────────── */
+
+assert.ok(html.includes('data-addressed="a comment with a &quot;quoted&quot; phrase in it||another one"'),
+  'a double quote in data-addressed is escaped, not left to truncate the value');
 
 const ids = new Set([...main.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
 const dead = [...main.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]).filter((h) => !ids.has(h));

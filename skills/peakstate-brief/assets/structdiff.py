@@ -96,6 +96,9 @@ def main():
     dead_a = [x for x in a.anchors if x not in a.ids]
     dead_b = [x for x in b.anchors if x not in b.ids]
     bad += report("anchors resolve", dead_a, dead_b)
+    # Resolving is not enough: an anchor can resolve to the wrong target and
+    # look clean, so compare the ordered target streams as well.
+    bad += report("anchor targets", a.anchors, b.anchors)
     print("RESULT:", "EQUIVALENT" if not bad else "%d difference group(s)" % bad)
     sys.exit(1 if bad else 0)
 

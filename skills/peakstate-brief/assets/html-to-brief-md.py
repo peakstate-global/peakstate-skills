@@ -21,6 +21,8 @@ import sys
 from html.parser import HTMLParser
 
 VOID = {"br", "hr", "img", "input", "meta", "link", "source"}
+PARTWORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven",
+             "eight", "nine", "ten", "eleven", "twelve")
 
 
 class Node:
@@ -89,6 +91,8 @@ def inline(node):
             out.append("`" + inline(k).strip() + "`")
         elif k.tag == "a":
             out.append("[" + inline(k).strip() + "](" + k.attrs.get("href", "") + ")")
+        elif k.tag == "sup" and "fn" in k.cls():
+            out.append(fnmarker(k))
         elif k.tag == "br":
             out.append(" ")
         else:
@@ -96,11 +100,27 @@ def inline(node):
     return ws("".join(out))
 
 
+def fnmarker(node):
+    """<sup class="fn"><a href="#refN-qM">N</a></sup> -> [^N] or [^NqM]."""
+    a = find(node, lambda n: n.tag == "a")
+    m = re.match(r"#ref(\d+)-q(\d+)$", a.attrs.get("href", "") if a else "")
+    if not m:
+        return inline(node)
+    return "[^%s]" % m.group(1) if m.group(2) == "1" else "[^%sq%s]" % m.groups()
+
+
+def esc(s, quote=False):
+    """The parser decodes entities, so serialising has to put them back."""
+    s = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return s.replace('"', "&quot;") if quote else s
+
+
 def serialise(node):
     """Element subtree -> raw HTML, for the :::html escape hatch."""
     if node.tag == "#text":
-        return node.text
-    attrs = "".join(' %s="%s"' % (k, v) for k, v in node.attrs.items())
+        return esc(node.text)
+    attrs = "".join((" " + k) if v is None else ' %s="%s"' % (k, esc(v, True))
+                    for k, v in node.attrs.items())
     if node.tag in VOID:
         return "<%s%s>" % (node.tag, attrs)
     return "<%s%s>%s</%s>" % (node.tag, attrs, "".join(serialise(k) for k in node.kids), node.tag)
@@ -131,6 +151,33 @@ def listmd(node, depth=0):
     return "\n".join(lines)
 
 
+def reflistmd(node):
+    """<ol class="reflist"> -> [^n] footnote definitions, keeping every refN-qM.
+
+    One definition per source, its APA entry on the first line, then the
+    optional note, then one quoted line per pull quote with its locator after
+    ` -- `. build-brief re-derives the ids from that order, so the anchors a
+    footnote marker points at survive the migration.
+    """
+    out = []
+    for li in [k for k in node.kids if k.tag == "li"]:
+        n = re.sub(r"\D", "", li.attrs.get("id", "")) or str(len(out) + 1)
+        apa = find(li, lambda x: x.tag == "span" and "apa" in x.cls())
+        # An APA entry ends in a naked URL that renderRefs autolinks itself, so
+        # a self-titled link goes back to being a bare URL.
+        out.append("[^%s]: %s" % (n, re.sub(r"\[([^\]]+)\]\(\1\)", r"\1",
+                                            inline(apa if apa else li))))
+        note = find(li, lambda x: "apa-note" in x.cls())
+        if note:
+            out.append("    note: " + inline(note))
+        for q in [k for k in li.kids if k.tag == "blockquote"]:
+            qref = find(q, lambda x: "qref" in x.cls())
+            body = Node("blockquote")
+            body.kids = [k for k in q.kids if k is not qref]
+            out.append("    > " + inline(body) + (" -- " + inline(qref) if qref else ""))
+    return "\n".join(out)
+
+
 def blockmd(node):
     cls = node.cls()
     if node.tag == "#text":
@@ -147,6 +194,8 @@ def blockmd(node):
             return raw(node)
         return inline(node)
     if node.tag in ("ul", "ol"):
+        if "reflist" in cls:
+            return reflistmd(node)
         if "options" in cls:
             out = []
             for li in [k for k in node.kids if k.tag == "li"]:
@@ -191,6 +240,9 @@ def convert(path):
         "eyebrow": inline(find(head, lambda n: "eyebrow" in n.cls())),
         "sub": inline(find(head, lambda n: "sub" in n.cls())),
     }
+    addressed = re.search(r'<body[^>]*\sdata-addressed="([^"]*)"', html)
+    if addressed:
+        meta["addressed"] = addressed.group(1).replace("&quot;", '"').replace("&amp;", "&")
     page = re.search(r"<title>([^<]*)</title>", html).group(1)
     if page != meta["title"]:
         meta["head-title"] = page
@@ -200,9 +252,20 @@ def convert(path):
     toc = {}
     tocnav = find(root, lambda n: "toc" in n.cls())
     if tocnav:
-        for li in [k for k in tocnav.kids for k in ([k] if k.tag == "li" else k.kids) if k.tag == "li"]:
-            a = find(li, lambda n: n.tag == "a")
-            note = find(li, lambda n: "tnote" in n.cls())
+        items = []
+
+        def walk(n):
+            for k in n.kids:
+                if k.tag == "li":
+                    items.append(k)
+                walk(k)
+
+        walk(tocnav)
+        for li in items:
+            own = Node("li")
+            own.kids = [k for k in li.kids if k.tag not in ("ul", "ol")]
+            a = find(own, lambda n: n.tag == "a")
+            note = find(own, lambda n: "tnote" in n.cls())
             if a:
                 toc[a.attrs.get("href", "")[1:]] = (inline(a), inline(note) if note else "")
 
@@ -213,7 +276,11 @@ def convert(path):
         cls = node.cls()
         if node.tag == "h2" and "part" in cls:
             title = inline(node)
-            title = re.sub(r"^Part \w+\s*", "", title).strip()
+            # The old r"^Part \w+\s*" had no token boundary: with no space
+            # after </span> the greedy \w+ ate "oneThe" and the title lost its
+            # first word. Anchor on the actual part words, and refuse to split
+            # one ("onerous") in half.
+            title = re.sub(r"^Part (?:%s)(?![a-z])\s*" % "|".join(PARTWORDS), "", title).strip()
             out += ["# " + title, ""]
         elif node.tag == "p" and "partlede" in cls:
             out += [inline(node), ""]

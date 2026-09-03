@@ -1,6 +1,7 @@
 ---
 title: Renderer fixture brief
 brief-id: renderer-fixture
+addressed: a comment with a "quoted" phrase in it||another one
 eyebrow: Fixture · 3 September 2026 · exercises every block
 sub: Every block type `build-brief.mjs` knows about, in one file, so a regression shows up as a failing assertion rather than a broken brief.
 ---
@@ -82,7 +83,8 @@ If wrong: only the HTML is delivered and the markdown becomes a build artefact
 nobody can find.
 
 The markdown is the thing PRIMA ingests, so losing it costs the structure the
-whole change was made to keep[^2].
+whole change was made to keep[^2]. A source with no pull quote is still citable,
+so its marker lands on the entry itself[^3].
 
 a) Ship both, side by side.
 b) Ship the HTML only, keep the markdown in the repo.
@@ -101,6 +103,8 @@ My assumption: yes, generated from the part and section headings.
     [Repository file]. skills/peakstate-brief/SKILL.md
     note: An internal file with no public URL, cited as such.
     > "A brief that asserts things the reader can't verify is an opinion piece." -- References section
+[^3]: Australian Bureau of Statistics. (2026). *A source cited with no pull
+    quote*. ABS. https://example.com/no-quote
 
 ## Provenance
 

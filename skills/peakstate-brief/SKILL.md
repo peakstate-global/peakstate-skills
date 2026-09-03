@@ -333,6 +333,7 @@ comment the reader made").
 | `My assumption: …` then `If wrong: …` | `<p class="assume">` with both labels bold |
 | `a) …` and `b) …` lines | `<ul class="options">` with `<b>a)</b>` |
 | `[^3]` and `[^3q2]` | `<sup class="fn"><a href="#ref3-q1">3</a></sup>` and `#ref3-q2` |
+| `[^3]` where source 3 has no quote | `#ref3`, the entry itself. A marker pointing at a quote that does not exist is a build error. |
 | `:::verdict` … `:::` | `<div class="verdict">` with markdown rendered inside |
 | `:::html` … `:::` | passed through verbatim |
 | a block starting with `<` | passed through verbatim |
