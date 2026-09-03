@@ -171,6 +171,30 @@ names the section only.
 measure; a second, narrower cap makes the standfirst look accidentally indented against
 the body text beneath it.
 
+## Every claim in the title and standfirst is paid off at every level below
+
+**The heading and the standfirst are a promise, and each claim in them must be answered in the
+opening line of the part that owns it, in the section under that part, and in the detail under
+that section.** A reader stops at whichever level satisfies them, so a claim that only resolves
+three screens down has been made to three readers and kept for one.
+
+- **Name the claims before you write the body.** List the assertions in the title and standfirst.
+  Each one gets an owning part; that part's `partlede` answers it in a sentence; the section
+  under it answers it with the evidence.
+- **The words must repeat.** If the standfirst says "four levers", the section says "four
+  levers" — not "the practical read". A reader scanning for the phrase they were promised will
+  not translate your synonym.
+- **A claim you cannot pay off is cut from the standfirst**, not softened. A hedge in a promise
+  reads as a promise.
+- **The test:** read only the standfirst, then only the part ledes, then only the section
+  headings. Each pass alone must answer the title. Three passes that each need the next one are
+  a document with no summary, however good the prose is.
+
+Measured on the endogenous-DMT brief, 2026-09-04: a standfirst claiming the measured findings
+were "more useful than the DMT story" named the derived levers but never said what had been
+measured. It took two rounds of reader comments to surface, because each round fixed the
+sentence rather than the level below it.
+
 ## Contents — a brief over about four sections gets one
 
 First section in `<main>` after the title block, `data-sec="toc"`, so it ticks off and
@@ -345,6 +369,7 @@ comment the reader made").
 | `:::verdict` … `:::` | `<div class="verdict">` with markdown rendered inside |
 | `:::html` … `:::` | passed through verbatim |
 | a block starting with `<` | passed through verbatim |
+| inline `<span class="hl-warn">…</span>` | passed through, in prose, a list item or a table cell. Allowlist: `span b i em strong s del ins sub sup kbd abbr mark small wbr br`, carrying at most a `class`. Anything else escapes to visible text |
 
 **The contents list is generated, never authored.** Every section gets an `id`
 automatically, entries are numbered continuously across parts, and a renamed

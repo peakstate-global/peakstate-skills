@@ -42,15 +42,28 @@ function esc(t) {
    resolves — comments the author never addressed. */
 const escAttr = (t) => esc(t).replace(/"/g, '&quot;');
 
+/* Inline HTML that survives esc(). A block starting with `<` is already passed
+   through verbatim, but there is no block level inside a table cell or a list
+   item, so an author following this skill's own advice to put hl-focus /
+   hl-warn / hl-info on a cell had no way to do it and got the tag printed at
+   the reader. The allowlist is presentational tags carrying at most a class:
+   anything else — a script, an iframe, an onclick — still escapes to text, so
+   the escaping guarantee holds where it matters. */
+const INLINE_HTML =
+  /^<\/?(?:span|b|i|em|strong|s|del|ins|sub|sup|kbd|abbr|mark|small|wbr|br)(?:\s+class="[-\w\s]*")?\s*\/?>$/;
+
 /* Code spans are lifted out before any other rule runs, so `**not bold**`
    inside backticks stays literal. A fence of two or more backticks lets a span
    hold a backtick, the same way CommonMark does. */
 function inline(text, refs) {
   const spans = [];
-  let t = text.replace(/(`+)([\s\S]*?)\1/g, (_, ticks, body) => {
-    spans.push('<code>' + esc(body.replace(/^ (.*) $/, '$1')) + '</code>');
+  const park = (html) => {
+    spans.push(html);
     return SENTINEL + (spans.length - 1) + SENTINEL;
-  });
+  };
+  let t = text.replace(/(`+)([\s\S]*?)\1/g, (_, ticks, body) =>
+    park('<code>' + esc(body.replace(/^ (.*) $/, '$1')) + '</code>'));
+  t = t.replace(/<\/?[a-zA-Z][^<>]*>/g, (m) => (INLINE_HTML.test(m) ? park(m) : m));
   t = esc(t);
   t = t.replace(/\[\^(\d+)(?:q(\d+))?\]/g, (m, n, q) => {
     let id = 'ref' + n + '-q' + (q || 1);

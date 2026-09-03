@@ -47,6 +47,9 @@ assert.equal((main.match(/<dl/g) || []).length, 1, 'the provenance terms are one
 /* ── blocks the ticket names ─────────────────────────────────────────────── */
 
 has('<div class="tblwrap nopin"><table>', 'GFM pipe table');
+has('<span class="hl-warn">Highlighted</span>', 'allowlisted inline HTML survives in a table cell');
+has('&lt;script&gt;alert(1)&lt;/script&gt;', 'non-allowlisted inline HTML still escapes');
+has('<code>&lt;span&gt;</code>', 'inline HTML inside a code span stays literal');
 has('<code>a | b</code>', 'an escaped pipe stays inside its cell');
 has('<ol>\n<li>The first step, which has sub-steps.\n<ol>', 'ordered list nested in an ordered list');
 has('<ul>\n<li>A bullet.', 'bullets nested under a numbered step');

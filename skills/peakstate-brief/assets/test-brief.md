@@ -42,6 +42,7 @@ A code span may itself hold backticks: `` `not a fence` ``.
 | `043` | Made `storage_path` nullable | An attachment no longer has to hold bytes |
 | `039` | Added `drive_file_id` | The precedent exists and is in production |
 | `072` | Added a nullable column named `a \| b` | Escaped pipes stay in the cell |
+| <span class="hl-warn">Highlighted</span> | An allowlisted inline tag renders | <script>alert(1)</script> and `<span>` in a code span stay literal |
 
 ## Code fences {#s-code} :: a fence holding a shorter fence
 
