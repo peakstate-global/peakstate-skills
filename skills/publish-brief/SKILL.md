@@ -39,7 +39,7 @@ the HTML is a render of it.
 | `--tags` | extra tags, comma separated. `brief` is always present |
 | `--author` | byline for the artefact |
 | `--provenance` | the source of record, e.g. `<repo>, <path> @ <sha>` |
-| `--sidecar-url` | URL of the SOURCED sidecar. Referenced, never inlined |
+| `--sidecar-url` | URL of the SOURCED sidecar. Referenced, never inlined. Unset, a `<brief>.md.sourced` or `<brief>.html.sourced` file beside the source is used |
 | `--nav-env` | an env file holding the two variables below |
 | `--convert-only` | print the artefact markdown and write nothing |
 | `--dry-run` | resolve everything, write nothing |
@@ -73,6 +73,8 @@ Three independent layers, so a retry is always safe:
 - **A local ledger**, keyed by an operation id derived only from the origin, the
   target and the slug, records both ids and the content hash. An unchanged brief
   is not re-ingested; a recovered partial does the pointer half only.
+- **An unconfirmed ingest records no content hash**, so it is never cached as
+  done. "I do not know" must not become "done": the next run ingests again.
 
 ## Reporting
 
@@ -92,6 +94,13 @@ pointer is only ever written after the uuid is known.
 
 ## Two contract details that are easy to get wrong
 
+- **The origin must be the one the client writes to.** The connection's
+  `base_url` is compared with the client's base before anything is written. A
+  mismatch is refused, because the pointer would carry a uuid that does not
+  exist on the host it names.
+- **A fenced code block is copied through untouched**, and the target of
+  `--action` is only accepted once its parent project is confirmed to belong to
+  the owner.
 - **The pointer is the uuid, never the slug.** A slug is derived from the title,
   so renaming a brief would break every pointer and two briefs sharing a title
   would collide. The slug is for display and routing only.

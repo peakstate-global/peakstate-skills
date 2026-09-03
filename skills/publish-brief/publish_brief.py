@@ -122,27 +122,56 @@ def first_sentence(text: str, limit: int = 220) -> str:
 
 
 SKIP_SECTIONS = {"contents", "provenance", "references"}
+BLOCK_STARTS = ("|", "-", "<", ":::", ">", "!", "[", "a)", "b)", "c)")
+FENCE = re.compile(r"^(```|~~~)")
 
 
 def content_and_insights(body: str):
     """Rewrite the brief body for retrieval, and derive one insight per section.
 
-    Two rewrites matter. Heading machinery is stripped, so a heading reads as a
-    heading. And every quoted source keeps its attribution ON the quote line:
-    a retrieval chunk can be cut anywhere, including between a quote and the
-    reference entry above it, so a bare quote would arrive looking like the
-    author's own conclusion.
+    Three rules matter. Heading machinery is stripped, so a heading reads as a
+    heading. Every quoted source keeps its attribution ON the quote line, even
+    when the quote is indented under its footnote definition and runs over
+    several lines: a retrieval chunk can be cut anywhere, so a bare quote would
+    arrive looking like the author's own conclusion. And a fenced code block is
+    copied through untouched, because a rewrite inside one changes the sample.
     """
     out, insights = [], []
-    section, want_lede, current_ref, in_raw = None, False, None, False
+    section, want_lede, current_ref = None, False, None
+    in_raw = in_code = False
+    paras, para = [], []  # the current section's prose, split on blank lines
+
+    def flush():
+        """Derive the section's insight from its COMPLETE first paragraph."""
+        nonlocal paras, para, want_lede
+        if para:
+            paras.append(para)
+            para = []
+        if want_lede and section and paras:
+            chosen = next((q for q in paras if not q[0].startswith(BLOCK_STARTS)), paras[0])
+            text = re.sub(r"^[>#\-*+|!]+\s*", "", " ".join(chosen)).strip()
+            if text:
+                insights.append(f"{section}: {first_sentence(text)}")
+        paras, want_lede = [], False
+
     for raw in body.splitlines():
         line = raw.rstrip()
+        stripped = line.strip()
+        if FENCE.match(stripped):
+            in_code = not in_code
+            out.append(line)
+            continue
+        if in_code:  # a code sample is content, never something to rewrite
+            out.append(line)
+            continue
         h = HEADING.match(line)
         if h:
             title = clean_heading(h.group(2))
+            if len(h.group(1)) == 2:
+                flush()
+                section = title
+                want_lede = title.strip().lower() not in SKIP_SECTIONS
             out.append(f"{h.group(1)} {title}")
-            section = title if len(h.group(1)) == 2 else section
-            want_lede = len(h.group(1)) == 2 and title.strip().lower() not in SKIP_SECTIONS
             current_ref = None
             continue
         ref = REFDEF.match(line)
@@ -150,22 +179,28 @@ def content_and_insights(body: str):
             current_ref = (ref.group(1), first_sentence(ref.group(2), 90))
             out.append(f"[{ref.group(1)}] {FNMARK.sub(r'[\1]', ref.group(2))}")
             continue
-        q = QUOTE.match(line)
+        q = QUOTE.match(stripped)  # stripped: a continuation quote is indented
         if q and current_ref and q.group(1).strip():
             text, _, locator = q.group(1).partition(" -- ")
             where = f", {locator.strip()}" if locator.strip() else ""
             out.append(f"> Quoted from source [{current_ref[0]}]{where}: {text.strip()}")
             continue
-        if line.strip() and not line.startswith(("note:", ">")):
+        indented = bool(stripped) and raw[:1].isspace()
+        if stripped and not indented and not stripped.startswith(("note:", ">")):
             current_ref = None
         out.append(FNMARK.sub(r"[\1]", line))
-        stripped = line.strip()
         if stripped.startswith(":::"):
             in_raw = not in_raw
-        if want_lede and not in_raw and stripped and not stripped.startswith(
-                ("|", "-", "<", ":::", ">", "!", "[", "a)", "b)", "c)")):
-            insights.append(f"{section}: {first_sentence(line)}")
-            want_lede = False
+            continue
+        if in_raw:
+            continue
+        if not stripped:
+            if para:
+                paras.append(para)
+                para = []
+        else:
+            para.append(stripped)
+    flush()
     text = re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
     return text, insights
 
@@ -220,6 +255,52 @@ def slugify(title: str) -> str:
     """PRIMA's own rule, so the artefact can be probed before it is written."""
     s = re.sub(r"[^a-z0-9]+", "-", title.lower())
     return s.strip("-")
+
+
+def can_skip_ingest(prior: dict, content_sha: str, probed_id) -> bool:
+    """True only when a CONFIRMED earlier run ingested this exact content.
+
+    An unconfirmed ingest writes no `content_sha`, so it can never match here.
+    "I do not know" must never be cached as "done": the repair is the re-run,
+    and a re-run that skipped the ingest would report OK over a broken artefact.
+    """
+    if not (prior.get("artefact_id") and prior.get("content_sha") == content_sha):
+        return False
+    return probed_id is None or probed_id == prior["artefact_id"]
+
+
+def same_origin(a: str, b: str) -> bool:
+    return (a or "").rstrip("/").lower() == (b or "").rstrip("/").lower()
+
+
+def sidecar_for(src: Path):
+    """The SOURCED sidecar beside the brief. The contract is `<artefact>.sourced`
+    on the FULL filename, and a brief is normally audited as its rendered HTML,
+    so the html sibling is checked as well as this file's own name."""
+    for cand in (src.with_name(src.name + ".sourced"), src.with_suffix(".html.sourced")):
+        if cand.exists():
+            return cand.name  # referenced, never inlined
+    return None
+
+
+def resolve_target(nav, user_id: str, action, project):
+    """(project_id, action_id, error-lines). Both paths are scoped to the owner:
+    an action is only usable once its parent project is confirmed to be theirs,
+    or the verb would attach one user's brief to another user's work."""
+    if action:
+        st, rows = nav.get("project_actions", {"id": f"eq.{action}", "select": "id,project_id"})
+        if st != 200 or not rows:
+            return None, None, [f"action {action} not found (status {st})", "nothing was written"]
+        st2, owned = nav.resolve_project(user_id, rows[0]["project_id"])
+        if st2 != 200 or not owned:
+            return None, None, [f"action {action} does not belong to this user (status {st2})",
+                                "nothing was written"]
+        return rows[0]["project_id"], rows[0]["id"], None
+    st, rows = nav.resolve_project(user_id, project)
+    if st != 200 or not rows:
+        return None, None, [f"project {project!r} not found for this user (status {st})",
+                            "nothing was written"]
+    return rows[0]["id"], None, None
 
 
 # ------------------------------------------------------------------- PRIMA
@@ -318,12 +399,7 @@ def run(a) -> int:
     source_text = src.read_text(encoding="utf-8")
     meta, _ = front_matter(source_text)
     tags = ["brief"] + [t.strip().lower() for t in (a.tags or "").split(",") if t.strip()]
-    sidecar_url = a.sidecar_url
-    if not sidecar_url:
-        for cand in (src.with_suffix(src.suffix + ".sourced"), src.with_suffix(".sourced.json")):
-            if cand.exists():
-                sidecar_url = cand.name  # referenced, never inlined
-                break
+    sidecar_url = a.sidecar_url or sidecar_for(src)
     artefact_md = to_artefact_markdown(
         source_text, tags=tags, author=a.author, sidecar_url=sidecar_url, provenance=a.provenance
     )
@@ -355,20 +431,18 @@ def run(a) -> int:
         return report("FAILED", [f"no prima_connections row for {user_id} (status {status})",
                                  "the origin is only knowable from that row", "nothing was written"])
     origin = conn[0]["base_url"]
+    if not same_origin(origin, env.get("PRIMA_BASE", "")):
+        return report("FAILED", [
+            f"origin mismatch: the connection names {origin}, the PRIMA client writes to "
+            f"{env.get('PRIMA_BASE')}",
+            "the pointer would carry a uuid that does not exist on the origin it names",
+            "nothing was written"])
     if not conn[0].get("enabled"):
         print("warning: the PRIMA connection is disabled; the link is written but nav "
               "renders no card until an operator enables it")
-    if a.action:
-        st, rows = nav.get("project_actions", {"id": f"eq.{a.action}", "select": "id,project_id"})
-        if st != 200 or not rows:
-            return report("FAILED", [f"action {a.action} not found (status {st})", "nothing was written"])
-        project_id, action_id = rows[0]["project_id"], rows[0]["id"]
-    else:
-        st, rows = nav.resolve_project(user_id, a.project)
-        if st != 200 or not rows:
-            return report("FAILED", [f"project {a.project!r} not found for this user (status {st})",
-                                     "nothing was written"])
-        project_id, action_id = rows[0]["id"], None
+    project_id, action_id, err = resolve_target(nav, user_id, a.action, a.project)
+    if err:
+        return report("FAILED", err)
 
     opid = operation_id(origin, action_id or project_id, slug)
     prior = ledger_read().get(opid, {})
@@ -386,8 +460,7 @@ def run(a) -> int:
     ingest_note = None
     # No attachment_id required: recovering a PARTIAL must do the nav half ONLY,
     # which is exactly what the partial report promises.
-    unchanged = prior.get("content_sha") == content_sha and prior.get("artefact_id")
-    if unchanged and (existing is None or artefact_id == prior["artefact_id"]):
+    if can_skip_ingest(prior, content_sha, artefact_id):
         # The ledger, not the probe, is the fast path: the probe is blind to a
         # note at this class ceiling, so re-ingesting every run would re-embed
         # an unchanged document each time. The ingest stays idempotent either
@@ -428,8 +501,11 @@ def run(a) -> int:
                            f"exists. Its derived insights may be incomplete.")
     if not artefact_id:
         return report("FAILED", [f"no artefact uuid available (probe: {probe_err})", "nothing was written"])
+    confirmed = not (ingest_note or "").startswith("UNCONFIRMED")
     ledger_write(opid, {"slug": slug, "artefact_id": artefact_id, "origin": origin,
-                        "content_sha": content_sha,
+                        # An UNCONFIRMED ingest records NO content hash, so the next
+                        # run re-ingests instead of reporting OK over a half-built artefact.
+                        "content_sha": content_sha if confirmed else None,
                         "project_id": project_id, "action_id": action_id, "title": title})
 
     # ---- nav second.
@@ -482,24 +558,83 @@ def self_check() -> int:
         "## Contents\n\n# Part one\n\n"
         "## Finding {#s-f1} :: short label | note\n\nThe finding sentence. More prose.\n\n"
         "As shown by the source[^1].\n\n"
+        "## Wrapped\n\n| a | b |\n\nA sentence that the author\nwrapped over two lines. Second.\n\n"
+        "## Sample\n\n```python\n# heading-looking [^9] line\n## not a heading\n```\n\n"
+        "Plain prose closes it.\n\n"
         "## References\n\n[^1]: Smith, J. (2024). A work. Publisher.\n"
-        "> the quoted claim -- p. 12\nnote: context\n"
+        "    > the quoted claim carries on\n    > over a second line -- p. 12\n"
+        "[^2]: Jones, A. (2023). Another. Press.\n> the flush quote -- p. 3\nnote: context\n"
     )
     out = to_artefact_markdown(src, tags=["brief", "x"], sidecar_url="brief.sourced")
     assert "type: note" in out and 'title: "A test brief"' in out, out
     assert "tags: [brief, x]" in out, out
     assert "One standfirst sentence." in out, out
     assert "## Finding\n" in out, "heading machinery survived"
-    assert "{#s-f1}" not in out and "::" not in out.split("# Content")[1], out
+    body = out.split("\n# Content\n", 1)[1]  # "## Contents" also contains "# Content"
+    assert "{#s-f1}" not in out and "::" not in body, out
     assert "- Finding: The finding sentence." in out, out
-    assert "> Quoted from source [1], p. 12: the quoted claim" in out, "citation boundary lost"
+    assert "> Quoted from source [2], p. 3: the flush quote" in out, "citation boundary lost"
     assert "source[1]" in out, "footnote marker not rewritten"
     assert "SOURCED provenance sidecar: brief.sourced" in out and '"quote"' not in out
+
+    # P1: a quote indented under its footnote definition, over several lines,
+    # keeps its attribution on EVERY line instead of becoming a bare blockquote.
+    assert "> Quoted from source [1]: the quoted claim carries on" in out, out
+    assert "> Quoted from source [1], p. 12: over a second line" in out, out
+    assert "\n> the quoted claim" not in out and "\n    > the quoted claim" not in out, out
+
+    # P2: the insight is derived from the whole section, not the first line, and
+    # a section that opens with a table still yields one.
+    assert "- Wrapped: A sentence that the author wrapped over two lines." in out, out
+
+    # P2: a fenced code block is copied through untouched.
+    assert "# heading-looking [^9] line" in body and "## not a heading" in body, body
+    assert "- Sample: Plain prose closes it." in out, out
+
     assert slugify("Where briefs live") == "where-briefs-live"
     a = operation_id("https://p", "proj", "s")
     assert a == operation_id("https://p", "proj", "s") and a != operation_id("https://q", "proj", "s")
-    m, body = front_matter(src)
-    assert m["title"] == "A test brief" and body.lstrip().startswith("## Contents")
+    m, body_src = front_matter(src)
+    assert m["title"] == "A test brief" and body_src.lstrip().startswith("## Contents")
+
+    # P1: an UNCONFIRMED ingest is never cached as done, so the next run retries.
+    sha = "abc"
+    confirmed = {"artefact_id": "u1", "content_sha": sha}
+    unconfirmed = {"artefact_id": "u1", "content_sha": None}
+    assert can_skip_ingest(confirmed, sha, None) and can_skip_ingest(confirmed, sha, "u1")
+    assert not can_skip_ingest(confirmed, sha, "OTHER"), "a different artefact must re-ingest"
+    assert not can_skip_ingest(unconfirmed, sha, None), "unconfirmed cached as done"
+    assert not can_skip_ingest(unconfirmed, sha, "u1"), "unconfirmed cached as done"
+    assert not can_skip_ingest({}, sha, None) and not can_skip_ingest(confirmed, "other", None)
+
+    # P1: an origin the PRIMA client does not write to is rejected.
+    assert same_origin("https://example.test/", "https://example.test")
+    assert not same_origin("https://example.test", "https://staging.example.test")
+
+    # P1: an action belonging to another user is refused, not attached.
+    class FakeNav:
+        """action A1 belongs to project P1, which belongs to user OWNER."""
+        def get(self, path, params):
+            assert path == "project_actions"
+            return (200, [{"id": "A1", "project_id": "P1"}]) if params["id"] == "eq.A1" else (200, [])
+        def resolve_project(self, user_id, project):
+            return (200, [{"id": "P1", "name": "n"}]) if (user_id, project) == ("OWNER", "P1") else (200, [])
+    nav = FakeNav()
+    assert resolve_target(nav, "OWNER", "A1", None) == ("P1", "A1", None)
+    pid, aid, err = resolve_target(nav, "INTRUDER", "A1", None)
+    assert (pid, aid) == (None, None) and "does not belong" in err[0], err
+    assert resolve_target(nav, "OWNER", None, "P1")[:2] == ("P1", None)
+
+    # P2: the documented sidecar name is `<artefact>.sourced` on the full filename.
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        md = Path(d) / "b.md"
+        md.write_text("x")
+        assert sidecar_for(md) is None
+        (Path(d) / "b.html.sourced").write_text("{}")
+        assert sidecar_for(md) == "b.html.sourced"
+        (Path(d) / "b.md.sourced").write_text("{}")
+        assert sidecar_for(md) == "b.md.sourced"
     print("publish-brief: all checks passed")
     return 0
 
