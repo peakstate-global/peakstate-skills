@@ -557,8 +557,16 @@ Two halves, in this order, inside one `section.brief-section`:
 - **`defs-out` is what the brief sets aside.** One line each: the word struck through, the word
   used instead in bold, and a short `why`. Never a paragraph — if it needs one, it belongs in
   `defs-in` as a term the brief does use.
+- **A term earns `defs-out` only if using it would make a claim wrong or ambiguous. Needing a
+  caveat is not enough.** The test is on the `why` line: read it alone, and if it is a
+  *definition of the term*, the term belongs in `defs-in`; if it names a *failure the word
+  causes* — smuggles in an unobserved mechanism, covers two mechanisms with one spelling — it
+  belongs in `defs-out`. `defs-out` looks rigorous, so it attracts words that only needed a
+  footnote, and banning a word the reader already understands costs them vocabulary and buys
+  nothing. Default to `defs-in` with a `Watch` bullet carrying the caveat.
 - **`defs-in` is what the brief uses.** The `fam` tag names the relation and is optional; the
-  SOURCED families are `split`, `needs`, `disambiguate`, `gap`, `rename`, `normative`.
+  SOURCED families are `split`, `needs`, `disambiguate`, `gap`, `rename`, `normative`. A term
+  kept in play but carrying a trap takes a `Watch` bullet alongside its `In this brief` line.
 - **`foot` says which questions the term bears on**, so a reader can see why the word was worth
   defining. Drop it rather than leave it vague.
 - **Never tell the reader their usage is wrong.** The block says what the words mean *in this
