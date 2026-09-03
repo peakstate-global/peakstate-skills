@@ -244,37 +244,132 @@ say so in an `<span class="apa-note">` on that entry rather than quietly omittin
 quote. Same for a community forum thread or any non-authoritative source: the note says
 what it is, so a reader knows not to lean on it.
 
-## How to build one
+## How to build one — author markdown, render the HTML
 
-Any HTML file that asks the user questions (or presents sections to review) MUST
-be built from `assets/brief-template.html` in this skill directory. All
-interactivity lives in the reusable drop-in runtime — **never regenerate that
-logic inline**:
+**The markdown is the brief. The HTML is a build output.** Write `<name>.md`,
+run the renderer, deliver `<name>.html`, and keep both side by side. Never
+hand-edit the generated HTML: the next render overwrites it, and the markdown is
+what PRIMA ingests, what diffs readably, and what survives a template change.
+
+    node <skill-dir>/assets/build-brief.mjs my-brief.md            # -> my-brief.html
+    node <skill-dir>/assets/build-brief.mjs my-brief.md out/x.html
+
+`build-brief.mjs` needs Node and nothing else — no install step, no lockfile, no
+network. It reads `assets/brief-template.html` from beside itself, so the head
+bootstrap, the pinned CDN hashes and the runtime script tag come across verbatim
+and are never retyped.
 
 - **Copy `brief.css` and `brief.js` from `<skill-dir>/assets/` into `<output-dir>/`
   when you can** — by whatever means the host has (`cp` on macOS/Linux, `copy` in
   `cmd.exe`, `Copy-Item` in PowerShell, or a plain file copy). Do not assume a
   Unix shell. `<skill-dir>` is the directory holding this SKILL.md, resolved from
   wherever the skill was loaded — never a hardcoded home path.
-  **This step is now an optimisation, not a precondition.** The template loads
-  those two files if they are beside the brief and falls back to the pinned CDN
-  copies if they are not, so a brief works either way. Copy them when you can:
-  it is faster, works offline, and no third party sees the brief being opened.
-- Author ONLY content: fill `{{TITLE}}`, `{{BRIEF_ID}}` (stable slug;
-  localStorage key — keep identical across regenerations so saved answers
-  survive), and **replace the two live SAMPLE sections** in the template's
-  `<main>` with your real sections/questions (delete the `<!-- SAMPLE -->`
-  markers). The template ships one worked `section.brief-section` + one
-  numbered `section.q` so a generated file renders all four requirements
-  immediately — never strip them down to an empty `<main>`. The runtime
-  self-initializes and injects the top bar / progress / copy + download buttons / answer
-  textareas / toast itself.
-- Integration into any pre-existing HTML page = the same two tags:
-  `<link rel="stylesheet" href="brief.css">` + `<script src="brief.js"></script>`
-  plus `data-brief-id` on `<body>`.
+  **This step is an optimisation, not a precondition.** The template loads those
+  two files if they are beside the brief and falls back to the pinned CDN copies
+  if they are not, so a brief works either way. Copy them when you can: it is
+  faster, works offline, and no third party sees the brief being opened.
+- **Regenerating a brief means editing the markdown and rendering again**, with
+  the same `brief-id` and the same output path, so the reader's saved answers,
+  comments and edits survive.
+- **Integration into a pre-existing HTML page** is unchanged and does not use the
+  renderer: `<link rel="stylesheet" href="brief.css">` +
+  `<script src="brief.js"></script>` plus `data-brief-id` on `<body>`.
+
+**No Node available? Author the HTML directly from `assets/brief-template.html`,
+exactly as before.** ChatGPT, Copilot chat and CoWork have no shell, so in those
+hosts fill `{{TITLE}}` and `{{BRIEF_ID}}` and replace the two live SAMPLE
+sections in the template's `<main>` with your own (delete the `<!-- SAMPLE -->`
+markers). The template ships one worked `section.brief-section` and one numbered
+`section.q` so a generated file renders all four hard requirements immediately —
+never strip them down to an empty `<main>`. Say in the delivery message that the
+brief has no markdown source, so nobody looks for one.
+
+**An existing brief with no markdown gets one, once**, with
+`assets/html-to-brief-md.py`. It converts the HTML back to markdown, and
+`assets/structdiff.py` proves the conversion lost nothing:
+
+    python3 <skill-dir>/assets/html-to-brief-md.py old.html > old.md
+    node <skill-dir>/assets/build-brief.mjs old.md /tmp/rebuilt.html
+    python3 <skill-dir>/assets/structdiff.py old.html /tmp/rebuilt.html --drop=s-toc
+
+`structdiff.py` compares the element skeleton, the text stream, the id set and
+the anchors, ignoring `b`/`strong`, `i`/`em`, HTML entities and whitespace. Drop
+`s-toc` from the comparison: the contents list is generated from the headings, so
+it will differ from a hand-written one, which is the point.
 
 Deliver the result per the global rule: full `file:///…` URL in a fenced code
 block.
+
+## The markdown source format
+
+**Front matter, then parts, then sections.** Everything else is ordinary
+markdown. The structural layer is deliberately small, because the only parts a
+brief needs that markdown has no word for are the parts the runtime keys off.
+
+    ---
+    title: Where briefs live
+    head-title: Where briefs live — PRIMA as the library, nav as the pointer
+    brief-id: prima-nav-docs-2026-08
+    eyebrow: Design proposal · 18 August 2026
+    sub: The standfirst, one sentence on what the brief is about.
+    addressed: first forty chars of a comment||another one
+    ---
+
+`title` is the `<h1>`; `head-title` is the browser tab and defaults to `title`.
+`brief-id` is the localStorage key, so **keep it identical across
+regenerations**. `addressed` becomes `data-addressed` on `<body>` (see "Closing a
+comment the reader made").
+
+| Source | Renders as |
+| --- | --- |
+| `# The verdict` | `<h2 class="part" id="part-1"><span class="pnum">Part one</span> …` |
+| the paragraph straight after a `#` | `<p class="partlede">` |
+| `## Recommendation` | `<section class="brief-section" id="s-recommendation" data-sec="recommendation">` |
+| `## Contents` with an empty body | the generated `<nav class="toc">` |
+| `## Q1 Should a brief be a new type?` | `<section class="q" id="s-q1" data-q="Q1">` with its `<span class="qid">` |
+| `## Title {#s-f1}` | the same section with an explicit id |
+| `## Title :: what is in it` | adds the `<span class="tnote">` in the contents |
+| `## Q1 … :: short label \| what is in it` | shortens the contents link as well |
+| `My assumption: …` then `If wrong: …` | `<p class="assume">` with both labels bold |
+| `a) …` and `b) …` lines | `<ul class="options">` with `<b>a)</b>` |
+| `[^3]` and `[^3q2]` | `<sup class="fn"><a href="#ref3-q1">3</a></sup>` and `#ref3-q2` |
+| `[^3]` where source 3 has no quote | `#ref3`, the entry itself. A marker pointing at a quote that does not exist is a build error. |
+| `:::verdict` … `:::` | `<div class="verdict">` with markdown rendered inside |
+| `:::html` … `:::` | passed through verbatim |
+| a block starting with `<` | passed through verbatim |
+
+**The contents list is generated, never authored.** Every section gets an `id`
+automatically, entries are numbered continuously across parts, and a renamed
+section cannot leave a dead anchor behind. Put `## Contents` where you want it
+and leave its body empty.
+
+**References are footnote definitions**, and the renderer builds the house format
+from them — one `<li>` per source, the APA entry first, every quote stacked
+beneath it with its own anchor. A `--` on a quote line carries the locator; a
+`note:` line becomes the `.apa-note`.
+
+    ## References
+
+    [^1]: Simmons, P. (n.d.). *Opus 5: No-hype full review* [Video]. YouTube.
+        Retrieved July 25, 2026, from https://www.youtube.com/watch?v=…
+        > "$5 per million input and $25 per million output." -- Transcript, 04:12
+        > "Fable 5 is $10 per million input." -- Transcript, 04:31
+    [^2]: Internal corpus. (2026, July 25). *videos.transcript* [Database record]. Row 118.
+        note: Retrieved from the working database; no public URL.
+
+**A footnote marker with no matching quote fails the build.** That is the whole
+reason footnotes are structural rather than prose: a dead reference link is found
+by the renderer, not by the reader.
+
+**A definition list becomes the provenance block.** A term line followed by a
+`: definition` line renders as `<dl>`, and inside the section whose id is
+`s-provenance` it renders as `<dl class="provblock">` — the SOURCED four-label
+shape, with no markup to write by hand.
+
+**Anything with no markdown equivalent goes in a `:::html` block.** A styled
+table with `hl-focus` rows, an inline SVG diagram, a `<details class="example">`,
+a classed paragraph. This is the escape hatch, and using it is not a defeat: the
+markdown still carries the document, and the bespoke markup stays verbatim.
 
 ## One template, every environment — how the runtime loads
 
@@ -651,6 +746,15 @@ If a brief needs a genuinely new interaction, extend
 compatible with stored state) — improvements then benefit every future brief.
 
 ## Verifying template changes
+
+**The renderer has its own check, and it needs nothing installed:**
+
+    node <skill-dir>/assets/test-build-brief.mjs
+
+It renders `assets/test-brief.md`, which holds one section per block type, and
+asserts the four hard requirements, the block shapes, that every internal anchor
+resolves, that a footnote with no target fails the build, and that two renders of
+one source are identical. Run it after any change to `build-brief.mjs`.
 
 `assets/smoke-test.mjs` drives `assets/test-fixture.html` with Playwright and
 covers the lot: ticks, persistence, the comment popover and drawer, JSON export,
