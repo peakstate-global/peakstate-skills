@@ -407,6 +407,17 @@ is unchanged, rebuild it from the markdown.
 - **`render(src, { link: true })`** restores the linked form. One use only:
   hand-authoring inside a chat tool that has no filesystem to inline from.
 
+**Retrofitting a brief that already exists** — most briefs worth fixing predate
+inlining and no longer have their markdown, so re-rendering is not an option:
+
+    python3 <skill-dir>/assets/inline-brief.py <brief.html> [more.html ...]
+    python3 <skill-dir>/assets/inline-brief.py --check <brief.html>
+
+It swaps only the two tags that load the runtime and **asserts the document body
+is unchanged before it writes**, so it cannot alter what a delivered brief says.
+Idempotent: a second run reports `already ok`. Saved answers live in
+localStorage under the brief id, which it does not touch.
+
 ### Attaching the skill to a chat tool
 
 **For ChatGPT, Copilot chat, or Microsoft 365 Copilot CoWork, attach two files:
