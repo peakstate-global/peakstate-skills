@@ -133,7 +133,7 @@ Exit codes match the publish verb: `0` no drift · `3` drift or unknowns · `1` 
 
 | Class | What it means | Can it be indeterminate? |
 |---|---|---|
-| `dangling` | a pointer whose artefact does not exist | no — it is only ever raised on the determinate read |
+| `dangling` | a pointer whose artefact does not exist | no — it is only ever raised on the determinate read, and only for the deployment that read answers for |
 | `unknown` | the artefact could not be checked at all | this class **is** the indeterminate outcome |
 | `unlinked` | a brief-tagged artefact with no pointer from this owner | yes, when the artefact list cannot be read |
 | `duplicate` | one target carries two artefacts under one title, which a re-ingest under a fresh uuid produces | no, it is read entirely from the planner |
@@ -146,6 +146,12 @@ client sits at the public-corpus ceiling, and it is told "not found" for a note 
 not one exists. So existence is decided on the knowledge base's own database, and where
 that read is unavailable every pointer is reported `unknown` with the reason. `--repair`
 only ever offers `dangling`, so an unknown can never be deleted.
+
+**Nor is absence inferred across deployments.** One database answers for one deployment.
+A pointer naming any other deployment was read against the wrong host, so it is reported
+`unknown` however healthy the read was, and `--repair --confirm` will not remove it. The
+origin the reader answers for is `PRIMA_ORIGIN`, or the PRIMA client's own configured base
+URL; without one, nothing is determinate.
 
 ## Deletion semantics
 

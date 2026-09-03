@@ -36,27 +36,60 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import publish_brief as pb  # clients, ledger, report, exit codes — all reused
 
 PRIMA_ROWS = "videos"  # the artefact table on the knowledge base's own database
+PAGE = 1000  # rows per page; PostgREST caps an uncapped read and says nothing
+FILENAME_MAX = 255  # publish_brief writes the pointer filename as title[:255]
 
 
 # ------------------------------------------------------------ the read paths
 
 def prima_reader(env):
-    """(Nav-shaped client | None, why-not). The determinate path: the knowledge
-    base's own database, which can tell absent apart from out-of-class. The agent
-    surface cannot, so it is never used to decide absence."""
+    """(Nav-shaped client | None, why-not, the origin this read speaks for).
+
+    The determinate path: the knowledge base's own database, which can tell absent
+    apart from out-of-class. The agent surface cannot, so it is never used to decide
+    absence. The origin matters as much as the credentials: one database answers for
+    one deployment, and a pointer naming a different deployment is not absent just
+    because this database has never heard of it.
+    """
     url = env.get("PRIMA_SUPABASE_URL")
     key = env.get("PRIMA_SUPABASE_KEY")
-    if not (url and key):
-        local = getattr(pb.prima_module(), "ENV_FILE", "")
+    origin = env.get("PRIMA_ORIGIN") or env.get("PRIMA_BASE")
+    if not (url and key and origin):
+        mod = pb.prima_module()
+        local = getattr(mod, "ENV_FILE", "")
         if local and os.path.exists(local):
-            src = pb.prima_module()._parse_env(local)
+            src = mod._parse_env(local)
             url = url or src.get("NEXT_PUBLIC_SUPABASE_URL")
             key = key or src.get("SUPABASE_SERVICE_ROLE_KEY")
+        # The origin comes from the client's own configuration, never from the app
+        # env file: that file pairs a production database with a localhost dev URL,
+        # so reading the origin from it names the wrong deployment.
+        skill_env = getattr(mod, "SKILL_ENV", "")
+        if not origin and skill_env and os.path.exists(skill_env):
+            origin = mod._parse_env(skill_env).get("PRIMA_BASE")
     if not (url and key):
         return None, ("no determinate read path: set PRIMA_SUPABASE_URL and "
                       "PRIMA_SUPABASE_KEY. The agent-surface client cannot distinguish "
-                      "an absent artefact from one above its class ceiling")
-    return pb.Nav(url, key), None
+                      "an absent artefact from one above its class ceiling"), None
+    if not origin:
+        return None, ("the knowledge base is readable but the deployment it answers for is "
+                      "unknown: set PRIMA_ORIGIN. Absence cannot be decided without it"), None
+    return pb.Nav(url, key), None, origin
+
+
+def fetch_all(client, path, params):
+    """Every row, paged. An uncapped PostgREST read truncates silently at the
+    server's row cap, and a row beyond that cap reads as deleted, so no read whose
+    result feeds a determinacy claim is ever left uncapped."""
+    out, offset = [], 0
+    while True:
+        st, rows = client.get(path, {**params, "limit": str(PAGE), "offset": str(offset)})
+        if st != 200 or not isinstance(rows, list):
+            raise RuntimeError(f"the read of {path} returned {st}")
+        out.extend(rows)
+        if len(rows) < PAGE:
+            return out
+        offset += PAGE
 
 
 def fetch_artefacts(reader, ids):
@@ -78,10 +111,7 @@ def fetch_artefacts(reader, ids):
 
 
 def fetch_briefs(reader):
-    st, rows = reader.get(PRIMA_ROWS, {"tags": "cs.{brief}", "select": "id,slug,title", "limit": "500"})
-    if st != 200 or not isinstance(rows, list):
-        raise RuntimeError(f"the knowledge base returned {st} listing brief-tagged artefacts")
-    return rows
+    return fetch_all(reader, PRIMA_ROWS, {"tags": "cs.{brief}", "select": "id,slug,title"})
 
 
 # ------------------------------------------------------------- the classifier
@@ -91,12 +121,15 @@ def target_of(row):
 
 
 def classify(*, pointers, artefacts, absent_known, briefs, connection, ledger,
-             nav_attachment_ids, unknown_reason=None):
+             nav_attachment_ids, unknown_reason=None, reader_origin=None):
     """Pure. Returns a list of findings: (class, severity, subject, detail).
 
     `artefacts` maps uuid -> row for every artefact PROVEN to exist.
     `absent_known` is True only when the determinate read path ran, so an id
     missing from `artefacts` really is absent. False means `unknown`.
+    `reader_origin` is the deployment that read answers for. A pointer naming any
+    other deployment was read against the wrong host, so its result is `unknown`
+    however healthy the read was.
     `briefs` is None when brief-tagged artefacts could not be enumerated.
     """
     out = []
@@ -104,18 +137,26 @@ def classify(*, pointers, artefacts, absent_known, briefs, connection, ledger,
 
     for row in pointers:
         ref, origin = row["external_ref"], row.get("external_origin")
-        if ref in artefacts:
+        speaks_for = bool(reader_origin) and pb.same_origin(origin or "", reader_origin)
+        if not absent_known:
+            out.append(("unknown", "unknown", row["id"],
+                        f"artefact {ref} could not be checked: {unknown_reason}"))
+        elif not speaks_for:
+            out.append(("unknown", "unknown", row["id"],
+                        f"artefact {ref} could not be checked: this reader answers for "
+                        f"{reader_origin}, the pointer names {origin}. A read against the "
+                        f"wrong deployment is not evidence of absence"))
+        elif ref in artefacts:
             art = artefacts[ref]
-            if (row.get("filename") or "").strip() != (art.get("title") or "").strip():
+            # The publisher stores title[:255], so the full title is the wrong
+            # thing to compare against or a long title drifts for ever.
+            if (row.get("filename") or "").strip() != (art.get("title") or "")[:FILENAME_MAX].strip():
                 out.append(("metadata", "warn", row["id"],
                             f"pointer says {row.get('filename')!r}, the artefact is titled "
                             f"{art.get('title')!r}"))
-        elif absent_known:
+        else:
             out.append(("dangling", "drift", row["id"],
                         f"artefact {ref} does not exist at {origin}"))
-        else:
-            out.append(("unknown", "unknown", row["id"],
-                        f"artefact {ref} could not be checked: {unknown_reason}"))
 
         if not connection:
             out.append(("origin", "warn", row["id"],
@@ -177,6 +218,32 @@ def repair_plan(findings):
     return [f for f in findings if f[0] == "dangling"]
 
 
+def apply_repair(nav, plan):
+    """(lines, failures). A DELETE that fails is counted, not just printed: a
+    reconcile that could not carry out its own repair has failed, not drifted."""
+    lines, failures = [], 0
+    for _, _, subject, _ in plan:
+        s, payload = pb._json_request(
+            f"{nav.base}/project_attachments?id=eq.{subject}",
+            headers={**nav.headers, "Prefer": "return=minimal"}, method="DELETE")
+        if s in (200, 204):
+            lines.append(f"  deleted {subject}")
+        else:
+            failures += 1
+            lines.append(f"  FAILED to delete {subject}: {s} {str(payload)[:120]}")
+    return lines, failures
+
+
+def json_doc(*, pointers_n, absent_known, reader_origin, findings, repair):
+    """ONE document. A JSON read followed by human-readable text is a document no
+    caller can parse, so the repair report goes inside it or nowhere."""
+    return json.dumps({"pointers": pointers_n, "determinate": absent_known,
+                       "reader_origin": reader_origin,
+                       "findings": [dict(zip(("class", "severity", "subject", "detail"), f))
+                                    for f in findings],
+                       "repair": repair}, indent=2)
+
+
 # --------------------------------------------------------------------- runner
 
 def load_env(nav_env):
@@ -196,24 +263,25 @@ def run(a) -> int:
         return pb.report("FAILED", ["--user or NAV_USER_ID is required"])
 
     nav = pb.Nav(env["NAV_SUPABASE_URL"], env["NAV_SERVICE_KEY"])
-    st, pointers = nav.get("project_attachments", {
-        "user_id": f"eq.{user_id}", "attachment_mode": "eq.external", "external_kind": "eq.prima",
-        "select": "id,project_id,action_id,filename,external_ref,external_origin,created_at",
-        "order": "created_at",
-    })
-    if st != 200 or not isinstance(pointers, list):
-        return pb.report("FAILED", [f"could not read the pointers: status {st}"])
+    try:
+        pointers = fetch_all(nav, "project_attachments", {
+            "user_id": f"eq.{user_id}", "attachment_mode": "eq.external",
+            "external_kind": "eq.prima", "order": "created_at",
+            "select": "id,project_id,action_id,filename,external_ref,external_origin,created_at",
+        })
+    except RuntimeError as e:
+        return pb.report("FAILED", [f"could not read the pointers: {e}"])
     # Unscoped by owner on purpose: the ledger is a machine-wide record with no
     # owner column, so "does this pointer row still exist" must be asked of the
     # whole table or another owner's entry reads as a deleted pointer.
-    st2, all_rows = nav.get("project_attachments", {"select": "id", "limit": "100000"})
-    if st2 != 200:
-        return pb.report("FAILED", [f"could not read the attachment ids: status {st2}"])
-    nav_ids = {r["id"] for r in all_rows}
+    try:
+        nav_ids = {r["id"] for r in fetch_all(nav, "project_attachments", {"select": "id"})}
+    except RuntimeError as e:
+        return pb.report("FAILED", [f"could not read the attachment ids: {e}"])
     stc, conn = nav.connection(user_id)
     connection = conn[0] if stc == 200 and conn else None
 
-    reader, why_not = prima_reader(env)
+    reader, why_not, reader_origin = prima_reader(env)
     artefacts, briefs, absent_known = {}, None, False
     if reader:
         try:
@@ -225,15 +293,36 @@ def run(a) -> int:
 
     findings = classify(pointers=pointers, artefacts=artefacts, absent_known=absent_known,
                         briefs=briefs, connection=connection, ledger=pb.ledger_read(),
-                        nav_attachment_ids=nav_ids, unknown_reason=why_not)
+                        nav_attachment_ids=nav_ids, unknown_reason=why_not,
+                        reader_origin=reader_origin)
+
+    # The repair runs first so that --json can emit ONE document: a JSON read
+    # followed by human text is a document no caller can parse.
+    plan, repair_lines, failures = repair_plan(findings), [], 0
+    if a.repair:
+        if not plan:
+            repair_lines.append("repair: nothing is proven safe to remove")
+        else:
+            repair_lines.append(f"repair would DELETE {len(plan)} pointer row(s) from the "
+                                f"planner, and nothing from the knowledge base:")
+            for _, _, subject, detail in plan:
+                repair_lines.append(f"  delete project_attachments {subject} — {detail}")
+            if not a.confirm:
+                repair_lines.append("  nothing was changed. Add --confirm to apply.")
+            else:
+                applied, failures = apply_repair(nav, plan)
+                repair_lines.extend(applied)
 
     if a.json:
-        print(json.dumps({"pointers": len(pointers), "determinate": absent_known,
-                          "findings": [dict(zip(("class", "severity", "subject", "detail"), f))
-                                       for f in findings]}, indent=2))
+        print(json_doc(pointers_n=len(pointers), absent_known=absent_known,
+                       reader_origin=reader_origin, findings=findings,
+                       repair={"planned": len(plan), "applied": bool(a.repair and a.confirm),
+                               "failures": failures, "lines": repair_lines} if a.repair else None))
     else:
         print(f"\n{len(pointers)} pointer(s) for {user_id}")
         print(f"existence check: {'determinate' if absent_known else 'INDETERMINATE — ' + (why_not or '')}")
+        if absent_known:
+            print(f"reader answers for: {reader_origin}")
         if connection:
             print(f"connection: {connection['base_url']} "
                   f"({'enabled' if connection.get('enabled') else 'disabled'})")
@@ -243,29 +332,14 @@ def run(a) -> int:
             print("\nno drift")
         for cls, sev, subject, detail in findings:
             print(f"  [{cls}/{sev}] {subject}: {detail}")
+        if repair_lines:
+            print()
+            for line in repair_lines:
+                print(line)
 
-    plan = repair_plan(findings)
-    if a.repair:
-        if not plan:
-            print("\nrepair: nothing is proven safe to remove")
-        else:
-            print(f"\nrepair would DELETE {len(plan)} pointer row(s) from the planner, and "
-                  f"nothing from the knowledge base:")
-            for _, _, subject, detail in plan:
-                print(f"  delete project_attachments {subject} — {detail}")
-            if not a.confirm:
-                print("  nothing was changed. Add --confirm to apply.")
-            else:
-                for _, _, subject, _ in plan:
-                    s, payload = pb._json_request(
-                        f"{nav.base}/project_attachments?id=eq.{subject}",
-                        headers={**nav.headers, "Prefer": "return=minimal"}, method="DELETE")
-                    print(f"  deleted {subject}" if s in (200, 204)
-                          else f"  FAILED to delete {subject}: {s} {str(payload)[:120]}")
-
-    if not findings:
-        return 0
-    return 3
+    if failures:
+        return 1
+    return 0 if not findings else 3
 
 
 # --------------------------------------------------------------- self-check
@@ -279,7 +353,8 @@ def self_check() -> int:
 
     def classes(**kw):
         base = dict(pointers=[], artefacts={}, absent_known=True, briefs=[], connection=conn,
-                    ledger={}, nav_attachment_ids=set(), unknown_reason="no reader")
+                    ledger={}, nav_attachment_ids=set(), unknown_reason="no reader",
+                    reader_origin="https://kb.example")
         base.update(kw)
         return [f[0] for f in classify(**base)]
 
@@ -320,6 +395,59 @@ def self_check() -> int:
                         connection=conn, ledger={}, nav_attachment_ids=set(),
                         unknown_reason="no reader")
     assert repair_plan(findings) == [], "an unknown must never be offered for deletion"
+
+    # A pointer against a deployment this reader does not answer for is `unknown`,
+    # never `dangling`, however healthy the read was — and `--repair --confirm`
+    # deletes exactly `repair_plan`, so an empty plan is proof nothing is deleted.
+    cross = classify(pointers=[ptr("a", "x1", external_origin="https://other.example")],
+                     artefacts={}, absent_known=True, briefs=[], connection=conn, ledger={},
+                     nav_attachment_ids=set(), reader_origin="https://kb.example")
+    assert [f[0] for f in cross] == ["unknown", "origin"], cross
+    assert repair_plan(cross) == [], "a cross-origin pointer must never be deleted"
+    assert apply_repair(None, repair_plan(cross)) == ([], 0), "no DELETE may be issued"
+    # And when the reader's own origin is unknowable, nothing is determinate at all.
+    assert classes(pointers=[ptr("a", "x1")], reader_origin=None) == ["unknown"]
+
+    # A title longer than the pointer's 255-character column is not metadata drift:
+    # the publisher stores title[:255], so that is what must be compared.
+    long_title = "L" * (FILENAME_MAX + 40)
+    assert classes(pointers=[ptr("a", "x1", filename=long_title[:FILENAME_MAX])],
+                   artefacts={"x1": {"id": "x1", "slug": "s", "title": long_title}}) == []
+    assert classes(pointers=[ptr("a", "x1", filename=long_title[:FILENAME_MAX - 1])],
+                   artefacts={"x1": {"id": "x1", "slug": "s", "title": long_title}}) == ["metadata"]
+
+    # Every read is paged, so a row past the server's cap is never read as deleted.
+    class Pager:
+        def get(self, path, params):
+            off = int(params["offset"])
+            return 200, [{"id": f"r{off + i}"} for i in range(min(PAGE, PAGE + 7 - off))]
+    assert len(fetch_all(Pager(), "t", {})) == PAGE + 7
+
+    class Broken:
+        def get(self, path, params):
+            return 500, "nope"
+    try:
+        fetch_all(Broken(), "t", {})
+        raise AssertionError("a failed page must raise, never truncate silently")
+    except RuntimeError:
+        pass
+
+    # A DELETE that fails is counted, so the caller can exit 1 rather than 3.
+    real_request = pb._json_request
+    pb._json_request = lambda url, **kw: (409, "conflict")
+    try:
+        stub = type("N", (), {"base": "https://nav.example", "headers": {}})()
+        lines, failures = apply_repair(stub, [("dangling", "drift", "a", "d")])
+    finally:
+        pb._json_request = real_request
+    assert failures == 1 and "FAILED" in lines[0], (lines, failures)
+
+    # --json with --repair is ONE parseable document, repair report included.
+    doc = json.loads(json_doc(pointers_n=1, absent_known=True, reader_origin="https://kb.example",
+                              findings=cross, repair={"planned": 0, "applied": True,
+                                                      "failures": 1, "lines": ["  FAILED"]}))
+    assert doc["repair"]["failures"] == 1 and doc["findings"][0]["class"] == "unknown", doc
+
     print("reconcile: all checks passed")
     return 0
 
