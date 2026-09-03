@@ -834,6 +834,58 @@
     pre.appendChild(btn);
   });
 
+  /* ── copy buttons on the standfirst and the summary page ──
+     Two affordances at the top of the pyramid: the standfirst copies the
+     question and the answer as plain text, and the summary page copies itself
+     as markdown. Both reuse copyText, the toast and the data-tip helper. */
+  function copybtn(tipText, extraClass, onCopy) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'copybtn' + (extraClass ? ' ' + extraClass : '');
+    b.innerHTML = ICON.copy;
+    tip(b, tipText);
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      onCopy();
+      b.classList.add('copied');
+      clearTimeout(b._h);
+      b._h = setTimeout(function () { b.classList.remove('copied'); }, 1200);
+    });
+    return b;
+  }
+
+  var titleEl = document.querySelector('.brief-title');
+  var subEl = titleEl && titleEl.querySelector('.sub');
+  if (subEl && !titleEl.querySelector('.subrow')) {
+    var row = document.createElement('div');
+    row.className = 'subrow';
+    subEl.parentNode.insertBefore(row, subEl);
+    row.appendChild(subEl);
+    row.appendChild(copybtn('Copy question + answer', '', function () {
+      var h1 = titleEl.querySelector('h1');
+      copyText(((h1 && h1.textContent) || '').trim() + '\n' + subEl.textContent.trim(),
+        'Question and answer copied');
+    }));
+  }
+
+  var summary = document.querySelector('.summary-page');
+  if (summary && !summary.querySelector(':scope > .pagecopy')) {
+    summary.insertBefore(copybtn('Copy summary as markdown', 'pagecopy', function () {
+      /* htmlToMd walks block children, so the section shells are flattened
+         first — otherwise a whole section collapses into one inline run. */
+      var clone = summary.cloneNode(true);
+      clone.querySelectorAll('.copybtn, label.tick, .cmt-btn').forEach(function (n) { n.remove(); });
+      /* "Part one" is a label, not the first words of the heading. */
+      clone.querySelectorAll('.pnum').forEach(function (n) { n.textContent = n.textContent.trim() + ' —'; });
+      var shell;
+      while ((shell = clone.querySelector('section, .sec-head, .q-head, .sec-body, .q-body'))) {
+        while (shell.firstChild) shell.parentNode.insertBefore(shell.firstChild, shell);
+        shell.remove();
+      }
+      copyText(htmlToMd(clone), 'Summary copied as markdown');
+    }), summary.firstChild);
+  }
+
   reanchor();
   renderProgress();
 

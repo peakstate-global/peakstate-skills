@@ -614,3 +614,229 @@ main svg [stroke="currentColor"] { stroke: currentColor; }
    Both are optional — the rules above hold with or without them. */
 .diag { display: block; width: 100%; height: auto; margin: 1rem 0; }
 .cap { font: 400 12.5px/1.5 var(--font-ui); color: var(--muted); margin: .3rem 0 1.2rem; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v4 — THE PYRAMID, AND THE SIX REQUESTS
+
+   Treatment "staircase": every level of the pyramid changes size AND left
+   edge, so scanning the page top to bottom feels like descending stairs
+   rather than reading a wall. The five levels and what each one owns:
+
+     1  h1 + .sub          full ink, 2.7rem / 1.26rem, heavy accent rule UNDER
+     2  h2.part + partlede 1.95rem, thin accent rule ABOVE, edge 0
+     3  h3 in .sec-head    1.12rem, hairline rule under, edge +1 step
+     4  body prose         1rem serif on a 34rem measure, edge +1 step
+     5  refs, details      .95rem muted behind a hairline rail, edge +2 steps
+
+   Every rule below themes through the existing custom properties and adds no
+   literal colour. Class names: added only, never renamed.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* One number drives the whole staircase, and one holds the prose measure. */
+:root { --step: 1.7rem; --measure: 34rem; }
+
+/* ── level 1 — the title, and the standfirst as the headline answer ──────
+   The standfirst carries the whole answer, so it is set as prose, not as a
+   caption: full ink, serif, 1.26rem, on its own measure. The title block's
+   rule is the heaviest on the page and it is the only accent rule that sits
+   UNDER its heading — that alone tells the eye it is looking at level 1.
+   Request 1: the copy button rides the standfirst's own baseline; it copies
+   the h1 question plus the .sub answer as plain text (brief.js wires it).   */
+.brief-title { margin: .5rem 0 1.6rem; padding-bottom: 1.2rem; border-bottom: 3px solid var(--accent); }
+.brief-title .subrow { display: flex; gap: 1rem; align-items: flex-start; margin-top: .95rem; }
+.brief-title .sub { color: var(--fg); font-size: 1.26rem; line-height: 1.5; margin: 0; flex: 1; max-width: var(--measure); }
+/* An older brief with no .subrow wrapper keeps its own top margin. */
+.brief-title > .sub { margin: .95rem 0 0; }
+
+/* The copy affordance, shared by the standfirst and the summary page. Two
+   rounded shapes, drawn inline — no icon font, no network. */
+.copybtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; flex: none; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--card); color: var(--muted); cursor: pointer;
+  font-family: var(--font-ui);
+  transition: border-color .12s, color .12s, background .12s;
+}
+.copybtn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.copybtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.copybtn svg { display: block; width: 15px; height: 15px; }
+.copybtn.copied { color: var(--done); border-color: var(--done); }
+
+/* ── level 2 — the part opener ────────────────────────────────────
+   The rule moves ABOVE the heading and thins to 2px, so a part reads as a
+   chapter break rather than as a second title. The lede is full ink, one
+   notch above body size — a reader who stops here has the answer.          */
+h2.part {
+  font-size: 1.95rem; line-height: 1.2; letter-spacing: -.018em;
+  margin: 2.8rem 0 0; padding: 1.1rem 0 0;
+  border-bottom: 0; border-top: 2px solid var(--accent);
+}
+h2.part + p.partlede {
+  color: var(--fg); font-size: 1.06rem; line-height: 1.55;
+  margin: .55rem 0 1.5rem; max-width: var(--measure);
+}
+
+/* ── levels 3 and 4 — the section, one step right ─────────────────────
+   Still no box: the section keeps its hairline-under-the-heading house
+   style, and the only thing that changed is where its left edge sits.      */
+section.brief-section, section.q { margin: 2.2rem 0 0; padding-left: var(--step); }
+section.brief-section:first-child, section.q:first-child { margin-top: 1.4rem; }
+.sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { font-size: 1.12rem; line-height: 1.35; }
+.sec-head, .q-head { margin-bottom: .65rem; }
+.sec-body, .q-body { font-size: 1rem; max-width: var(--measure); }
+
+/* ── level 5 — prove it ─────────────────────────────────────────
+   One more step right, smaller, muted, behind a hairline rail. Still serif:
+   a reference is prose the reader reads, not a control they act on.        */
+.sec-body > ol.reflist, .q-body > ol.reflist {
+  margin-left: var(--step); padding-left: 1.5rem;
+  border-left: 1px solid var(--line);
+}
+.sec-body > ol.reflist > li, .q-body > ol.reflist > li { font-size: .95rem; }
+.apa { color: var(--muted); }
+.apa a { color: var(--accent); }
+details.example { margin-left: var(--step); }
+
+/* ── request 4 — the tick is quiet until wanted ──────────────────────
+   Hidden at rest. Hovering the heading row, or tabbing into it, fades the
+   box in from the left while the heading slides one half-rem right. A ticked
+   box stays visible with no pointer, because it is now state, not an offer.
+   The tick sits inside the step gutter, so it never leaves the page margin. */
+label.tick {
+  position: absolute; left: calc(var(--step) * -1 + .15rem); top: .2rem;
+  display: flex; align-items: center; gap: .35rem;
+  opacity: 0; transform: translateX(-.45rem);
+  transition: opacity .18s ease, transform .18s cubic-bezier(.2, .65, .25, 1);
+}
+.sec-head h3, .q-head h3, .sec-head h2, .q-head h2 {
+  transition: transform .18s cubic-bezier(.2, .65, .25, 1);
+}
+.sec-head:hover label.tick, .q-head:hover label.tick,
+.sec-head:focus-within label.tick, .q-head:focus-within label.tick,
+label.tick:has(input:checked) { opacity: 1; transform: translateX(0); }
+.sec-head:hover h3, .q-head:hover h3, .sec-head:hover h2, .q-head:hover h2,
+.sec-head:focus-within h3, .q-head:focus-within h3,
+.sec-head:focus-within h2, .q-head:focus-within h2 { transform: translateX(.5rem); }
+
+/* A touch device has no hover, so the offer has to be standing. */
+@media (hover: none) { label.tick { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  label.tick, .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transition: none; }
+  .sec-head:hover h3, .q-head:hover h3, .sec-head:hover h2, .q-head:hover h2,
+  .sec-head:focus-within h3, .q-head:focus-within h3 { transform: none; }
+}
+
+/* ── request 2 — the summary is a page ─────────────────────────────
+   The renderer wraps the first h2.part and everything under it in
+   <div class="summary-page">. That wrapper is the ONE markup addition this
+   treatment needs — CSS cannot box a run of siblings on its own. Deliberate
+   exception to the no-box-around-a-section rule: the summary is a page.    */
+.summary-page {
+  position: relative;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 1.4rem 1.6rem 1.6rem; margin: 1.8rem 0 2.6rem;
+}
+.summary-page > h2.part:first-of-type {
+  margin-top: 0; padding-top: 0; border-top: 0; padding-right: 2.6rem;
+}
+.summary-page .pagecopy { position: absolute; top: .85rem; right: .9rem; }
+/* Inside the page the sections keep their step, but the box supplies the
+   outer margin, so the first one does not double up. */
+.summary-page > section:first-of-type { margin-top: 1.2rem; }
+
+/* ── request 3 — contents shows the document's shape ─────────────────
+   Parts are a sans, letterspaced, accent label. Sections indent under them
+   behind a hairline rule. Works for both shapes the renderer emits: a part
+   as <p><b><a> followed by a sibling <ol>, and a nested <ol><li><ol>.      */
+nav.toc > p { margin: 1rem 0 .3rem; }
+nav.toc > p:first-child { margin-top: 0; }
+nav.toc > p b > a, nav.toc > p > a, nav.toc .tpart {
+  font: 600 12px/1.4 var(--font-ui); letter-spacing: .09em;
+  text-transform: uppercase; color: var(--accent); text-decoration: none;
+}
+nav.toc > ol {
+  list-style: none; margin: 0 0 0 .45rem;
+  padding-left: 1.05rem; border-left: 1px solid var(--line);
+}
+nav.toc > ol > li { margin: .2rem 0; font-size: .95rem; }
+nav.toc > ol > li > a {
+  font: inherit; letter-spacing: normal; text-transform: none;
+  color: var(--fg); text-decoration: none;
+}
+nav.toc > ol > li > a:hover { color: var(--accent); text-decoration: underline; }
+nav.toc ol ol { margin-left: .45rem; }
+nav.toc .tnote { font-size: .84rem; }
+
+/* ── request 5 — provenance in two columns ──────────────────────────
+   Bold sans label left, content right, both on one baseline, in a box. A dl
+   is data the reader reads rather than a section, so boxing it does not
+   break the house rule. Below 44rem the grid collapses to stacked rows.    */
+.provblock {
+  display: grid; grid-template-columns: 10rem 1fr; column-gap: 1.6rem;
+  margin: 0; background: var(--card);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 1.2rem 1.4rem 1.3rem;
+}
+.provblock dt {
+  grid-column: 1; margin: 1rem 0 0;
+  font: 700 .8rem/1.55 var(--font-ui);
+  letter-spacing: normal; text-transform: none; color: var(--fg);
+}
+.provblock dd { grid-column: 2; margin: 1rem 0 0; font-size: .95rem; line-height: 1.55; }
+.provblock dt:first-of-type, .provblock dt:first-of-type + dd { margin-top: 0; }
+@media (max-width: 44rem) {
+  .provblock { grid-template-columns: 1fr; }
+  .provblock dt, .provblock dd { grid-column: 1; }
+  .provblock dd { margin-top: .25rem; }
+}
+
+/* ── request 6 — full width keeps its walls ─────────────────────────
+   Fixed-width mode is untouched. Full width releases the page cap but not
+   the prose measure: a reader turns it on to see a wide table, not to read
+   a 2000px line. Tables, pre blocks and .tblwrap take the whole width.     */
+body.fullwidth main {
+  max-width: none;
+  padding-left: clamp(1.25rem, 6vw, 6rem);
+  padding-right: clamp(1.25rem, 6vw, 6rem);
+}
+body.fullwidth .tblwrap, body.fullwidth pre,
+body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap { max-width: none; }
+
+/* ── narrow screens ────────────────────────────────────────────
+   One tick model at every width: the step shrinks, the tick stays absolute
+   inside it. This replaces the v1 rule that made the tick static and padded
+   the body instead, which no longer matches the hover animation.          */
+@media (max-width: 58rem) {
+  :root { --step: 1.6rem; }
+  label.tick { position: absolute; }
+  .sec-body, .q-body { padding-left: 0; }
+}
+@media (max-width: 34rem) {
+  .brief-title h1 { font-size: 2.1rem; }
+  .brief-title .sub { font-size: 1.14rem; }
+  h2.part { font-size: 1.6rem; }
+  .summary-page { padding: 1.1rem 1.1rem 1.2rem; }
+}
+
+/* ── print ──────────────────────────────────────────────────
+   The v1 print block above still forces the light tokens and hides the
+   chrome. This adds the v4 pieces: the copy buttons are chrome and go; the
+   tick is state and stays; the two boxes lose their shadow and never split
+   across a page; the staircase flattens, because indentation on paper just
+   wastes the margin.                                                       */
+@media print {
+  .copybtn { display: none !important; }
+  label.tick { opacity: 1; transform: none; position: static; }
+  .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transform: none; }
+  section.brief-section, section.q { padding-left: 0; }
+  .sec-body, .q-body, .brief-title .sub, h2.part + p.partlede { max-width: none; }
+  .sec-body > ol.reflist, .q-body > ol.reflist { margin-left: 0; }
+  details.example { margin-left: 0; }
+  details.example, details.example[open] { box-shadow: none; }
+  .summary-page, .provblock { box-shadow: none; break-inside: avoid; }
+  h2.part { break-after: avoid; }
+  .brief-title { break-after: avoid; }
+}

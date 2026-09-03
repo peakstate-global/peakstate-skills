@@ -299,7 +299,9 @@ function renderBlock(lines, ctx) {
       else if (rows.length && /^\s{2,}/.test(l) && rows[rows.length - 1].dd.length) rows[rows.length - 1].dd.push(s);
       else rows.push({ dt: s, dd: [] });
     }
-    const cls = ctx.sec === 'provenance' ? ' class="provblock"' : '';
+    /* "Provenance", "Provenance statement" and "Provenance and limitations" are
+       all the same block, so match the prefix rather than one exact heading. */
+    const cls = /^provenance/.test(ctx.sec || '') ? ' class="provblock"' : '';
     return '<dl' + cls + '>\n' + rows.map((r) =>
       '  <dt>' + inline(r.dt, refs) + '</dt>\n  <dd>' + inline(r.dd.join(' '), refs) + '</dd>').join('\n') + '\n</dl>';
   }
@@ -528,7 +530,12 @@ export function render(source, opts = {}) {
     inline(meta.sub || '', refs) + '</p>\n</header>'];
 
   const named = parts.filter((p) => p.title);
+  /* The first named part is the summary page. CSS cannot box a run of siblings,
+     so the wrapper is the one markup addition the v4 treatment needs. A brief
+     with no named parts is a single subject and gets no wrapper. */
+  const summaryPart = named[0] || null;
   for (const part of parts) {
+    if (part === summaryPart) out.push('<div class="summary-page">');
     if (part.title) {
       out.push('<h2 class="part" id="' + part.id + '"><span class="pnum">Part ' +
         PARTWORDS[named.indexOf(part) + 1] + '</span> ' + inline(part.title, refs) + '</h2>');
@@ -539,6 +546,7 @@ export function render(source, opts = {}) {
       if (sec.id === 's-toc' && !sec.lines.some((l) => l.trim())) sec.lines = renderToc(parts).split('\n');
       out.push(renderSection(sec, ctx));
     }
+    if (part === summaryPart) out.push('</div>');
   }
 
   if (refs.missing.length) {

@@ -38,6 +38,23 @@ has('<header class="brief-title">', 'title block');
 has('<h1>Renderer fixture brief</h1>', 'one H1, from the front matter');
 has('<h2 class="part" id="part-1"><span class="pnum">Part one</span>', 'parts are numbered in words');
 has('<p class="partlede">', 'a part carries its lede');
+
+/* The summary page wraps the FIRST named part and every section under it, and
+   nothing else. CSS cannot box a run of siblings, so this wrapper is load-
+   bearing: if it moves or repeats, the whole treatment boxes the wrong thing. */
+assert.equal((main.match(/<div class="summary-page">/g) || []).length, 1,
+  'exactly one summary page');
+const page = /<div class="summary-page">([\s\S]*?)\n<\/div>/.exec(main);
+assert.ok(page, 'the summary page opens and closes');
+assert.ok(page[1].includes('id="part-1"'), 'the summary page opens on the first part');
+assert.ok(page[1].includes('id="s-prose"') && page[1].includes('id="s-raw"'),
+  "the first part's sections are inside the page");
+assert.ok(!page[1].includes('id="part-2"'), 'the second part is outside the page');
+assert.ok(!page[1].includes('id="s-toc"'), 'the contents sits above the page');
+const solo = /<main>[\s\S]*<\/main>/.exec(
+  render('---\ntitle: Single\n---\n\n## Only section\n\nBody.\n'))[0];
+assert.ok(!solo.includes('summary-page'),
+  'a brief with no named parts gets no summary page');
 has('<p class="assume"><strong>My assumption:</strong>', 'assumption block');
 has('<strong>If wrong:</strong>', 'the if-wrong half stays in the same paragraph');
 has('<ul class="options">\n  <li><b>a)</b> ', 'options list');

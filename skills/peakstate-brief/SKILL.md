@@ -356,6 +356,7 @@ comment the reader made").
 | --- | --- |
 | `# The verdict` | `<h2 class="part" id="part-1"><span class="pnum">Part one</span> …` |
 | the paragraph straight after a `#` | `<p class="partlede">` |
+| the FIRST `#` part and its sections | wrapped in `<div class="summary-page">` — the boxed summary. A brief with no named parts gets no wrapper. |
 | `## Recommendation` | `<section class="brief-section" id="s-recommendation" data-sec="recommendation">` |
 | `## Contents` with an empty body | the generated `<nav class="toc">` |
 | `## Q1 Should a brief be a new type?` | `<section class="q" id="s-q1" data-q="Q1">` with its `<span class="qid">` |
