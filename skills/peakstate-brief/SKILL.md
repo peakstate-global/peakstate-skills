@@ -267,19 +267,15 @@ what PRIMA ingests, what diffs readably, and what survives a template change.
     node <skill-dir>/assets/build-brief.mjs my-brief.md out/x.html
 
 `build-brief.mjs` needs Node and nothing else — no install step, no lockfile, no
-network. It reads `assets/brief-template.html` from beside itself, so the head
-bootstrap, the pinned CDN hashes and the runtime script tag come across verbatim
-and are never retyped.
+network. It reads `assets/brief-template.html`, `assets/brief.css` and
+`assets/brief.js` from beside itself and **inlines all three into the page it
+writes**, so the output is one self-contained file.
 
-- **Copy `brief.css` and `brief.js` from `<skill-dir>/assets/` into `<output-dir>/`
-  when you can** — by whatever means the host has (`cp` on macOS/Linux, `copy` in
-  `cmd.exe`, `Copy-Item` in PowerShell, or a plain file copy). Do not assume a
-  Unix shell. `<skill-dir>` is the directory holding this SKILL.md, resolved from
-  wherever the skill was loaded — never a hardcoded home path.
-  **This step is an optimisation, not a precondition.** The template loads those
-  two files if they are beside the brief and falls back to the pinned CDN copies
-  if they are not, so a brief works either way. Copy them when you can: it is
-  faster, works offline, and no third party sees the brief being opened.
+- **Nothing to copy.** The runtime is in the file. Do not place `brief.css` or
+  `brief.js` next to a delivered brief; see [A brief is one file](#a-brief-is-one-file--the-runtime-is-inlined).
+- **Deliver the one HTML file.** It works from Drive, from an email attachment,
+  from a USB stick and on a plane. The `.md` source stays beside it in the repo,
+  not with the copy you send.
 - **Regenerating a brief means editing the markdown and rendering again**, with
   the same `brief-id` and the same output path, so the reader's saved answers,
   comments and edits survive.
@@ -383,34 +379,33 @@ table with `hl-focus` rows, an inline SVG diagram, a `<details class="example">`
 a classed paragraph. This is the escape hatch, and using it is not a defeat: the
 markdown still carries the document, and the bespoke markup stays verbatim.
 
-## One template, every environment — how the runtime loads
+## A brief is one file — the runtime is inlined
 
-**There is one template. It works whether or not the assets are beside it**, so
-you never have to decide which build to produce. `brief-template.html` carries a
-short bootstrap in its `<head>` that tries three things in order:
+**`build-brief.mjs` inlines `brief.css` and `brief.js` into the page it writes.**
+A delivered brief is a single self-contained HTML file of roughly 240KB that
+fetches nothing, works offline, works from Google Drive, works emailed on its
+own, and never tells a third party it was opened. There is nothing to copy beside
+it and nothing to keep in sync.
 
-| Order | Source | When it wins | Cost |
-|---|---|---|---|
-| 1 | `brief.css` / `brief.js` beside the file | They were copied, or the reader saved them there | Nothing fetched, works offline, no third party sees the brief open |
-| 2 | The pinned CDN copies, verified by Subresource Integrity | The brief was generated with no filesystem, emailed on its own, or moved out of its folder | Two requests on first open, then the browser caches them |
-| 3 | A visible notice naming the two files to save beside it, and saying which of the two things went wrong | Neither is reachable | The brief is still complete and readable, just not interactive |
+**This replaced a three-rung loader — local files, then CDN copies verified by
+Subresource Integrity, then a notice — and it is worth knowing why, because the
+old design looks more careful.** Every rung had a failure the reader could
+neither diagnose nor fix: assets left behind when the file moved out of its
+folder; a moved tag orphaning the integrity hashes of every brief already sent,
+so the browser fetched the bytes and then refused them; a commit not yet pushed;
+a firewall; a plane. All of that machinery existed to deliver ~100KB that fits
+inside the document. **A brief that has to phone home is not a document.** It
+gets mailed, dropped in Drive and opened offline like one, so it has to behave
+like one.
 
-**Local first, CDN second — not the other way round.** Preferring the CDN would
-mean failing a network request before using a perfectly good file sitting right
-there: slower on every open, broken offline, and a request to a third party every
-time anyone opens any brief. The fallback exists for when the local files are
-genuinely absent, which is exactly the case a chat tool or CoWork produces.
+The cost is real and small: a brief freezes its runtime at build time. That was
+already true — an old brief kept whatever `brief.js` sat beside it — and the fix
+is unchanged, rebuild it from the markdown.
 
-**Copy the whole `<head>` bootstrap verbatim from `brief-template.html`. Never
-retype it, and never retype the integrity hashes.** They pin a specific published
-version, so a wrong character means the CDN copy is refused. That failure is safe
-— the reader gets the notice rather than a blank page — but it costs them the
-interactivity. If the pinned tag ever moves, recompute both hashes
-(`openssl dgst -sha384 -binary <file> | openssl base64 -A`) and update the
-template.
-
-**Never point a delivered brief at a moving branch.** The tag is pinned so a brief
-made today still renders the way it did when it was made.
+- **Do not copy `brief.css` / `brief.js` next to a brief.** They are already in
+  it. A stray pair beside a brief is confusing, not helpful.
+- **`render(src, { link: true })`** restores the linked form. One use only:
+  hand-authoring inside a chat tool that has no filesystem to inline from.
 
 ### Attaching the skill to a chat tool
 
@@ -787,8 +782,14 @@ skipped check reads exactly like a passing one.
 
 ## Updating an existing brief's runtime
 
-`brief.css` / `brief.js` are **copied next to each brief**, so an old brief keeps
-running its old runtime forever — a fixed bug will look unfixed in the file the
-reader actually has. When a brief is reopened after a runtime change, copy both
-assets over its folder again and hard-refresh (⌘⇧R); the page caches the script.
-Stored answers, comments and edits are keyed independently and survive the swap.
+`brief.css` / `brief.js` are **inlined into each brief at build time**, so an old
+brief keeps running its old runtime forever — a fixed bug will look unfixed in the
+file the reader actually has. **Rebuild it from its markdown**, with the same
+`brief-id` and the same output path, then hard-refresh (⌘⇧R). Stored answers,
+comments and edits are keyed on the `brief-id` in localStorage, not on the file,
+so they survive the rebuild.
+
+**If the reader has a copy elsewhere — Drive, an inbox, their desktop — send them
+the rebuilt file.** There is no way to upgrade a copy in place any more, and that
+is the trade the inlining makes: a brief that cannot be silently patched is also
+a brief that cannot silently break.

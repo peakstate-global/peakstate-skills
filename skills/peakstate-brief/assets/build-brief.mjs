@@ -433,6 +433,42 @@ function collectAnchors(parts) {
   return anchors;
 }
 
+/* A brief is one file, and the renderer makes that literally true: brief.css and
+   brief.js are inlined into the page it writes.
+
+   The alternative was a three-rung loader — local copies, then pinned CDN copies
+   verified by Subresource Integrity, then a notice. Every rung had a failure the
+   reader could not diagnose and could not fix: assets left behind when the file
+   moved, a moved tag orphaning the integrity hashes of every brief already sent,
+   a commit not yet pushed, a firewall, an offline laptop. All of it existed to
+   deliver ~100KB that fits in the document. A brief that has to phone home is
+   not a document; it is an app with a dependency, and it gets mailed, dropped in
+   Drive and opened on a plane like a document.
+
+   Inlined, the whole class is gone. No network, no third party learning that a
+   brief was opened, no version skew, and nothing to keep in sync. The cost is a
+   ~240KB file that freezes its runtime at build time — which was already true,
+   since an old brief kept whatever brief.js sat beside it.
+
+   `opts.link` restores the linked form for the one case that cannot inline:
+   hand-authoring the template inside a chat tool with no filesystem. */
+function inlineRuntime(template, opts = {}) {
+  if (opts.link) return template;
+  const css = readFileSync(join(HERE, 'brief.css'), 'utf8');
+  const js = readFileSync(join(HERE, 'brief.js'), 'utf8');
+  const guard = (s, tag) => {
+    if (new RegExp('</' + tag, 'i').test(s)) {
+      throw new Error(tag + ' contains a closing </' + tag + '> and cannot be inlined safely');
+    }
+    return s;
+  };
+  return template
+    .replace(/<link rel="stylesheet" href="brief\.css"[^>]*>\n<script>[\s\S]*?<\/script>/,
+      '<style>\n' + guard(css, 'style') + '\n</style>')
+    .replace(/<script src="brief\.js"[^>]*><\/script>/,
+      '<script>\n' + guard(js, 'script') + '\n</script>');
+}
+
 /* A diagram that vanishes in dark mode is the one defect an author cannot see:
    they write it in light mode, it looks right, and it ships black-on-black to
    every reader whose system is dark. brief.css sets `fill: currentColor` on
@@ -499,7 +535,7 @@ export function render(source, opts = {}) {
   const dark = darkModeFaults(out.join('\n'));
   if (dark.length) throw new Error(dark.join('\n'));
 
-  const template = opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8');
+  const template = inlineRuntime(opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8'), opts);
   const addressed = meta.addressed ? ' data-addressed="' + escAttr(meta.addressed) + '"' : '';
   return template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))

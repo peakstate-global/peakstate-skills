@@ -23,7 +23,7 @@ const has = (needle, why) => assert.ok(main.includes(needle), why + ' — missin
 
 assert.ok(html.includes('<body data-brief-id="renderer-fixture"'), 'brief id lands on <body>');
 assert.ok(html.includes('<title>Renderer fixture brief</title>'), 'title lands in <head>');
-assert.ok(html.includes('brief.js'), 'the runtime script tag survives');
+assert.ok(html.includes('briefUI'), 'the runtime is present in the page');
 has('data-q="Q1"', 'question 1 is a real section.q');
 has('data-q="Q2"', 'question 2 is a real section.q');
 has('<span class="qid">Q1</span>', 'question carries its visible number');
@@ -82,6 +82,23 @@ assert.deepEqual(dead, [], 'every internal anchor resolves');
 
 assert.throws(() => render('# P\n\n## Q1 Broken\n\nA claim[^9].\n'),
   /footnote markers with no target/, 'a footnote with no target is a build error');
+
+/* ── self-containment ────────────────────────────────────────────────────────
+   A brief gets emailed, dropped in Drive and opened on a plane. Every one of
+   these asserts a way it used to stop working when it travelled. */
+
+assert.ok(!html.includes('<link rel="stylesheet" href="brief.css"'),
+  'the stylesheet is inlined, not linked to a sibling file');
+assert.ok(!html.includes('<script src="brief.js"'),
+  'the runtime is inlined, not linked to a sibling file');
+assert.ok(!html.includes('cdn.jsdelivr'), 'no CDN: a delivered brief fetches nothing');
+assert.ok(!html.includes('sha384-'), 'no integrity pins left to go stale');
+assert.ok(html.includes('main svg text'), 'brief.css really is in the page');
+assert.ok(html.includes('briefUI'), 'brief.js really is in the page');
+
+const linked = render(src, { link: true });
+assert.ok(linked.includes('<script src="brief.js"'),
+  'opts.link keeps the linked form for hosts with no filesystem');
 
 /* ── dark mode ───────────────────────────────────────────────────────────────
    These four cases exist because a black-on-black diagram shipped. The author
