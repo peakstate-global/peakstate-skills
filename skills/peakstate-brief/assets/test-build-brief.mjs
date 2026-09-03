@@ -83,6 +83,24 @@ assert.deepEqual(dead, [], 'every internal anchor resolves');
 assert.throws(() => render('# P\n\n## Q1 Broken\n\nA claim[^9].\n'),
   /footnote markers with no target/, 'a footnote with no target is a build error');
 
+/* ── dark mode ───────────────────────────────────────────────────────────────
+   These four cases exist because a black-on-black diagram shipped. The author
+   could not see it (light mode) and the reader could not read it (dark mode),
+   so the only place that catches it is the build. */
+
+const svg = (inner) => '# P\n\n## S\n\n:::html\n<svg>' + inner + '</svg>\n:::\n';
+
+assert.throws(() => render(svg('<text fill="#333">label</text>')),
+  /fixed colour/, 'a hex fill on svg text is a build error');
+assert.throws(() => render(svg('<text fill="black">label</text>')),
+  /fixed colour/, 'a colour keyword on svg text is a build error');
+assert.doesNotThrow(() => render(svg('<text>label</text>')),
+  'unstyled svg text is correct — it inherits from brief.css');
+assert.doesNotThrow(() => render(svg('<text fill="var(--muted)">label</text>')),
+  'a theme variable on svg text is allowed');
+assert.throws(() => render('# P\n\n## S\n\n:::html\n<style>.diag text { fill: #222 }</style>\n:::\n'),
+  /ship in brief.css/, 'a brief re-declaring the shared diagram rules is a build error');
+
 /* ── reproducibility ─────────────────────────────────────────────────────── */
 
 assert.equal(render(src), html, 'rendering is deterministic');

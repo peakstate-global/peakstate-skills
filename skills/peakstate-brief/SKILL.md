@@ -72,17 +72,18 @@ worth more than the same content in prose.
   - **Colour through the CSS variables**, never hardcoded hex: `var(--accent)`,
     `var(--muted)`, `var(--line)`, or `currentColor`, so the chart reads in light,
     dark and system. A dark-only chart in a light brief is worse than no chart.
-  - **Never set a fill on `<text>` unless you mean a specific colour.** SVG text
-    defaults to black — it does *not* inherit the page colour — so an unstyled
-    diagram is invisible on a dark background. `brief.css` fixes this globally
-    (`main svg text { fill: currentColor }`), which means the right move is to
-    leave text unstyled and let it inherit. **Do not re-declare `.diag text` or
-    `.cap` in a brief's own `<style>` block**; those rules ship in `brief.css`
-    now, and a local copy is one more thing to get wrong.
-  - **Check the diagram in dark mode before delivering.** Click the theme toggle
-    in the top bar. This failure is invisible to an author working in light mode
-    and total for a reader who is not — it shipped once, on a four-box diagram
-    whose every label rendered black on black.
+  - **Leave `<text>` unstyled and let it inherit — the build enforces this.** SVG
+    text defaults to black and does *not* inherit the page colour, so a diagram
+    that looks right in light mode is invisible in dark. `brief.css` fixes it
+    globally (`main svg text { fill: currentColor }`), and `build-brief.mjs`
+    **refuses to render** a brief whose SVG text carries a fixed colour, or whose
+    own `<style>` re-declares `.diag`, `.cap` or `main svg text`. Only
+    `var(--…)`, `currentColor`, `none` and `inherit` pass. You cannot forget this
+    one; you can only be stopped by it.
+  - **Still look at it in dark mode before delivering.** Click the theme toggle in
+    the top bar. The gate catches fixed colours, not a chart whose contrast is
+    merely poor, and this failure is invisible to an author working in light mode
+    and total for a reader who is not.
   - **Label the marks directly** rather than through a legend the eye has to hop
     to, put the units in the axis title, and start a bar axis at zero — a truncated
     axis makes a small difference look decisive, which is the one thing a brief
@@ -764,8 +765,10 @@ compatible with stored state) — improvements then benefit every future brief.
 
 It renders `assets/test-brief.md`, which holds one section per block type, and
 asserts the four hard requirements, the block shapes, that every internal anchor
-resolves, that a footnote with no target fails the build, and that two renders of
-one source are identical. Run it after any change to `build-brief.mjs`.
+resolves, that a footnote with no target fails the build, that a fixed colour on
+SVG text or a locally re-declared `.diag` rule fails the build, and that two
+renders of one source are identical. Run it after any change to
+`build-brief.mjs`.
 
 `assets/smoke-test.mjs` drives `assets/test-fixture.html` with Playwright and
 covers the lot: ticks, persistence, the comment popover and drawer, JSON export,

@@ -433,6 +433,38 @@ function collectAnchors(parts) {
   return anchors;
 }
 
+/* A diagram that vanishes in dark mode is the one defect an author cannot see:
+   they write it in light mode, it looks right, and it ships black-on-black to
+   every reader whose system is dark. brief.css sets `fill: currentColor` on
+   `main svg text` so the default is correct — but a default only holds until
+   somebody overrides it, and the override is exactly what an author reaches for
+   when a label "needs to be darker". So the build refuses it rather than
+   trusting the stylesheet to win.
+
+   Allowed on SVG text: a theme variable, currentColor, none, inherit. Anything
+   else — a hex, a colour keyword, an rgb() — is a fixed colour on a surface
+   whose background is not fixed, which is the bug. Re-declaring the shared rules
+   in a brief's own <style> is refused for the same reason: it forks a fix that
+   should live in one place. */
+export function darkModeFaults(html) {
+  const faults = [];
+  const OK = /^(var\(--|currentColor$|none$|inherit$)/i;
+  for (const m of html.matchAll(/<text\b[^>]*\bfill="([^"]*)"/gi)) {
+    if (!OK.test(m[1].trim())) {
+      faults.push('svg <text fill="' + m[1] + '"> is a fixed colour, so the label ' +
+        'disappears on whichever background it was not written against. Delete the fill ' +
+        'and let it inherit, or use var(--fg) / var(--muted) / var(--accent).');
+    }
+  }
+  for (const m of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    if (/(^|[},;\s])(main\s+svg\s+text|\.diag\s+text|\.diag\b|\.cap\b)\s*\{/i.test(m[1])) {
+      faults.push('a <style> block re-declares .diag / .cap / svg text. Those ship in ' +
+        'brief.css — delete the local copy so every brief gets the fix, not just this one.');
+    }
+  }
+  return [...new Set(faults)];
+}
+
 export function render(source, opts = {}) {
   /* Line endings and a BOM are editor artefacts, never content. Normalising
      here is what makes the same source render the same page on any machine. */
@@ -463,6 +495,9 @@ export function render(source, opts = {}) {
   if (refs.missing.length) {
     throw new Error('footnote markers with no target: ' + [...new Set(refs.missing)].join(', '));
   }
+
+  const dark = darkModeFaults(out.join('\n'));
+  if (dark.length) throw new Error(dark.join('\n'));
 
   const template = opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8');
   const addressed = meta.addressed ? ' data-addressed="' + escAttr(meta.addressed) + '"' : '';
