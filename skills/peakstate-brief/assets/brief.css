@@ -10,6 +10,8 @@
     --line: #ded7c9; --accent: #8c3a24; --accent-soft: #f7eae4;
     --done: #2f6d46; --done-soft: #e7f1ea; --mark: #ffe6a3; --mark-fg: #4a3800;
     --danger: #a83228; --code: #f1ece1;
+    /* --desk is the surface the paper sits on; --gold marks a chapter break. */
+    --desk: #efe9df; --gold: #9a7c33;
     --shadow: 0 1px 1px rgba(60,45,30,.04), 0 10px 30px -22px rgba(60,45,30,.5);
   }
   :root[data-theme="dark"] {
@@ -17,6 +19,7 @@
     --line: #322e28; --accent: #e59a7c; --accent-soft: #2e211c;
     --done: #74c48d; --done-soft: #17251b; --mark: #55440f; --mark-fg: #ffe9a8;
     --danger: #e8877c; --code: #232019;
+    --desk: #0c0b0a; --gold: #c9a961;
     --shadow: 0 1px 1px rgba(0,0,0,.3), 0 10px 30px -22px rgba(0,0,0,.9);
   }
   @media (prefers-color-scheme: dark) {
@@ -25,6 +28,7 @@
     --line: #322e28; --accent: #e59a7c; --accent-soft: #2e211c;
     --done: #74c48d; --done-soft: #17251b; --mark: #55440f; --mark-fg: #ffe9a8;
     --danger: #e8877c; --code: #232019;
+    --desk: #0c0b0a; --gold: #c9a961;
     --shadow: 0 1px 1px rgba(0,0,0,.3), 0 10px 30px -22px rgba(0,0,0,.9);
     }
   }
@@ -37,8 +41,8 @@
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
-    margin: 0; background: var(--bg); color: var(--fg);
-    font: 17px/1.62 var(--font-serif);
+    margin: 0; background: var(--desk); color: var(--fg);
+    font: 16px/1.62 var(--font-serif);
     -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   }
   /* Prose is serif; every piece of UI chrome is sans, so controls never read
@@ -50,7 +54,10 @@
   p { margin: .75rem 0; }
   a { color: var(--accent); text-underline-offset: .15em; }
   button, summary, label.tick, mark.cmt { cursor: pointer; }
-  main { max-width: 52rem; margin: 0 auto; padding: 2.5rem 1.25rem 6rem; }
+  /* The paper. Its own tone against --desk makes the gutter two-tone, and
+     62rem with 4.5rem of padding is the only width constraint on the page. */
+  main { max-width: 62rem; margin: 0 auto; min-height: 100vh;
+         background: var(--bg); padding: 56px clamp(1.25rem, 6vw, 4.5rem) 72px; }
 
   /* ── Top bar ─────────────────────────────────────────── */
   .topbar {
@@ -106,9 +113,18 @@
   }
   label.tick input { width: 1.15rem; height: 1.15rem; accent-color: var(--done); cursor: pointer; }
   section.done { margin: 1.1rem 0; }
-  section.done .q-head, section.done .sec-head { border-bottom-color: transparent; margin-bottom: 0; }
+  section.done .q-head, section.done .sec-head { border-bottom-color: transparent; }
   section.done .q-head h2, section.done .sec-head h2 { color: var(--muted); font-size: 1.02rem; }
-  section.done .q-body, section.done .sec-body { display: none; }
+  /* Collapsed, not deleted. `display: none` cannot be transitioned, so the body
+     animates from its own height to zero: `interpolate-size` makes the keyword
+     `max-content` an animatable end point, and a browser without it simply
+     snaps, which is what the old rule did anyway. `clip` rather than `hidden`
+     keeps sticky table headers working and never makes a scroll container; the
+     clip margin leaves room for a focus ring at the edge. */
+  section.done .q-body, section.done .sec-body {
+    max-height: 0; opacity: 0;
+    margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0;
+  }
   section.done .qid { background: var(--done-soft); color: var(--done); }
 
   .assume {
@@ -211,9 +227,10 @@
   #toast.show { opacity: 1; }
   @media print {
     .topbar, #cpop, #cdrawer, #toast, .codecopy { display: none !important; }
-    section.done .q-body { display: block; }
+    section.done .q-body, section.done .sec-body,
+    section.done .l5 { max-height: none; opacity: 1; }
     /* Force the light tokens: a dark theme prints as a black page. */
-    :root { --bg: #f7f3ec; --fg: #201d18; --muted: #6c665c; --card: #fffdf8; --line: #ded7c9; --accent: #8c3a24; --accent-soft: #f7eae4; --done: #2f6d46; --done-soft: #e7f1ea; --mark: #ffe6a3; --mark-fg: #4a3800; --danger: #a83228; --code: #f1ece1; --shadow: 0 1px 1px rgba(60,45,30,.04), 0 10px 30px -22px rgba(60,45,30,.5); }
+    :root { --bg: #f7f3ec; --fg: #201d18; --muted: #6c665c; --card: #fffdf8; --line: #ded7c9; --accent: #8c3a24; --accent-soft: #f7eae4; --done: #2f6d46; --done-soft: #e7f1ea; --mark: #ffe6a3; --mark-fg: #4a3800; --danger: #a83228; --code: #f1ece1; --desk: #efe9df; --gold: #9a7c33; --shadow: 0 1px 1px rgba(60,45,30,.04), 0 10px 30px -22px rgba(60,45,30,.5); }
     body { background: #fff; font-size: 11pt; }
     section.brief-section, section.q { break-inside: avoid; }
     .q-head, .sec-head { break-after: avoid; }
@@ -634,7 +651,9 @@ main svg [stroke="currentColor"] { stroke: currentColor; }
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* One number drives the whole staircase, and one holds the prose measure. */
-:root { --step: 1.7rem; --measure: 34rem; }
+/* The page cap IS the measure in fixed mode, exactly as the prototype has it.
+   --measure only binds once the cap is released, so full-width keeps its walls. */
+:root { --step: 1.7rem; --measure: none; }
 
 /* ── level 1 — the title, and the standfirst as the headline answer ──────
    The standfirst carries the whole answer, so it is set as prose, not as a
@@ -643,9 +662,14 @@ main svg [stroke="currentColor"] { stroke: currentColor; }
    UNDER its heading — that alone tells the eye it is looking at level 1.
    Request 1: the copy button rides the standfirst's own baseline; it copies
    the h1 question plus the .sub answer as plain text (brief.js wires it).   */
-.brief-title { margin: .5rem 0 1.6rem; padding-bottom: 1.2rem; border-bottom: 3px solid var(--accent); }
+.brief-title { margin: 0 0 2.6rem; padding-bottom: 0; border-bottom: 0; }
+.brief-title h1 { font-size: 2.7rem; line-height: 1.08; font-weight: 400;
+                  letter-spacing: -.022em; margin: .25rem 0 0; }
 .brief-title .subrow { display: flex; gap: 1rem; align-items: flex-start; margin-top: .95rem; }
-.brief-title .sub { color: var(--fg); font-size: 1.26rem; line-height: 1.5; margin: 0; flex: 1; max-width: var(--measure); }
+.brief-title .sub { color: var(--fg); font-size: 1.14rem; line-height: 1.62; margin: 0; flex: 1; max-width: var(--measure); }
+/* The drop cap is the one mark that says 'this is the answer, start here'. */
+.brief-title .sub::first-letter { float: left; font-size: 3.5rem; line-height: .8;
+                                  padding: .18rem .45rem .1rem 0; color: var(--accent); font-weight: 400; }
 /* An older brief with no .subrow wrapper keeps its own top margin. */
 .brief-title > .sub { margin: .95rem 0 0; }
 
@@ -653,7 +677,7 @@ main svg [stroke="currentColor"] { stroke: currentColor; }
    rounded shapes, drawn inline — no icon font, no network. */
 .copybtn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 2rem; height: 2rem; flex: none; padding: 0;
+  width: 30px; height: 30px; flex: none; padding: 0;
   border: 1px solid var(--line); border-radius: 6px;
   background: var(--card); color: var(--muted); cursor: pointer;
   font-family: var(--font-ui);
@@ -669,23 +693,70 @@ main svg [stroke="currentColor"] { stroke: currentColor; }
    chapter break rather than as a second title. The lede is full ink, one
    notch above body size — a reader who stops here has the answer.          */
 h2.part {
-  font-size: 1.95rem; line-height: 1.2; letter-spacing: -.018em;
-  margin: 2.8rem 0 0; padding: 1.1rem 0 0;
-  border-bottom: 0; border-top: 2px solid var(--accent);
+  font-size: 1.95rem; line-height: 1.2; font-weight: 400; letter-spacing: -.018em;
+  margin: 2.4rem 0 0; padding: 0;
+  border-bottom: 0; border-top: 0;
+}
+/* The chapter rule: a short gold stub, drawn by the heading itself so the
+   renderer needs no extra element. The summary page opens the document, so
+   it gets no chapter break. */
+h2.part::before {
+  content: ""; display: block; width: 24px; height: 2px;
+  background: var(--gold); margin-bottom: .55rem;
+}
+.summary-page > h2.part:first-of-type::before { display: none; }
+h2.part .pnum {
+  font: 600 11px/1 var(--font-ui); letter-spacing: .18em;
+  color: var(--gold); margin-bottom: .45rem;
 }
 h2.part + p.partlede {
-  color: var(--fg); font-size: 1.06rem; line-height: 1.55;
-  margin: .55rem 0 1.5rem; max-width: var(--measure);
+  color: var(--fg); font-size: 1.05rem; line-height: 1.62;
+  margin: .5rem 0 1.5rem; max-width: var(--measure);
 }
 
 /* ── levels 3 and 4 — the section, one step right ─────────────────────
    Still no box: the section keeps its hairline-under-the-heading house
    style, and the only thing that changed is where its left edge sits.      */
-section.brief-section, section.q { margin: 2.2rem 0 0; padding-left: var(--step); }
+section.brief-section, section.q { margin: 1.7rem 0 0; padding-left: var(--step); }
 section.brief-section:first-child, section.q:first-child { margin-top: 1.4rem; }
-.sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { font-size: 1.12rem; line-height: 1.35; }
-.sec-head, .q-head { margin-bottom: .65rem; }
+.sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { font-size: 1.1rem; line-height: 1.35; }
+.sec-head, .q-head { padding-bottom: .35rem; margin-bottom: .6rem; }
+section.done { margin-top: .7rem; }
+section.done .sec-head h3, section.done .q-head h3,
+section.done .sec-head h2, section.done .q-head h2 { font-size: .98rem; }
 .sec-body, .q-body { font-size: 1rem; max-width: var(--measure); }
+
+/* ── ticking a section folds it away, it does not blink out ─────────────
+   The collapsed end state lives with the rest of the `section.done` rules
+   above. This is only the motion: the same .22s ease the tick itself uses, so
+   the box sliding in and the body folding up read as one gesture. */
+:root { interpolate-size: allow-keywords; }
+.sec-body, .q-body, .l5 {
+  max-height: max-content; overflow: clip; overflow-clip-margin: 4px;
+  transition: max-height .22s cubic-bezier(.2, .65, .25, 1), opacity .18s ease,
+              margin .22s cubic-bezier(.2, .65, .25, 1),
+              padding .22s cubic-bezier(.2, .65, .25, 1);
+}
+section.done .l5 {
+  max-height: 0; opacity: 0;
+  margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0;
+}
+
+/* ── level 5 — "Prove it" ─────────────────────────────────────────────
+   The section's evidence, stated in the section rather than only in the
+   reference list at the back. UI type, because it is apparatus about the
+   prose rather than prose. */
+.l5 {
+  margin: 1rem 0 0; background: var(--code); border: 1px solid var(--line);
+  border-radius: 8px; padding: .7rem .85rem;
+  font: .84rem/1.5 var(--font-ui); color: var(--muted);
+  max-width: var(--measure);
+}
+.l5 code { font-size: .82em; }
+
+/* The closing diamond: the document ended, the page did not just run out. */
+.endmark { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg);
+           margin: 2.6rem auto 0; }
 
 /* ── level 5 — prove it ─────────────────────────────────────────
    One more step right, smaller, muted, behind a hairline rail. Still serif:
@@ -694,7 +765,22 @@ section.brief-section:first-child, section.q:first-child { margin-top: 1.4rem; }
   margin-left: var(--step); padding-left: 1.5rem;
   border-left: 1px solid var(--line);
 }
-.sec-body > ol.reflist > li, .q-body > ol.reflist > li { font-size: .95rem; }
+.sec-body > ol.reflist > li, .q-body > ol.reflist > li { font-size: .95rem; margin: .55rem 0; }
+ol.reflist { color: var(--muted); }
+
+/* The reference number is a badge, not a list marker: it holds its shape when
+   the entry wraps, and it reads as the same object as the footnote that sent
+   the reader here. The native marker goes, or the number appears twice. */
+ol.reflist { list-style: none; padding-left: 0; }
+ol.reflist > li { position: relative; padding-left: 2.3rem; }
+ol.reflist > li:target { padding-left: 2.3rem; }
+ol.reflist > li > .apa { text-indent: 0; padding-left: 0; }
+.rnum {
+  position: absolute; left: 0; top: .12rem; text-indent: 0;
+  font: 600 .66rem/1 var(--font-mono); color: var(--muted);
+  background: var(--code); border: 1px solid var(--line);
+  border-radius: 3px; padding: .22rem .32rem;
+}
 .apa { color: var(--muted); }
 .apa a { color: var(--accent); }
 details.example { margin-left: var(--step); }
@@ -705,7 +791,7 @@ details.example { margin-left: var(--step); }
    box stays visible with no pointer, because it is now state, not an offer.
    The tick sits inside the step gutter, so it never leaves the page margin. */
 label.tick {
-  position: absolute; left: calc(var(--step) * -1 + .15rem); top: .2rem;
+  position: absolute; left: .1rem; top: .18rem;
   display: flex; align-items: center; gap: .35rem;
   opacity: 0; transform: translateX(-.45rem);
   transition: opacity .18s ease, transform .18s cubic-bezier(.2, .65, .25, 1);
@@ -718,12 +804,13 @@ label.tick {
 label.tick:has(input:checked) { opacity: 1; transform: translateX(0); }
 .sec-head:hover h3, .q-head:hover h3, .sec-head:hover h2, .q-head:hover h2,
 .sec-head:focus-within h3, .q-head:focus-within h3,
-.sec-head:focus-within h2, .q-head:focus-within h2 { transform: translateX(.5rem); }
+.sec-head:focus-within h2, .q-head:focus-within h2 { transform: translateX(2.1rem); }
 
 /* A touch device has no hover, so the offer has to be standing. */
 @media (hover: none) { label.tick { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   label.tick, .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transition: none; }
+  .sec-body, .q-body, .l5 { transition: none; }
   .sec-head:hover h3, .q-head:hover h3, .sec-head:hover h2, .q-head:hover h2,
   .sec-head:focus-within h3, .q-head:focus-within h3 { transform: none; }
 }
@@ -737,12 +824,12 @@ label.tick:has(input:checked) { opacity: 1; transform: translateX(0); }
   position: relative;
   background: var(--card); border: 1px solid var(--line); border-radius: 10px;
   box-shadow: var(--shadow);
-  padding: 1.4rem 1.6rem 1.6rem; margin: 1.8rem 0 2.6rem;
+  padding: 1.3rem 1.5rem 1.5rem; margin: 1.2rem 0 1.8rem;
 }
 .summary-page > h2.part:first-of-type {
-  margin-top: 0; padding-top: 0; border-top: 0; padding-right: 2.6rem;
+  margin-top: 0; padding-top: 0; border-top: 0; padding-right: 2.5rem;
 }
-.summary-page .pagecopy { position: absolute; top: .85rem; right: .9rem; }
+.summary-page .pagecopy { position: absolute; top: .8rem; right: .85rem; }
 /* Inside the page the sections keep their step, but the box supplies the
    outer margin, so the first one does not double up. */
 .summary-page > section:first-of-type { margin-top: 1.2rem; }
@@ -751,7 +838,16 @@ label.tick:has(input:checked) { opacity: 1; transform: translateX(0); }
    Parts are a sans, letterspaced, accent label. Sections indent under them
    behind a hairline rule. Works for both shapes the renderer emits: a part
    as <p><b><a> followed by a sibling <ol>, and a nested <ol><li><ol>.      */
-nav.toc > p { margin: 1rem 0 .3rem; }
+/* Contents is a label, not a section heading: the prototype sets it as a
+   muted uppercase sans rule-line, and it sits at the page edge, not one
+   step in, because the contents is level 0 of the staircase. */
+section[data-sec="toc"] { padding-left: 0; }
+section[data-sec="toc"] > .sec-head { padding-bottom: .45rem; }
+section[data-sec="toc"] > .sec-head h3 {
+  font: 600 11px/1.4 var(--font-ui); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+nav.toc > p { margin: 1rem 0 .35rem; }
 nav.toc > p:first-child { margin-top: 0; }
 nav.toc > p b > a, nav.toc > p > a, nav.toc .tpart {
   font: 600 12px/1.4 var(--font-ui); letter-spacing: .09em;
@@ -775,17 +871,17 @@ nav.toc .tnote { font-size: .84rem; }
    is data the reader reads rather than a section, so boxing it does not
    break the house rule. Below 44rem the grid collapses to stacked rows.    */
 .provblock {
-  display: grid; grid-template-columns: 10rem 1fr; column-gap: 1.6rem;
+  display: grid; grid-template-columns: 7rem 1fr; column-gap: .55rem; row-gap: .1rem;
   margin: 0; background: var(--card);
   border: 1px solid var(--line); border-radius: 10px;
-  padding: 1.2rem 1.4rem 1.3rem;
+  padding: 1.1rem 1.3rem 1.2rem;
 }
 .provblock dt {
-  grid-column: 1; margin: 1rem 0 0;
-  font: 700 .8rem/1.55 var(--font-ui);
+  grid-column: 1; margin: .85rem 0 0;
+  font: 700 .78rem/1.5 var(--font-ui);
   letter-spacing: normal; text-transform: none; color: var(--fg);
 }
-.provblock dd { grid-column: 2; margin: 1rem 0 0; font-size: .95rem; line-height: 1.55; }
+.provblock dd { grid-column: 2; margin: .85rem 0 0; font-size: .93rem; line-height: 1.55; }
 .provblock dt:first-of-type, .provblock dt:first-of-type + dd { margin-top: 0; }
 @media (max-width: 44rem) {
   .provblock { grid-template-columns: 1fr; }
@@ -798,7 +894,7 @@ nav.toc .tnote { font-size: .84rem; }
    the prose measure: a reader turns it on to see a wide table, not to read
    a 2000px line. Tables, pre blocks and .tblwrap take the whole width.     */
 body.fullwidth main {
-  max-width: none;
+  max-width: none; --measure: 53rem;
   padding-left: clamp(1.25rem, 6vw, 6rem);
   padding-right: clamp(1.25rem, 6vw, 6rem);
 }
@@ -828,12 +924,22 @@ body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap { max-wid
    across a page; the staircase flattens, because indentation on paper just
    wastes the margin.                                                       */
 @media print {
+  /* On paper the desk does not exist, so the paper is the page itself. */
+  main { background: none; min-height: 0; padding: 0; }
   .copybtn { display: none !important; }
   label.tick { opacity: 1; transform: none; position: static; }
   .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transform: none; }
   section.brief-section, section.q { padding-left: 0; }
   .sec-body, .q-body, .brief-title .sub, h2.part + p.partlede { max-width: none; }
   .sec-body > ol.reflist, .q-body > ol.reflist { margin-left: 0; }
+  /* Paper has no ticks to untick, so a ticked-off section prints in full. This
+     repeats the v1 print reset because the collapse rules above it are newer
+     and would otherwise win the cascade. */
+  section.done .q-body, section.done .sec-body, section.done .l5 {
+    max-height: none; opacity: 1;
+  }
+  section.done .l5 { margin: 1rem 0 0; padding: .7rem .85rem; border-width: 1px; }
+  .l5 { max-width: none; }
   details.example { margin-left: 0; }
   details.example, details.example[open] { box-shadow: none; }
   .summary-page, .provblock { box-shadow: none; break-inside: avoid; }

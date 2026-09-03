@@ -204,7 +204,8 @@ function parseRefs(lines) {
 
 function renderRefs(refs, reg) {
   const items = refs.map((r) => {
-    let html = '  <li id="ref' + r.n + '">\n    <span class="apa">' +
+    let html = '  <li id="ref' + r.n + '">\n    <span class="rnum">' + esc(r.n) +
+      '</span><span class="apa">' +
       autolink(inline(r.apa.join(' '), reg)) + '</span>';
     if (r.note) html += '\n    <span class="apa-note">' + inline(r.note, reg) + '</span>';
     r.quotes.forEach((q, i) => {
@@ -217,6 +218,46 @@ function renderRefs(refs, reg) {
     return html + '\n  </li>';
   });
   return '<ol class="reflist">\n' + items.join('\n') + '\n</ol>';
+}
+
+/* ── level 5, "Prove it" ─────────────────────────────────────────────────
+   A section's own evidence line, built from the footnote markers already in its
+   prose: which sources it leans on, and how many pull quotes those sources
+   carry. Nothing is authored for it, so a section that cites nothing gets no
+   box rather than an empty one. */
+
+/* "Barker, S. A. (2018). ..." -> "Barker (2018)". Multiple authors collapse to
+   "et al." the way a reader would say it aloud. */
+function shortCite(apa) {
+  const m = /^([\s\S]*?)\((\d{4})/.exec(apa);
+  if (!m) return null;
+  const head = m[1];
+  const first = head.split(',')[0].replace(/\.\s*$/, '').trim();
+  if (!first) return null;
+  const many = /&|\bet al\b/.test(head) || head.split(',').length > 2;
+  return first + (many ? ' et al.' : '') + ' (' + m[2] + ')';
+}
+
+/* Markers cited by a section's prose, in first-use order. A reference
+   *definition* line is a target, not a citation, so it never counts. */
+function citedIn(lines) {
+  const seen = [];
+  for (const l of lines) {
+    if (/^\s*\[\^\d+\]:/.test(l)) continue;
+    for (const m of l.matchAll(/\[\^(\d+)(?:q\d+)?\]/g)) {
+      if (!seen.includes(m[1])) seen.push(m[1]);
+    }
+  }
+  return seen;
+}
+
+function proveIt(lines, index) {
+  const cited = citedIn(lines).filter((n) => index[n] && index[n].label);
+  if (!cited.length) return '';
+  const rows = cited.reduce((a, n) => a + index[n].quotes, 0);
+  const tail = rows ? ' \u25b8 ' + rows + ' supporting row' + (rows === 1 ? '' : 's') : '';
+  return '\n  <p class="l5">Prove it \u2014 ' +
+    esc(cited.map((n) => index[n].label).join('; ')) + '.' + tail + '</p>';
 }
 
 /* ── block renderer ─────────────────────────────────────────────────────── */
@@ -420,13 +461,15 @@ function renderSection(sec, ctx) {
       '  <div class="q-head">\n' +
       '    <label class="tick"><input type="checkbox" aria-label="Mark ' + sec.q + ' resolved"></label>\n' +
       '    <h3><span class="qid">' + sec.q + '</span> ' + inline(sec.title, ctx.refs) + '</h3>\n' +
-      '  </div>\n  <div class="q-body">\n' + body + '\n  </div>\n</section>';
+      '  </div>\n  <div class="q-body">\n' + body + '\n  </div>' +
+      proveIt(sec.lines, ctx.index || {}) + '\n</section>';
   }
   return '<section class="brief-section" id="' + sec.id + '" data-sec="' + data + '">\n' +
     '  <div class="sec-head">\n' +
     '    <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>\n' +
     '    <h3>' + inline(sec.title, ctx.refs) + '</h3>\n' +
-    '  </div>\n  <div class="sec-body">\n' + body + '\n  </div>\n</section>';
+    '  </div>\n  <div class="sec-body">\n' + body + '\n  </div>' +
+    proveIt(sec.lines, ctx.index || {}) + '\n</section>';
 }
 
 /* Footnote targets are collected before anything renders, so a marker pointing
@@ -434,18 +477,20 @@ function renderSection(sec, ctx) {
    reader finds. */
 function collectAnchors(parts) {
   const anchors = new Set();
+  const index = {};
   for (const p of parts) {
     for (const s of p.sections) {
       for (const b of blocks(s.lines)) {
         if (!/^\[\^\d+\]:/.test(b[0].trim())) continue;
         for (const r of parseRefs(b)) {
           anchors.add('ref' + r.n);
+          index[r.n] = { label: shortCite(r.apa.join(' ')), quotes: r.quotes.length };
           r.quotes.forEach((_, i) => anchors.add('ref' + r.n + '-q' + (i + 1)));
         }
       }
     }
   }
-  return anchors;
+  return { anchors, index };
 }
 
 /* A brief is one file, and the renderer makes that literally true: brief.css and
@@ -522,8 +567,9 @@ export function render(source, opts = {}) {
   const src = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const [meta, body] = frontMatter(src);
   const parts = outline(body);
-  const refs = { anchors: collectAnchors(parts), missing: [] };
-  const ctx = { refs };
+  const { anchors, index } = collectAnchors(parts);
+  const refs = { anchors, missing: [] };
+  const ctx = { refs, index };
 
   const out = ['<header class="brief-title">\n  <p class="eyebrow">' + inline(meta.eyebrow || '', refs) +
     '</p>\n  <h1>' + inline(meta.title || 'Brief', refs) + '</h1>\n  <p class="sub">' +
@@ -548,6 +594,9 @@ export function render(source, opts = {}) {
     }
     if (part === summaryPart) out.push('</div>');
   }
+
+  /* The printer's diamond: the document is over, and nothing below is missing. */
+  out.push('<div class="endmark" aria-hidden="true"></div>');
 
   if (refs.missing.length) {
     throw new Error('footnote markers with no target: ' + [...new Set(refs.missing)].join(', '));

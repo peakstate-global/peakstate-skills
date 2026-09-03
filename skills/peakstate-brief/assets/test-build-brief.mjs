@@ -120,6 +120,26 @@ const linked = render(src, { link: true });
 assert.ok(linked.includes('<script src="brief.js"'),
   'opts.link keeps the linked form for hosts with no filesystem');
 
+/* ── the prototype's three markup features ───────────────────────────────
+   Each is emitted from the document's own structure, so the check is that the
+   structure drove it — not just that the class appears somewhere. */
+
+has('<p class="l5">Prove it \u2014 Ramsden (2026). \u25b8 2 supporting rows</p>',
+  'a section that cites a source gets its own "Prove it" line, named and counted');
+has('<p class="l5">Prove it \u2014 Internal corpus (2026); Australian Bureau of Statistics (2026).' +
+  ' \u25b8 1 supporting row</p>',
+  'a question cites both its sources and counts only the quotes that exist');
+const listsSec = main.slice(main.indexOf('id="s-lists"')).split('</section>')[0];
+assert.ok(!listsSec.includes('class="l5"'),
+  'a section that cites nothing gets no "Prove it" box');
+has('<span class="rnum">1</span><span class="apa">', 'each reference carries its number badge');
+assert.equal((main.match(/<span class="rnum">/g) || []).length, 3,
+  'one badge per reference, no more');
+assert.equal((main.match(/<div class="endmark" aria-hidden="true"><\/div>/g) || []).length, 1,
+  'exactly one endmark, and it closes the document');
+assert.ok(/<div class="endmark"[^>]*><\/div>\n\n<\/main>/.test(main),
+  'the endmark is the last thing in the document');
+
 /* ── dark mode ───────────────────────────────────────────────────────────────
    These four cases exist because a black-on-black diagram shipped. The author
    could not see it (light mode) and the reader could not read it (dark mode),

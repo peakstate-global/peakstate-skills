@@ -38,6 +38,10 @@ const okDownload = /^[a-z0-9-]+-responses-\d{4}-\d{2}-\d{2}\.json$/.test(dlName)
 await page.reload();
 const persistTick = await page.locator('section[data-q="Q1"]').evaluate(el => el.classList.contains('done'));
 await page.uncheck('section[data-q="Q1"] .tick input');
+/* Un-ticking now animates the body back open over .22s. Selecting text before
+   it settles scrolls to a position the layout is about to move, which leaves
+   the pointer over the topbar and the comment popover never opens. */
+await page.waitForTimeout(400);
 const persistAns = await page.inputValue('#ans-Q1');
 const reanchored = await page.locator('mark.cmt').count();
 // cross-element selection: the .assume paragraph wraps <strong> children, so the
