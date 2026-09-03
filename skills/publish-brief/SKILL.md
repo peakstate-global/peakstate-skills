@@ -115,3 +115,55 @@ A brief is ingested as a `note`, which is owner-commentary class. An agent
 client at the public-corpus ceiling is told "not found" for one whether or not it
 exists, so the `prima` skill cannot search or fetch a published brief until its
 client is granted the higher ceiling. This is a grant, not a code change.
+
+## Reconciling: `reconcile.py`
+
+The publish verb writes. `reconcile.py` beside it reads, and reports where the two
+systems have drifted apart. It changes nothing without `--repair --confirm`.
+
+```bash
+python3 skills/publish-brief/reconcile.py                 # report
+python3 skills/publish-brief/reconcile.py --json          # the same, machine readable
+python3 skills/publish-brief/reconcile.py --repair        # print the removals, change nothing
+python3 skills/publish-brief/reconcile.py --repair --confirm
+python3 skills/publish-brief/reconcile.py --self-check
+```
+
+Exit codes match the publish verb: `0` no drift · `3` drift or unknowns · `1` failed.
+
+| Class | What it means | Can it be indeterminate? |
+|---|---|---|
+| `dangling` | a pointer whose artefact does not exist | no — it is only ever raised on the determinate read |
+| `unknown` | the artefact could not be checked at all | this class **is** the indeterminate outcome |
+| `unlinked` | a brief-tagged artefact with no pointer from this owner | yes, when the artefact list cannot be read |
+| `duplicate` | one target carries two artefacts under one title, which a re-ingest under a fresh uuid produces | no, it is read entirely from the planner |
+| `metadata` | the pointer's filename and the artefact's title disagree | no, it needs the artefact, so it is determinate by definition |
+| `origin` | the pointer names a deployment that is not the owner's current connection, or the owner has no connection | no |
+| `ledger` | the local record disagrees with the planner: an unfinished publish, a pointer that no longer exists, or an ingest left unconfirmed | no |
+
+**Absence is never inferred from a "not found".** A brief is a `note`, the agent-surface
+client sits at the public-corpus ceiling, and it is told "not found" for a note whether or
+not one exists. So existence is decided on the knowledge base's own database, and where
+that read is unavailable every pointer is reported `unknown` with the reason. `--repair`
+only ever offers `dangling`, so an unknown can never be deleted.
+
+## Deletion semantics
+
+Nav holds no bytes for an external pointer, so no deletion on either side ever destroys
+the other side's content. What a deletion destroys is the **link**, and the rules are:
+
+| Deleted | Defined behaviour | What happens today |
+|---|---|---|
+| A project | every pointer on it goes with it; the artefact is untouched | as defined (`on delete cascade`) |
+| An action | the action-level pointer goes; a project-level pointer to the same artefact survives | as defined (`on delete cascade`) — **but see the gap below** |
+| The pointer row | the link goes, the artefact is untouched, no storage call is made | as defined |
+| The connection row | existing pointers survive and stay resolvable through the origin stamped on them; no new link can be made | as defined (the origin guard refuses an insert with no connection) |
+| The artefact | the pointer is left dangling and nothing notifies the planner | as defined; `reconcile` is the detector and `--repair` is the cure |
+
+**The gap, stated plainly.** When a brief is linked to an action and to nothing else,
+deleting that action removes the artefact's only link and nothing says so. The cascade is
+right — a link to an action is meaningless once the action is gone — so the fix is not a
+different foreign key, it is detection: `reconcile` reports it as `ledger` drift, naming
+the artefact and the pointer that vanished, and the cure is to run the publish verb against
+a target that still exists. Demoting the link to project level on delete was rejected: it
+would collide with an existing project-level link and make an ordinary action delete fail.
