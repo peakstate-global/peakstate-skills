@@ -273,6 +273,49 @@ def content_lines(text, keep_blank=False):
             yield i, line
 
 
+ATTRIBUTION_TERM = re.compile(
+    r"^\s*(?:<dt>|\*\*)?\s*Attribution\s*(?:</dt>|\*\*)?\s*:?\s*$", re.I)
+# What ends the entry. A blank line ends it in markdown; the next term ends it in
+# the rendered HTML, where the definition list has no blank lines at all. The
+# rendered page is what the scanner reads before a publish, so it is the case
+# that has to be right — getting this wrong exempts the whole provenance block
+# instead of one entry of it.
+ENTRY_END = re.compile(r"^\s*(?:<dt>|</dl>|\*\*[A-Z]|[A-Z][A-Za-z ]{2,30}$)", re.M)
+
+
+def attribution_lines(text):
+    """Line numbers of the Attribution entry in a provenance block.
+
+    Attribution's whole job is to name the toolchain, so the tooling class fires
+    on it every time — the model, the editor, the skill, the adversarial pass.
+    Those are deliberate disclosure, and a gate the author overrides on every
+    single publish has stopped being a gate.
+
+    The exemption is deliberately narrow. It covers the TOOLING class only, and
+    only inside this one entry. A token, a home path, a client name or anything
+    about a person still fires here exactly as it does anywhere else, because
+    none of those is what Attribution is for. Accountable, Limitations and
+    References are not exempt at all.
+
+    The entry runs from the term line to the next blank line, which is how a
+    definition list is written and how the block is authored.
+    """
+    lines = list(content_lines(text, keep_blank=True))
+    out = set()
+    inside = False
+    for line_no, line in lines:
+        if ATTRIBUTION_TERM.match(line):
+            inside = True
+            out.add(line_no)
+            continue
+        if inside:
+            if not line.strip() or ENTRY_END.match(line):
+                inside = False
+                continue
+            out.add(line_no)
+    return out
+
+
 def scan_text(text, rules):
     """Findings for one document.
 
@@ -283,6 +326,7 @@ def scan_text(text, rules):
     line_no is always the line the reader has to go and edit.
     """
     findings = []
+    exempt = attribution_lines(text)
     lines = list(content_lines(text))
     for idx, (line_no, line) in enumerate(lines):
         # join only to the physically next line: a blank line ends a paragraph,
@@ -296,6 +340,8 @@ def scan_text(text, rules):
                 continue
             for m in rule.pattern.finditer(hay):
                 if m.start() >= len(line):
+                    continue
+                if rule.cls == "tooling" and line_no in exempt:
                     continue
                 matched = " ".join(m.group(0).split())
                 if len(matched) > 120:
@@ -406,6 +452,46 @@ def self_check():
     for want in ("vibration foundation", "expression", "fulfilment"):
         if want not in got:
             failures.append(f"personal case: did not catch {want!r}")
+
+    # Attribution names the toolchain on purpose; everything else in the block does not
+    prov = """## Provenance statement
+
+Attribution
+: Claude Opus 5, in Claude Code. Built with the peakstate-brief skill and
+  audited under the SOURCED standard. Adversarial pass: same-model fresh thread.
+
+Accountable
+: A named person. Built with the peakstate-brief skill.
+
+Limitations
+: Your fulfilment baseline is not a source.
+"""
+    got = scan_text(prov, rules)
+    if any(f["class"] == "tooling" and f["line_no"] in (3, 4, 5) for f in got):
+        failures.append(f"the Attribution entry still fires on tooling: {[f for f in got if f['class']=='tooling']}")
+    if not any(f["class"] == "tooling" and f["line_no"] == 8 for f in got):
+        failures.append("the exemption leaked past Attribution into Accountable")
+    if not any(f["class"] == "personal" for f in got):
+        failures.append("Limitations was exempted, and must not be")
+
+    # the rendered form: a definition list with no blank lines in it
+    prov_html = """<dl class="prov">
+  <dt>Attribution</dt>
+  <dd>Claude Opus 5, in Claude Code, with the peakstate-brief skill.</dd>
+  <dt>Accountable</dt>
+  <dd>A named person, using the peakstate-brief skill.</dd>
+</dl>
+"""
+    got = scan_text(prov_html, rules)
+    if any(f["line_no"] == 3 for f in got):
+        failures.append(f"the rendered Attribution entry still fires: {got}")
+    if not any(f["class"] == "tooling" and f["line_no"] == 5 for f in got):
+        failures.append("the exemption swallowed the whole rendered definition list")
+
+    # the exemption is tooling-only: a secret in Attribution still fires
+    leaky = prov.replace("Claude Opus 5, in Claude Code.", "Token NAV_TOKEN=ory_at_abcdefghijklmnop1234.")
+    if not any(f["class"] == "secret" for f in scan_text(leaky, rules)):
+        failures.append("a credential inside Attribution was exempted")
 
     # a reference citing the private library with no origin: names the reference
     _LIB = "https://" + "prima" + ".irama" + ".org/artefact/a-video"
