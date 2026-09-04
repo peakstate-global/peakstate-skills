@@ -1,7 +1,73 @@
 (function () {
   'use strict';
+  /* ── where this document's state lives ──────────────────────────────────
+     Two homes, one seam. Normally it is this browser's localStorage. Published,
+     the brief is served inside a sandboxed frame with no allow-same-origin, so
+     its origin is opaque and localStorage does not merely come back empty --
+     reading the property THROWS. The page that frames it holds the storage
+     instead: it hands the whole store over on `brief-sync-init` and takes every
+     change back as `brief-store-set`. Everything else in this file goes through
+     get() and put() and never learns which of the two it is talking to.
+
+     HOSTED is the gate, and it is the same gate the sync uses: a published brief
+     inside a frame. An unpublished brief, a file:// copy, and a published brief
+     opened at the top level are all unaffected and behave exactly as before. */
+  var BRIEF = '', KEY = '';
+  var PUB = '', FRAMED = false, HOSTED = false;
+  var host = null;        // the origin the host page spoke from; pinned on the first init
+  var hostStore = null;   // the store the host handed over; null until it does
+
+  /* Reading is a seam too: in a frame with an opaque origin the getItem call
+     itself throws before it can return null. */
+  function get(k) {
+    if (HOSTED) return hostStore ? hostStore[k] : null;
+    try { return localStorage.getItem(k); } catch (e) { return null; }
+  }
+  /* ── writing to localStorage can THROW, not just fail: Safari treats a file://
+     page as an opaque origin, private mode and a full quota do the same. A bare
+     setItem there breaks every tick and every keystroke, so all writes go through
+     put() and the reader is told once, visibly, that nothing is being kept. ── */
+  var storeOK = true;
+  function put(k, v) {
+    if (HOSTED) {
+      /* No hostStore means no init ever arrived: there is nowhere to put this and
+         no origin to send it to, so it is dropped -- and the reader has already
+         been told, once, that nothing is being kept. Sending only on a change
+         keeps a fresh load from writing the host a value it just handed over. */
+      if (!hostStore || hostStore[k] === v) return !!hostStore;
+      hostStore[k] = v;
+      window.parent.postMessage({ v: 1, type: 'brief-store-set', data: hostStore }, host);
+      return true;
+    }
+    if (!storeOK) return false;
+    try { localStorage.setItem(k, v); return true; }
+    catch (e) { storeOK = false; warnNoPersist(); return false; }
+  }
+  function warnNoPersist(msg) {
+    if (document.getElementById('nopersist')) return;
+    var n = document.createElement('p');
+    n.id = 'nopersist';
+    n.setAttribute('role', 'status');
+    n.style.cssText = 'font:14px/1.55 system-ui,sans-serif;max-width:62ch;margin:1rem auto;' +
+      'padding:.75rem 1rem;border:1px solid #c9821f;border-radius:6px;background:#fdf3e3;color:#5a3c0a';
+    n.textContent = msg || 'This browser is not storing anything for this brief, so your ticks and ' +
+      'answers will be lost when you reload or close the page. Use "Download responses" before ' +
+      'you leave — it does not need storage. Opening the file from a web address instead of a ' +
+      'file:// path also fixes it.';
+    document.body.insertBefore(n, document.body.firstChild);
+  }
+  /* The host hands over a store shaped like localStorage itself: keys to strings.
+     A host that sends this brief's own blob instead means the same thing, so a
+     misreading of the protocol lands as a brief that works rather than as a
+     silently empty one. */
+  function normaliseStore(o) {
+    if (!o || typeof o !== 'object') return {};
+    if (o.ticks || o.answers || o.comments) { var one = {}; one[KEY] = JSON.stringify(o); return one; }
+    var out = {}, k;
+    for (k in o) if (typeof o[k] === 'string') out[k] = o[k];
+    return out;
+  }
   function init() {
-  var BRIEF = document.body.dataset.briefId || location.pathname;
   var isMac = /Mac|iP(hone|ad|od)/.test(navigator.platform || navigator.userAgent);
   var MOD = isMac ? '\u2318' : 'Ctrl-';
   /* Stroke SVGs rather than glyphs: the old \u21F2 / \u2194 pair for width read as
@@ -42,32 +108,9 @@
     tb.querySelector('h1').textContent = document.title;
     document.body.insertBefore(tb, document.body.firstChild);
   }
-  /* ── writing to localStorage can THROW, not just fail: Safari treats a file://
-     page as an opaque origin, private mode and a full quota do the same. A bare
-     setItem there breaks every tick and every keystroke, so all writes go through
-     put() and the reader is told once, visibly, that nothing is being kept. ── */
-  var storeOK = true;
-  function put(k, v) {
-    if (!storeOK) return false;
-    try { localStorage.setItem(k, v); return true; }
-    catch (e) { storeOK = false; warnNoPersist(); return false; }
-  }
-  function warnNoPersist() {
-    if (document.getElementById('nopersist')) return;
-    var n = document.createElement('p');
-    n.id = 'nopersist';
-    n.setAttribute('role', 'status');
-    n.style.cssText = 'font:14px/1.55 system-ui,sans-serif;max-width:62ch;margin:1rem auto;' +
-      'padding:.75rem 1rem;border:1px solid #c9821f;border-radius:6px;background:#fdf3e3;color:#5a3c0a';
-    n.textContent = 'This browser is not storing anything for this brief, so your ticks and ' +
-      'answers will be lost when you reload or close the page. Use "Download responses" before ' +
-      'you leave — it does not need storage. Opening the file from a web address instead of a ' +
-      'file:// path also fixes it.';
-    document.body.insertBefore(n, document.body.firstChild);
-  }
   /* ── shared UI prefs: theme (system/light/dark) + width (fixed/full) ── */
   var ui = { theme: 'auto', width: 'fixed', rate: 1 };
-  try { ui = Object.assign(ui, JSON.parse(localStorage.getItem('briefUI') || '{}')); } catch {}
+  try { ui = Object.assign(ui, JSON.parse(get('briefUI') || '{}')); } catch {}
   var THEMES = ['auto', 'light', 'dark'];
   var TICON = { auto: '\u25D0', light: '\u2600\uFE0E', dark: '\u263E' };
   var TLABEL = { auto: 'Theme: system', light: 'Theme: light', dark: 'Theme: dark' };
@@ -136,11 +179,10 @@
     var m = document.querySelector('main');
     if (m) m.id = 'briefMain';
   }
-  var KEY = 'brief:' + BRIEF;
   var state = { ticks: {}, answers: {}, notes: {}, edits: {}, comments: [], drafts: [] };
   if (!state.notes) state.notes = {};
   if (!state.edits) state.edits = {};
-  try { state = Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
+  try { state = Object.assign(state, JSON.parse(get(KEY) || '{}')); } catch {}
   if (!Array.isArray(state.drafts)) state.drafts = [];
   if (!Array.isArray(state.comments)) state.comments = [];
   /* The signature of what is currently persisted. save() stamps lastEdit only
@@ -1699,8 +1741,10 @@
   /* ── syncing a published brief ───────────────────────────────────────────
      A brief that is published is read on more than one device, so what the
      reader ticks, answers and comments has to leave the browser that typed it.
-     localStorage stays the source of truth. This whole section is layered OVER
-     the local path and never replaces it: an unpublished brief, a file:// copy
+     The local store stays the source of truth -- whether that store is this
+     browser's localStorage or the host page's, which is the storage seam's
+     business and not this section's. This whole section is layered OVER the
+     local path and never replaces it: an unpublished brief, a file:// copy
      and a reader with no network all behave exactly as they did before, and a
      failed write never blocks or discards a local one. A brief that needs the
      network to hold a comment has stopped being a document.
@@ -1714,9 +1758,10 @@
      Nothing at all happens unless <body> carries data-publish-slug. That gate is
      the first thing this section reads, so an unpublished brief posts no message
      and makes no request of any kind. */
-  var PUB = document.body.dataset.publishSlug || '';
-  var FRAMED = window.parent && window.parent !== window;
-  var host = null;        // the origin the host page spoke from; nothing is sent before it does
+  /* PUB, FRAMED, HOSTED and `host` are declared at the storage seam at the top
+     of this file, because the seam needs them before init() ever runs. By the
+     time anything here executes, `host` is already pinned (or the wait timed out
+     and this whole section stays idle, because flush() will not run without it). */
   var base = null;        // the last store Publish returned to THIS browser
   var seq = 0, inflight = 0, mode = '', needWrite = false;
   var pending = false, syncTimer = null, dropTimer = null, capWarned = false;
@@ -1891,27 +1936,12 @@
     clearTimeout(syncTimer);
     syncTimer = setTimeout(flush, delay || 1200);
   }
-  function syncSoon() { if (PUB && FRAMED) schedule(); }
+  function syncSoon() { if (HOSTED) schedule(); }
 
-  if (PUB && FRAMED) {
+  if (HOSTED) {
     window.addEventListener('message', function (e) {
       var d = e.data;
       if (!d || d.v !== 1 || e.source !== window.parent) return;
-      if (d.type === 'brief-sync-init') {
-        /* The host names its own origin by speaking first, and everything after
-           this goes to that origin alone. The document never has to be told an
-           address, and never broadcasts the reader's answers to whoever framed it.
-           Accepting the FIRST init is only safe because Publish serves the brief
-           with `Content-Security-Policy: ... frame-ancestors 'self'`, so no
-           third-party page can frame it and speak first. That header is a
-           load-bearing dependency of this code, not an incidental one: drop it
-           and any origin could frame the document and harvest the answers. */
-        if (host) return;
-        host = e.origin;
-        pending = true;
-        flush();
-        return;
-      }
       if (e.origin !== host || d.type !== 'brief-sync-res' || d.id !== inflight) return;
       var was = mode;
       inflight = 0;
@@ -1932,13 +1962,75 @@
       if (was === 'probe' && needWrite) write();
       else if (needWrite || pending) schedule();
     });
+    window.addEventListener('online', function () { pending = true; flush(); });
+    /* The hello went out before init() ran, so the very first round is due now.
+       A host that never answered leaves `host` null and flush() a no-op, which is
+       the idle state the protocol asks for. */
+    if (host) { pending = true; flush(); }
+  }
+  }
+
+  /* ── nothing runs until the state is here ────────────────────────────────
+     Unframed, get() answers synchronously and the first paint is already right.
+     Hosted, the state is a round trip away — so init() is HELD until it arrives
+     rather than being run twice against two different states. Holding it is what
+     makes the hosted path identical to the local one: every load-time migration,
+     every restored answer and every painted highlight runs once, in order, with
+     the real state already in hand.
+
+     The gap between the browser painting the HTML and init() running is the
+     dangerous part, because the answer boxes and tick boxes are plain markup and
+     are answerable before any script touches them. `inert` says "readable, not
+     answerable yet" with one native attribute and no overlay, and it is removed
+     whichever way the wait ends. A browser too old to know the attribute ignores
+     it and behaves as it does today. */
+  function boot() {
+    BRIEF = document.body.dataset.briefId || location.pathname;
+    KEY = 'brief:' + BRIEF;
+    PUB = document.body.dataset.publishSlug || '';
+    FRAMED = !!(window.parent && window.parent !== window);
+    HOSTED = !!(PUB && FRAMED);
+    if (!HOSTED) { init(); return; }
+    document.body.inert = true;
+    var started = false, wait;
+    function start() {
+      if (started) return;
+      started = true;
+      clearTimeout(wait);
+      document.body.inert = false;
+      init();
+    }
+    /* No init came. The brief still opens, so the reader is never left staring at
+       a document that will not answer — but hostStore stays null, so get() finds
+       nothing and put() keeps nothing, and no message is ever sent to a page that
+       does not speak this protocol. Empty and idle, with one line saying so. */
+    wait = setTimeout(function () {
+      warnNoPersist('The page holding this brief has not answered it, so nothing you tick, '
+        + 'answer or comment here is being kept — it will be gone when you reload or close '
+        + 'the page. Use "Download responses" before you leave, which needs no storage.');
+      start();
+    }, 8000);
+    window.addEventListener('message', function (e) {
+      var d = e.data;
+      if (!d || d.v !== 1 || e.source !== window.parent || d.type !== 'brief-sync-init') return;
+      /* The host names its own origin by speaking first, and everything after this
+         goes to that origin alone. The document never has to be told an address,
+         and never broadcasts the reader's answers to whoever framed it. Accepting
+         the FIRST init is only safe because Publish serves the brief with
+         `Content-Security-Policy: ... frame-ancestors 'self'`, so no third-party
+         page can frame it and speak first. That header is a load-bearing
+         dependency of this code, not an incidental one: drop it and any origin
+         could frame the document and harvest the answers. */
+      if (host) return;
+      host = e.origin;
+      hostStore = normaliseStore(d.state);
+      start();
+    });
     /* Carries no reader data — it only says this document is ready and asks the
        host to name itself. Answers and comments go to a known origin, never to '*'. */
     window.parent.postMessage({ v: 1, type: 'brief-sync-hello', briefId: BRIEF, slug: PUB }, '*');
-    window.addEventListener('online', function () { pending = true; flush(); });
   }
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 
 })();

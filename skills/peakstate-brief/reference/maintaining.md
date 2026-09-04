@@ -55,21 +55,40 @@ runs in. **Run it after any change to the sync section of `brief.js`.**
 ## What the host page owes a published brief
 
 The document is served inside a sandboxed frame with no `allow-same-origin`, so
-it cannot call the review endpoint itself. It does not try. The page that frames
-it makes the request; the document owns the protocol. Four messages, all
-`{ v: 1, type }`:
+its origin is opaque: it cannot call the review endpoint, and it cannot touch
+`localStorage` either — reading the property throws rather than returning null.
+The host owns both the network and the storage; the document owns the protocol.
+Five messages, all `{ v: 1, type }`:
 
 | Direction | Message | Meaning |
 |---|---|---|
 | doc → parent | `brief-sync-hello` `{briefId, slug}` | ready; carries no reader data, sent to `*` |
-| parent → doc | `brief-sync-init` | the host names its origin; everything after goes there alone |
+| parent → doc | `brief-sync-init` `{state}` | the host names its origin and hands over the store it holds; everything after goes to that origin alone |
+| doc → parent | `brief-store-set` `{data}` | keep this; fire and forget, no reply. The host writes its own `localStorage` |
 | doc → parent | `brief-sync-put` `{id, briefId, slug, base, next}` | forward `base`/`next` to `PUT /api/briefs/<briefId>/review` |
 | parent → doc | `brief-sync-res` `{id, ok, store, overCap}` | the 200 body, or `ok: false` on any error |
+
+`state` and `data` are both a **store**: a flat object of `localStorage`-shaped
+keys to string values, exactly what `brief-sync-res` returns as `store`. Two keys
+matter — `brief:<briefId>` holds the reader's answers, and `briefUI` holds the
+theme and width. `data` is the whole store each time, not one key, so the host
+does one write and never has to merge. `state` is `null` when the host holds
+nothing yet.
 
 The host adds `project` and `versionId` — it knows them from its own route, so
 they are not stamped into the document. Nothing is sent until the host answers
 the hello, so a brief framed by a page that does not implement this is a brief
 that behaves exactly as an unpublished one.
+
+**The document holds its render until the state arrives.** Unframed it reads
+storage synchronously and the first paint is already right; framed, the state is
+a round trip away, so the whole runtime is held until `brief-sync-init` lands and
+`<body>` is `inert` in the meantime. The answer boxes and tick boxes are plain
+markup and would otherwise be answerable before any script had touched them, and
+anything typed in that window would be overwritten the moment the state arrived.
+A host that never sends `init` releases the document after 8 seconds: it opens,
+readable and answerable, keeps nothing, sends nothing but the hello, and says so
+once in a banner.
 
 Each save is a probe and then a write. The probe re-sends the last store
 unchanged, which the server's tie rule resolves to what it already holds: a read
@@ -82,8 +101,9 @@ round re-applies the same intent.
 brief keeps running its old runtime forever — a fixed bug will look unfixed in the
 file the reader actually has. **Rebuild it from its markdown**, with the same
 `brief-id` and the same output path, then hard-refresh (⌘⇧R). Stored answers,
-comments and edits are keyed on the `brief-id` in localStorage, not on the file,
-so they survive the rebuild.
+comments and edits are keyed on the `brief-id` in the store, not on the file, so
+they survive the rebuild — in the reader's own `localStorage` normally, or in the
+host page's when the brief is being read on Publish.
 
 **If the reader has a copy elsewhere — Drive, an inbox, their desktop — send them
 the rebuilt file.** There is no way to upgrade a copy in place any more, and that
