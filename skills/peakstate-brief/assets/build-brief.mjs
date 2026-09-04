@@ -20,7 +20,7 @@
    the day a brief needs reference links, setext headings or autolink edge
    cases. */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, realpathSync } from 'node:fs';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -818,7 +818,11 @@ export function render(source, opts = {}) {
     .replace(/<main>[\s\S]*<\/main>/, '<main>\n\n' + out.join('\n\n') + '\n\n</main>');
 }
 
-const invoked = process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).href;
+/* Compare real paths, not the raw argv path: ~/.claude/skills is symlinked into
+   the skills repo, so the documented invocation reaches this file by a path that
+   never equals import.meta.url. That mismatch made the CLI a silent no-op —
+   exit 0, no output, no file — which is the worst possible failure for a build. */
+const invoked = process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1]);
 if (invoked) {
   const args = process.argv.slice(2);
   const publish = args.includes('--publish');
