@@ -244,6 +244,22 @@ assert.ok(!published.includes('Private prose citing a source'), 'the publish ren
 assert.ok(!published.includes('id="s-private-section"'), 'the dropped section leaves no anchor behind');
 assert.ok(published.includes('Public prose leaning on a source'), 'the publish render keeps everything else');
 
+/* The directive before a part's first section marks the whole part. It has to
+   land somewhere: falling through printed it as prose and published the lede. */
+const PART_SRC = [
+  '---', 'title: Part fixture', '---', '',
+  '# Kept', '', '## Contents', '', '## A', '', 'Kept prose.', '',
+  '# Withheld', 'private: true', '', 'A lede that is meant to be private.', '',
+  '## B', '', 'More private prose.', '',
+].join('\n');
+const pOrdinary = render(PART_SRC);
+const pPublished = render(PART_SRC, { publish: true });
+assert.ok(pOrdinary.includes('A lede that is meant to be private'), 'the ordinary render keeps the part');
+assert.ok(!pPublished.includes('A lede that is meant to be private'), 'the publish render drops the whole part');
+assert.ok(!pPublished.includes('More private prose'), 'including its sections');
+assert.ok(!pOrdinary.includes('private: true'), 'the directive never prints as prose');
+assert.ok(pPublished.includes('Kept prose.'), 'the surviving part is untouched');
+
 /* The directive is metadata, not prose. It must not print in either render. */
 assert.ok(!ordinary.includes('private: true'), 'the directive never reaches the ordinary page');
 assert.ok(!published.includes('private: true'), 'the directive never reaches the published page');

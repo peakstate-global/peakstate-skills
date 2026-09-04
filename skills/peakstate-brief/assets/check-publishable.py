@@ -54,7 +54,30 @@ DEFAULT_TERMS = Path.home() / ".claude" / "brief-private-terms.txt"
 # document — which is a scanner that reports every brief clean. Pairing to the
 # first real closing tag is what a browser does, and it is right for the same
 # reason: an escaped `<\/script>` in a JS string is not a closing tag.
-SKIP_REGION = re.compile(r"<(script|style)\b[^>]*>.*?</\1\s*>", re.S | re.I)
+#
+# A <script> with a non-JavaScript type is DATA, not machinery. An editable
+# document keeps its markdown in <script type="text/markdown"> and the rendered
+# <div> beside it is empty until the runtime fills it, so that script is the
+# only copy of what the brief says. Blanking it made the scanner report those
+# briefs clean while they carried whatever they carried.
+SKIP_REGION = re.compile(r"<(script|style)\b([^>]*)>(.*?)</\1\s*>", re.S | re.I)
+SCRIPT_TYPE = re.compile(r"""type\s*=\s*["']([^"']+)["']""", re.I)
+JS_TYPES = {"text/javascript", "application/javascript", "module", "importmap"}
+
+
+def _blank(s):
+    """Same shape, no content: newlines kept, everything else spaced out."""
+    return re.sub(r"[^\n]", " ", s)
+
+
+def _blank_machinery(m):
+    whole, attrs, body = m.group(0), m.group(2) or "", m.group(3)
+    if m.group(1).lower() == "script" and body:
+        ty = SCRIPT_TYPE.search(attrs)
+        if ty and ty.group(1).strip().lower() not in JS_TYPES:
+            head, tail = whole.split(body, 1)
+            return _blank(head) + body + _blank(tail)
+    return "\n" * whole.count("\n")
 
 
 class Rule:
@@ -65,8 +88,14 @@ class Rule:
     rather than as the author's own number.
     """
 
-    def __init__(self, cls, pattern, why, suggest=None, gate=None, flags=re.I):
+    def __init__(self, cls, pattern, why, suggest=None, gate=None, flags=re.I,
+                 disclosable=False):
         self.cls = cls
+        # `disclosable` means this is a thing the provenance block's Attribution
+        # entry exists to state. Those rules, and only those, are exempt inside
+        # that entry. An absolute home path is tooling too, and is never
+        # something Attribution needs to say.
+        self.disclosable = disclosable
         self.pattern = re.compile(pattern, flags)
         self.why = why
         self.suggest = suggest
@@ -148,23 +177,23 @@ RULES = [
     Rule("personal", r"\bAndrew\b|\bRamsden\b", "the author named", flags=0),
 
     # ---- 2. tooling exhaust --------------------------------------------------
-    Rule("tooling", r"\bPRIMA\b", "the author's private library named", flags=0),
+    Rule("tooling", r"\bPRIMA\b", "the author's private library named", flags=0, disclosable=True),
     Rule("tooling", r"\bcorpus\b",
-         "a search of the author's private library described as method"),
+         "a search of the author's private library described as method", disclosable=True),
     Rule("tooling", r"\b(?:searched|search(?:ing)?|queried)\s+(?:the\s+)?(?:library|corpus|artefacts?)\b",
-         "the retrieval mechanics of a private library"),
+         "the retrieval mechanics of a private library", disclosable=True),
     Rule("tooling", r"\b\d{2,4}[-–+]?\s*(?:plus\s*)?artefacts?\b",
-         "the size of the author's private library"),
+         "the size of the author's private library", disclosable=True),
     Rule("tooling", r"/(?:Users|home)/[A-Za-z0-9._-]+(?:/[^\s\"'<>)\]]+)*",
          "an absolute path from the author's machine", suggest=_redact_path),
     Rule("tooling", r"(?<![\w/])/(?:nav-pull|nav-push|driver|to-driver|flush|prima|to-prima|sourced|impeccable|handoff|commit|merge|push|prune|options|voice|wizard|prototype|to-spec|to-tickets|implement|share-brief|brief-comments|publish-brief|localhost)\b",
-         "a named skill or slash command, which is workflow narration"),
+         "a named skill or slash command, which is workflow narration", disclosable=True),
     Rule("tooling", r"\bpeakstate-(?:brief|deck|skills)\b|\birama-skills\b|\bXCOACH\b",
-         "a private repo or skill name", flags=0),
+         "a private repo or skill name", flags=0, disclosable=True),
     Rule("tooling", r"\badversarial (?:pass|review|reviewer)\b|\bsub-?agent\b|\bfresh thread\b|\bcross-model pass\b",
-         "agent mechanics behind the brief"),
+         "agent mechanics behind the brief", disclosable=True),
     Rule("tooling", r"\bClaude Code\b|\bcodex\b|\bOpus 5\b|\bclaude-opus\b",
-         "the tooling the brief was written with", flags=0),
+         "the tooling the brief was written with", flags=0, disclosable=True),
     Rule("tooling", r"\blocalStorage\b|\blocalhost:\d+\b",
          "local runtime detail"),
 
@@ -249,8 +278,14 @@ def check_references(text):
 
 
 def load_terms(path):
-    """Extra private terms, one per line. Missing file is not an error."""
+    """Extra private terms, one per line.
+
+    A missing file is not an error, but it IS a weaker scan — the people-name
+    rules all live here — so it says so rather than quietly reporting clean.
+    """
     if not path or not Path(path).exists():
+        print(f"note: no private-terms file at {path} — names are not being checked",
+              file=sys.stderr)
         return []
     lines = Path(path).read_text(encoding="utf-8").splitlines()
     terms = [l.strip() for l in lines if l.strip() and not l.lstrip().startswith("#")]
@@ -267,7 +302,7 @@ def content_lines(text, keep_blank=False):
     nothing but noise, and skipping the regions rather than the lines keeps
     every line_no true to the file on disk.
     """
-    text = SKIP_REGION.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    text = SKIP_REGION.sub(_blank_machinery, text)
     for i, line in enumerate(text.splitlines(), 1):
         if keep_blank or line.strip():
             yield i, line
@@ -341,7 +376,7 @@ def scan_text(text, rules):
             for m in rule.pattern.finditer(hay):
                 if m.start() >= len(line):
                     continue
-                if rule.cls == "tooling" and line_no in exempt:
+                if rule.disclosable and line_no in exempt:
                     continue
                 matched = " ".join(m.group(0).split())
                 if len(matched) > 120:
@@ -492,6 +527,31 @@ Limitations
     leaky = prov.replace("Claude Opus 5, in Claude Code.", "Token NAV_TOKEN=ory_at_abcdefghijklmnop1234.")
     if not any(f["class"] == "secret" for f in scan_text(leaky, rules)):
         failures.append("a credential inside Attribution was exempted")
+
+    # a <script> holding markdown is the document, not the runtime
+    doc = """<div data-doc="x"></div>
+<script type="text/markdown">
+Your HRV baseline sits at 35.
+</script>
+<script>
+var hrv = 'your HRV baseline sits at 35';
+</script>
+"""
+    got = scan_text(doc, rules)
+    if not any(f["line_no"] == 3 for f in got):
+        failures.append(f"a text/markdown data block was skipped as machinery: {got}")
+    if any(f["line_no"] == 6 for f in got):
+        failures.append("the real runtime was scanned as content")
+
+    # the Attribution exemption covers what Attribution states, not everything tooling
+    att = f"""Attribution
+: Built with the peakstate-brief skill, from {_HOME}/LOCAL-DEV/x/y.md.
+"""
+    got = scan_text(att, rules)
+    if any("peakstate-brief" in f["matched_text"] for f in got):
+        failures.append("the skill name was not exempted inside Attribution")
+    if not any(f["matched_text"].startswith("/Users") for f in got):
+        failures.append("an absolute home path was exempted inside Attribution")
 
     # a reference citing the private library with no origin: names the reference
     _LIB = "https://" + "prima" + ".irama" + ".org/artefact/a-video"

@@ -494,7 +494,13 @@ function outline(body) {
       }
       continue;
     }
-    if (cur && PRIVATE_DIRECTIVE.test(trimmed)) { cur.private = true; continue; }
+    /* Before the first section of a part, the directive marks the PART. It has
+       to land somewhere: falling through printed `private: true` as prose in
+       both renders and published the lede it was meant to withhold. */
+    if (PRIVATE_DIRECTIVE.test(trimmed)) {
+      (cur || parts[parts.length - 1]).private = true;
+      continue;
+    }
     sink.push(line);
   }
   parts.forEach((p) => { if (p.title) p.id = p.id || null; });
@@ -697,6 +703,7 @@ function checkAnchors(html) {
 function dropPrivate(parts) {
   const has = (p) => p.sections.length || p.lede.some((l) => l.trim());
   return parts
+    .filter((p) => !p.private)
     .map((p) => ({ ...p, sections: p.sections.filter((s) => !s.private) }))
     .filter(has);
 }
