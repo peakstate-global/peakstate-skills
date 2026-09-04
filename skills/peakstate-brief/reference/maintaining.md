@@ -32,6 +32,17 @@ All booleans true + `errors: []` = pass. The fixture must keep its `[data-doc]`
 block: the editor half of the suite is skipped when a page has none, and a
 skipped check reads exactly like a passing one.
 
+For the same reason it must keep its contents section, its `.summary-page`, the
+definitions section inside that page and the reference list below it. The last
+block of the suite covers the summary copy path — that the contents render above
+the page and the definitions inside it, that a part lede citing a source carries
+its own collapsed evidence block, and that "Copy summary as markdown" appends a
+`## References` list of only the sources that part cites while dropping the
+evidence block rather than flattening it. Take the summary page away and the
+suite prints `FIXTURE BROKEN` and exits 1, rather than passing on nothing. The
+lede deliberately cites refs 1 and 3 and never ref 2, so a regression that
+copied the whole reference list would fail.
+
 ## Updating an existing brief's runtime
 
 `brief.css` / `brief.js` are **inlined into each brief at build time**, so an old

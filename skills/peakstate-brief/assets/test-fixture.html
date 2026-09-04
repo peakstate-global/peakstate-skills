@@ -32,7 +32,64 @@
 
 <!-- FIXTURE — the page assets/smoke-test.mjs drives. It must keep one question,
      one plain section and one [data-doc] carrying a heading of each level, a
-     list, a quote and a table, because the suite asserts against all of them. -->
+     list, a quote and a table, because the suite asserts against all of them.
+
+     It must ALSO keep the contents, the .summary-page, the definitions section
+     inside it and the reference list below, hand-written here in the shape
+     build-brief.mjs emits. The summary copy path only exists on a page that has
+     all four, and the suite fails loudly rather than skipping if one goes
+     missing. The part lede cites refs 1 and 3 and NOT ref 2, so the copied
+     References list has something to leave out. -->
+
+<section class="brief-section" id="s-toc" data-sec="toc">
+  <div class="sec-head">
+    <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
+    <h3>Contents</h3>
+  </div>
+  <div class="sec-body">
+<nav class="toc">
+  <p><b><a href="#part-1">Part one — The verdict</a></b></p>
+  <ol>
+    <li><a href="#s-definitions">Definitions</a> <span class="tnote">what the words mean here</span></li>
+  </ol>
+</nav>
+  </div>
+</section>
+
+<div class="summary-page">
+
+<h2 class="part" id="part-1"><span class="pnum">Part one</span> The verdict</h2>
+
+<p class="partlede">The runtime ships the summary copy button, and the paste has to
+carry the footnotes rather than bare digits.<sup class="fn"><a href="#ref1">1</a></sup>
+The second source is listed but never cited from this lede, so it must not appear in
+the copied References list.<sup class="fn"><a href="#ref3">3</a></sup></p>
+
+<details class="l5">
+    <summary>Anthropic (2026); Microsoft (2026).<span class="l5n">2 quotes</span></summary>
+    <div class="l5body">
+      <blockquote class="pull"><a class="l5src" href="#ref1">Anthropic (2026)</a>"A quote that must be dropped from the paste, not flattened into it."</blockquote>
+      <blockquote class="pull"><a class="l5src" href="#ref3">Microsoft (2026)</a>"A second quote, likewise dropped."</blockquote>
+    </div>
+  </details>
+
+<section class="brief-section" id="s-definitions" data-sec="definitions">
+  <div class="sec-head">
+    <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
+    <h3>Definitions</h3>
+  </div>
+  <div class="sec-body">
+    <div class="defs-in">
+      <div class="term">
+        <h4>Summary page</h4>
+        <p>The boxed first part of a brief: the verdict, read before anything else.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
 <section class="brief-section" data-sec="overview">
   <div class="sec-head">
     <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
@@ -101,6 +158,26 @@ First paragraph with **bold** and *italic* and `code`.
 Another paragraph.
       </script>
     </div>
+  </div>
+</section>
+
+<section class="brief-section" id="s-references" data-sec="references">
+  <div class="sec-head">
+    <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
+    <h3>References</h3>
+  </div>
+  <div class="sec-body">
+<ol class="reflist">
+  <li id="ref1"><span class="rnum">1</span>Anthropic. (2026). <em>Agent Skills</em>. Claude Platform Docs. Retrieved September 4, 2026, from <a href="https://example.invalid/one">https://example.invalid/one</a></li>
+</ol>
+
+<ol class="reflist">
+  <li id="ref2"><span class="rnum">2</span>Uncited Author. (2026). <em>Never cited from the summary</em>. Retrieved September 4, 2026, from <a href="https://example.invalid/two">https://example.invalid/two</a></li>
+</ol>
+
+<ol class="reflist">
+  <li id="ref3"><span class="rnum">3</span>Microsoft. (2026). <em>Use Copilot Cowork</em>. Microsoft Learn. Retrieved September 4, 2026, from <a href="https://example.invalid/three">https://example.invalid/three</a></li>
+</ol>
   </div>
 </section>
 </main>

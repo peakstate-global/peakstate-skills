@@ -26,7 +26,7 @@ await page.locator('section[data-q="Q1"] .q-body')
 const collapsed = await page.locator('section[data-q="Q1"] .q-body').isHidden();
 const okProgress2 = (await page.locator('#progress').textContent()) === '1/1 questions resolved';
 // selection comment
-await page.locator('section.brief-section .sec-body p').first().selectText();
+await page.locator('section[data-sec="overview"] .sec-body p').first().selectText();
 await page.mouse.up();
 await page.waitForSelector('#cpop', { timeout: 3000 });
 // the popover must NOT steal the selection — plain copy has to keep working
@@ -64,7 +64,7 @@ await page.fill('#cpop textarea', 'crosses an element boundary');
 await page.click('#cpop [data-act="save"]');
 const crossMarks = await page.locator('mark.cmt').count() - reanchored;
 // draft recovery: type, then dismiss without saving
-await page.locator('section.brief-section .sec-body p').last().selectText();
+await page.locator('section[data-sec="overview"] .sec-body p').last().selectText();
 await page.mouse.up();
 await page.waitForSelector('#cpop', { timeout: 3000 });
 await page.fill('#cpop textarea', 'an abandoned draft');
@@ -179,5 +179,47 @@ const drawerOpensInOneClick = await page.locator('#cdrawer').isVisible();
 await cbtn.click(); await page.waitForTimeout(80);
 const drawerClosesInOneClick = await page.locator('#cdrawer').isHidden();
 console.log(JSON.stringify({ drawerOpensInOneClick, drawerClosesInOneClick, jsErrors: errors }, null, 1));
+
+// ── summary page: placement, and "Copy summary as markdown" ─────────────
+/* The copy path only exists on a page carrying a .summary-page, so the fixture
+   losing one would skip this whole block — and a skipped check reads exactly
+   like a passing one. Refuse to finish instead. */
+const summaryCount = await page.locator('.summary-page').count();
+const tocCount = await page.locator('section[data-sec="toc"]').count();
+if (!summaryCount || !tocCount) {
+  console.error('FIXTURE BROKEN: test.html must carry a .summary-page and a ' +
+    'section[data-sec="toc"]. The summary copy assertions cannot run without them.');
+  await browser.close();
+  process.exit(1);
+}
+
+// the contents sit ABOVE the summary page, and the definitions INSIDE it
+const contentsAboveSummary = await page.evaluate(() =>
+  document.querySelector('section[data-sec="toc"]')
+    .compareDocumentPosition(document.querySelector('.summary-page'))
+    === Node.DOCUMENT_POSITION_FOLLOWING);
+const definitionsInsideSummary =
+  await page.locator('.summary-page section[data-sec="definitions"]').count() === 1;
+// the part lede that cites sources carries its own collapsed evidence block
+const ledeHasEvidence =
+  await page.locator('.summary-page > details.l5').count() === 1;
+
+await page.click('.summary-page .pagecopy');
+const smd = await page.evaluate(() => navigator.clipboard.readText());
+const refsBlock = (smd.split('## References')[1] || '').trim();
+const summaryHasRefs = /\n## References\n/.test(smd);
+// only the sources this part cites — 1 and 3, never the uncited 2
+const refNumbers = refsBlock.split('\n').filter(l => /^\d+\. /.test(l.trim()))
+  .map(l => parseInt(l.trim(), 10));
+const refsOnlyCited = JSON.stringify(refNumbers) === JSON.stringify([1, 3]);
+const uncitedAbsent = !/Uncited Author/.test(smd);
+// the collapsed evidence block is DROPPED, not flattened into the paste
+const evidenceDropped = !/dropped from the paste/.test(smd)
+  && !/likewise dropped/.test(smd) && !/2 quotes/.test(smd);
+const summaryHasVerdict = /The runtime ships the summary copy button/.test(smd);
+const summaryHasDefinitions = /Summary page/.test(smd.split('## References')[0]);
+console.log(JSON.stringify({ contentsAboveSummary, definitionsInsideSummary, ledeHasEvidence,
+  summaryHasRefs, refNumbers, refsOnlyCited, uncitedAbsent, evidenceDropped,
+  summaryHasVerdict, summaryHasDefinitions }, null, 1));
 
 await browser.close();
