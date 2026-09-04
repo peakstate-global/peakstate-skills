@@ -802,17 +802,28 @@ label.tick {
 .sec-head:hover label.tick, .q-head:hover label.tick,
 .sec-head:focus-within label.tick, .q-head:focus-within label.tick,
 label.tick:has(input:checked) { opacity: 1; transform: translateX(0); }
+/* The heading makes room whenever the box is VISIBLE, which is hover, keyboard
+   focus, or checked — not hover alone. A checked box is pinned open, so an
+   offset that only fires on hover drops the heading back under it the moment
+   the pointer leaves and the tick lands on top of the first word. */
 .sec-head:hover h3, .q-head:hover h3, .sec-head:hover h2, .q-head:hover h2,
 .sec-head:focus-within h3, .q-head:focus-within h3,
-.sec-head:focus-within h2, .q-head:focus-within h2 { transform: translateX(2.1rem); }
+.sec-head:focus-within h2, .q-head:focus-within h2,
+.sec-head:has(input:checked) h3, .q-head:has(input:checked) h3,
+.sec-head:has(input:checked) h2, .q-head:has(input:checked) h2 { transform: translateX(2.1rem); }
 
-/* A touch device has no hover, so the offer has to be standing. */
-@media (hover: none) { label.tick { opacity: 1; transform: none; } }
+/* A touch device has no hover, so the offer has to be standing — and so does
+   the room for it. */
+@media (hover: none) {
+  label.tick { opacity: 1; transform: none; }
+  .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transform: translateX(2.1rem); }
+}
+/* Reduced motion kills the ANIMATION, never the offset. Removing the transform
+   here is what would put the tick back on top of the heading, for exactly the
+   readers least able to tolerate it. */
 @media (prefers-reduced-motion: reduce) {
   label.tick, .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transition: none; }
   .sec-body, .q-body, .l5 { transition: none; }
-  .sec-head:hover h3, .q-head:hover h3, .sec-head:hover h2, .q-head:hover h2,
-  .sec-head:focus-within h3, .q-head:focus-within h3 { transform: none; }
 }
 
 /* ── request 2 — the summary is a page ─────────────────────────────
