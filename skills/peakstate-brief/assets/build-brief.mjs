@@ -405,11 +405,19 @@ function frontMatter(src) {
 
 const HEAD = /^(#{1,2})\s+(.*?)(?:\s*\{#([^}]+)\})?(?:\s*::\s*(.*))?$/;
 
+/* `private: true` on its own line anywhere in a section marks it as never
+   publishable. It is stripped from BOTH renders, because it is metadata about
+   the section rather than something the section says. Written the long way
+   rather than as a heading flag so it is visible while editing: the whole risk
+   this guards against is a section that was meant to be private and did not
+   look private in the source. */
+const PRIVATE_DIRECTIVE = /^private:\s*true\s*$/i;
+
 /* One pass down the file, cutting it at part (#) and section (##) headings.
    A heading inside a fence or a ::: container is content, not structure. */
 function outline(body) {
   const parts = [{ title: null, lede: [], sections: [] }];
-  let fence = null, depth = 0, sink = parts[0].lede;
+  let fence = null, depth = 0, sink = parts[0].lede, cur = null;
   for (const line of body.split('\n')) {
     const trimmed = line.trim();
     if (fence) { sink.push(line); if (/^[`~]+$/.test(trimmed) && trimmed.startsWith(fence)) fence = null; continue; }
@@ -425,6 +433,7 @@ function outline(body) {
       if (h[1] === '#') {
         parts.push({ title: h[2], lede: [], sections: [], id: h[3] || null });
         sink = parts[parts.length - 1].lede;
+        cur = null;
       } else {
         const q = /^Q(\d+)\s+(.*)$/.exec(h[2]);
         const sec = {
@@ -436,9 +445,11 @@ function outline(body) {
         };
         parts[parts.length - 1].sections.push(sec);
         sink = sec.lines;
+        cur = sec;
       }
       continue;
     }
+    if (cur && PRIVATE_DIRECTIVE.test(trimmed)) { cur.private = true; continue; }
     sink.push(line);
   }
   parts.forEach((p) => { if (p.title) p.id = p.id || null; });
@@ -593,12 +604,48 @@ export function darkModeFaults(html) {
   return [...new Set(faults)];
 }
 
+/* Every `#anchor` the document links to must exist in the document.
+
+   The footnote gate already catches a marker with no target. This catches the
+   other half, and it is the half that dropping a section creates: a contents
+   entry or a hand-written cross-reference pointing at a section that is no
+   longer there. A dead internal link is invisible to the author, who renders
+   the ordinary version and never clicks it, and obvious to the stranger. */
+function checkAnchors(html) {
+  const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  const dead = [...new Set([...html.matchAll(/\bhref="#([^"]+)"/g)]
+    .map((m) => m[1]).filter((a) => a && !ids.has(a)))];
+  if (dead.length) throw new Error('internal links with no target: #' + dead.join(', #'));
+}
+
+/* Drop every section marked `private: true`, and any part left with nothing.
+
+   Numbers are NOT renumbered. A footnote keeps the number it has in the
+   ordinary render, so a reference cited only from a dropped section stays in
+   the list, uncited. That is deliberate: renumbering would make the two
+   documents say different things for a reason that is not privacy, and it
+   would break a citation anyone has already written down. An uncited entry in
+   a reference list is a bibliography, which is a thing readers already know.
+
+   Part NUMBERING does shift when a whole part goes, because the alternative is
+   a part heading with nothing underneath it — a visible hole that announces
+   the removal it was supposed to make quiet. */
+function dropPrivate(parts) {
+  const has = (p) => p.sections.length || p.lede.some((l) => l.trim());
+  return parts
+    .map((p) => ({ ...p, sections: p.sections.filter((s) => !s.private) }))
+    .filter(has);
+}
+
 export function render(source, opts = {}) {
   /* Line endings and a BOM are editor artefacts, never content. Normalising
      here is what makes the same source render the same page on any machine. */
   const src = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const [meta, body] = frontMatter(src);
-  const parts = outline(body);
+  /* Dropping runs before the anchor index is built, so a footnote DEFINITION
+     that lived in a private section still fails the build loudly rather than
+     orphaning every marker that cited it. That gate is not weakened here. */
+  const parts = opts.publish ? dropPrivate(outline(body)) : outline(body);
   const { anchors, index } = collectAnchors(parts);
   const refs = { anchors, missing: [] };
   const ctx = { refs, index };
@@ -636,6 +683,7 @@ export function render(source, opts = {}) {
 
   const dark = darkModeFaults(out.join('\n'));
   if (dark.length) throw new Error(dark.join('\n'));
+  checkAnchors(out.join('\n'));
 
   const template = inlineRuntime(opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8'), opts);
   const addressed = meta.addressed ? ' data-addressed="' + escAttr(meta.addressed) + '"' : '';
@@ -644,10 +692,17 @@ export function render(source, opts = {}) {
      which highlights are now part of the document rather than of one browser. */
   const consumed = meta.consumed ? ' data-consumed="' + escAttr(meta.consumed) + '"' : '';
   const baked = meta.highlights ? ' data-highlights="' + escAttr(meta.highlights) + '"' : '';
+  /* Publish-only, and private unless the front matter says otherwise. The
+     ordinary render never carries these, so a brief that was never published
+     cannot be mistaken for one that was. */
+  const pub = opts.publish
+    ? ' data-publish-slug="' + escAttr(meta['publish-slug'] || slug(meta.title || 'brief')) + '"' +
+      ' data-visibility="' + escAttr(meta.visibility || 'private') + '"'
+    : '';
   return template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + consumed + baked + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + consumed + baked + pub + '>')
     .replace(/<main>[\s\S]*<\/main>/, '<main>\n\n' + out.join('\n\n') + '\n\n</main>');
 }
 

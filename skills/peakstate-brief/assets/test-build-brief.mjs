@@ -161,6 +161,109 @@ assert.doesNotThrow(() => render(svg('<text fill="var(--muted)">label</text>')),
 assert.throws(() => render('# P\n\n## S\n\n:::html\n<style>.diag text { fill: #222 }</style>\n:::\n'),
   /ship in brief.css/, 'a brief re-declaring the shared diagram rules is a build error');
 
+/* ── publish render: private sections ────────────────────────────────────
+   The whole permitted difference between the two renders. A published brief
+   may drop a `private:` section and nothing else, so these check both that the
+   section goes and that everything around it survives intact. */
+
+const PUB_SRC = [
+  '---',
+  'title: Publish fixture',
+  'publish-slug: publish-fixture',
+  'visibility: unlisted',
+  '---',
+  '',
+  '# Part one',
+  '',
+  '## Contents',
+  '',
+  '## Public section',
+  '',
+  'Public prose leaning on a source[^1].',
+  '',
+  '## Private section',
+  'private: true',
+  '',
+  'Private prose citing a source nothing else cites[^2].',
+  '',
+  '## References',
+  '',
+  '[^1]: Author, A. (2020). A public source. https://example.com/a',
+  '> a quoted sentence -- p. 1',
+  '',
+  '[^2]: Author, B. (2021). Cited only from the private section. https://example.com/b',
+  '> another quoted sentence -- p. 2',
+  '',
+].join('\n');
+
+const ordinary = render(PUB_SRC);
+const published = render(PUB_SRC, { publish: true });
+
+assert.ok(ordinary.includes('Private prose citing a source'), 'the ordinary render keeps the private section');
+assert.ok(!published.includes('Private prose citing a source'), 'the publish render drops the private section');
+assert.ok(!published.includes('id="s-private-section"'), 'the dropped section leaves no anchor behind');
+assert.ok(published.includes('Public prose leaning on a source'), 'the publish render keeps everything else');
+
+/* The directive is metadata, not prose. It must not print in either render. */
+assert.ok(!ordinary.includes('private: true'), 'the directive never reaches the ordinary page');
+assert.ok(!published.includes('private: true'), 'the directive never reaches the published page');
+
+/* Contents is generated from the parts that survive, so it cannot list a
+   section that is no longer in the document. */
+const tocOf = (h) => /<nav class="toc">[\s\S]*?<\/nav>/.exec(h)[0];
+assert.ok(tocOf(ordinary).includes('#s-private-section'), 'the ordinary contents lists the private section');
+assert.ok(!tocOf(published).includes('#s-private-section'), 'the published contents does not');
+
+/* Every internal link resolves in both renders. render() throws when one does
+   not, so reaching here already proves it; asserting it makes the guarantee
+   visible in the test rather than implied by the absence of an exception. */
+for (const [label, html] of [['ordinary', ordinary], ['published', published]]) {
+  const main = /<main>[\s\S]*<\/main>/.exec(html)[0];
+  const ids = new Set([...main.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  for (const m of main.matchAll(/\bhref="#([^"]+)"/g)) {
+    assert.ok(ids.has(m[1]), label + ' render has a dead internal link: #' + m[1]);
+  }
+}
+
+/* A reference cited only from a dropped section keeps its number and its entry.
+   Renumbering would change what the two documents say for a reason that is not
+   privacy, and would break a citation already written down. */
+assert.ok(published.includes('id="ref2"'), 'the uncited reference survives with its number');
+assert.ok(published.includes('Cited only from the private section'), 'and with its entry');
+assert.ok(!/<sup class="fn"><a href="#ref2/.test(published), 'nothing cites it in the published render');
+assert.ok(/<sup class="fn"><a href="#ref1/.test(published), 'the surviving citation still points at ref1');
+
+/* Dropping the section that DEFINES a footnote must still fail the build. That
+   gate predates publish mode and publish mode must not weaken it. */
+assert.throws(
+  () => render(PUB_SRC.replace('## References\n', '## References\nprivate: true\n'), { publish: true }),
+  /footnote markers with no target/,
+  'a private section holding a footnote definition is a build error, not a dead link',
+);
+
+/* A cross-reference into a dropped section is the other way to orphan a link. */
+const CROSSREF = PUB_SRC.replace(
+  'Public prose leaning on a source[^1].',
+  'Public prose leaning on a source[^1], see [the detail](#s-private-section).',
+);
+assert.doesNotThrow(() => render(CROSSREF), 'the cross-reference is fine in the ordinary render');
+assert.throws(() => render(CROSSREF, { publish: true }),
+  /internal links with no target/,
+  'a link into a dropped section is a build error, not a dead link the reader finds');
+
+/* Front matter the publish render carries, and the ordinary one must not. */
+assert.ok(published.includes('data-publish-slug="publish-fixture"'), 'the publish slug lands on <body>');
+assert.ok(published.includes('data-visibility="unlisted"'), 'visibility lands on <body>');
+assert.ok(!ordinary.includes('data-publish-slug'), 'an unpublished render carries no publish marks');
+assert.equal(
+  /data-visibility="([^"]*)"/.exec(render(PUB_SRC.replace('visibility: unlisted\n', ''), { publish: true }))[1],
+  'private',
+  'visibility defaults to private',
+);
+
+assert.equal(render(PUB_SRC), ordinary, 'the ordinary render is deterministic');
+assert.equal(render(PUB_SRC, { publish: true }), published, 'the publish render is deterministic');
+
 /* ── reproducibility ─────────────────────────────────────────────────────── */
 
 assert.equal(render(src), html, 'rendering is deterministic');
