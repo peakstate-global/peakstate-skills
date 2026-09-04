@@ -124,11 +124,14 @@ assert.ok(linked.includes('<script src="brief.js"'),
    Each is emitted from the document's own structure, so the check is that the
    structure drove it — not just that the class appears somewhere. */
 
-has('<p class="l5">Prove it \u2014 Ramsden (2026). \u25b8 2 supporting rows</p>',
-  'a section that cites a source gets its own "Prove it" line, named and counted');
-has('<p class="l5">Prove it \u2014 Internal corpus (2026); Australian Bureau of Statistics (2026).' +
-  ' \u25b8 1 supporting row</p>',
-  'a question cites both its sources and counts only the quotes that exist');
+has('<details class="l5">', 'a section that cites a source gets an expandable evidence block');
+has('<summary>Ramsden (2026).<span class="l5n">2 quotes</span></summary>',
+  'the summary names the sources and counts the quotes, with no label prefix');
+has('class="l5src" href="#ref1-q1"', 'each quote links to its exact passage in the references');
+has('<div class="l5body">', 'the quotes themselves are inside the block, not just counted');
+has('<summary>Internal corpus (2026); Australian Bureau of Statistics (2026).' +
+  '<span class="l5n">1 quote</span></summary>',
+  'a question cites both its sources and counts only the quotes that exist, singular');
 const listsSec = main.slice(main.indexOf('id="s-lists"')).split('</section>')[0];
 assert.ok(!listsSec.includes('class="l5"'),
   'a section that cites nothing gets no "Prove it" box');

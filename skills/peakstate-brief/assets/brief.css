@@ -823,6 +823,37 @@ section.done .l5 {
   max-width: var(--measure);
 }
 .l5 code { font-size: .82em; }
+/* The block expands. A closed line saying "4 quotes" asks the reader to take
+   the evidence on trust, which is the opposite of what this level is for — the
+   count is the handle, the quotes are the point. Closed by default, because
+   this is the bottom of the pyramid and most readers stop above it. */
+details.l5 > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: .5rem;
+}
+details.l5 > summary::-webkit-details-marker { display: none; }
+details.l5 > summary::before {
+  content: "\25b8"; flex: none; color: var(--accent);
+  transition: transform .18s cubic-bezier(.2, .65, .25, 1);
+}
+details.l5[open] > summary::before { transform: rotate(90deg); }
+details.l5 > summary:hover { color: var(--fg); }
+details.l5 > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+.l5n {
+  margin-left: auto; flex: none; font-size: .78rem; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: .05rem .45rem;
+}
+.l5body { margin-top: .7rem; display: grid; gap: .55rem; }
+.l5body blockquote.pull { margin: 0; font: 400 .88rem/1.55 var(--font-body); color: var(--fg); }
+/* The source label leads each quote, so a reader can tell three sources apart
+   without opening the reference list, and clicking it lands on the exact
+   passage rather than on the entry it sits under. */
+.l5src {
+  display: block; font: 600 .7rem/1.4 var(--font-ui); letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted); text-decoration: none; margin-bottom: .12rem;
+}
+.l5src:hover { color: var(--accent); text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { details.l5 > summary::before { transition: none; } }
+@media print { details.l5 > summary::before { content: none; } }
 
 /* The closing diamond: the document ended, the page did not just run out. */
 .endmark { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg);

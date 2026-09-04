@@ -220,11 +220,17 @@ function renderRefs(refs, reg) {
   return '<ol class="reflist">\n' + items.join('\n') + '\n</ol>';
 }
 
-/* ── level 5, "Prove it" ─────────────────────────────────────────────────
-   A section's own evidence line, built from the footnote markers already in its
-   prose: which sources it leans on, and how many pull quotes those sources
-   carry. Nothing is authored for it, so a section that cites nothing gets no
-   box rather than an empty one. */
+/* ── level 5, the evidence a section rests on ─────────────────────────────
+   Built from the footnote markers already in a section's prose: which sources
+   it leans on, and — when opened — the verbatim quotes those sources carry,
+   with their locators. Nothing is authored for it, so a section that cites
+   nothing gets no box rather than an empty one.
+
+   It expands rather than counting. A closed line saying "4 quotes" asks the
+   reader to take the evidence on trust, which is the opposite of what a level
+   labelled "prove it" is for; the count is the handle, the quotes are the
+   point. Closed by default, because this is the bottom of the pyramid and most
+   readers stop above it. */
 
 /* "Barker, S. A. (2018). ..." -> "Barker (2018)". Multiple authors collapse to
    "et al." the way a reader would say it aloud. */
@@ -251,13 +257,28 @@ function citedIn(lines) {
   return seen;
 }
 
-function proveIt(lines, index) {
+function proveIt(lines, index, reg) {
   const cited = citedIn(lines).filter((n) => index[n] && index[n].label);
   if (!cited.length) return '';
-  const rows = cited.reduce((a, n) => a + index[n].quotes, 0);
-  const tail = rows ? ' \u25b8 ' + rows + ' supporting row' + (rows === 1 ? '' : 's') : '';
-  return '\n  <p class="l5">Prove it \u2014 ' +
-    esc(cited.map((n) => index[n].label).join('; ')) + '.' + tail + '</p>';
+  const n = cited.reduce((a, k) => a + index[k].quotes.length, 0);
+  const heads = esc(cited.map((k) => index[k].label).join('; '));
+  /* No quotes anywhere in the cited sources: there is nothing to open, so it
+     stays a line rather than pretending to be expandable. */
+  if (!n) return '\n  <p class="l5">' + heads + '.</p>';
+  let body = '';
+  for (const k of cited) {
+    const r = index[k];
+    r.quotes.forEach((q, i) => {
+      const parts = q.split(/\s+--\s+/);
+      const qref = parts.length > 1 ? parts.pop() : null;
+      body += '\n      <blockquote class="pull"><a class="l5src" href="#ref' + k + '-q' +
+        (i + 1) + '">' + esc(r.label) + '</a>' + inline(parts.join(' -- '), reg) +
+        (qref ? '<span class="qref">' + inline(qref, reg) + '</span>' : '') + '</blockquote>';
+    });
+  }
+  return '\n  <details class="l5">\n    <summary>' + heads + '.' +
+    '<span class="l5n">' + n + ' quote' + (n === 1 ? '' : 's') + '</span></summary>' +
+    '\n    <div class="l5body">' + body + '\n    </div>\n  </details>';
 }
 
 /* ── block renderer ─────────────────────────────────────────────────────── */
@@ -462,14 +483,14 @@ function renderSection(sec, ctx) {
       '    <label class="tick"><input type="checkbox" aria-label="Mark ' + sec.q + ' resolved"></label>\n' +
       '    <h3><span class="qid">' + sec.q + '</span> ' + inline(sec.title, ctx.refs) + '</h3>\n' +
       '  </div>\n  <div class="q-body">\n' + body + '\n  </div>' +
-      proveIt(sec.lines, ctx.index || {}) + '\n</section>';
+      proveIt(sec.lines, ctx.index || {}, ctx.refs) + '\n</section>';
   }
   return '<section class="brief-section" id="' + sec.id + '" data-sec="' + data + '">\n' +
     '  <div class="sec-head">\n' +
     '    <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>\n' +
     '    <h3>' + inline(sec.title, ctx.refs) + '</h3>\n' +
     '  </div>\n  <div class="sec-body">\n' + body + '\n  </div>' +
-    proveIt(sec.lines, ctx.index || {}) + '\n</section>';
+    proveIt(sec.lines, ctx.index || {}, ctx.refs) + '\n</section>';
 }
 
 /* Footnote targets are collected before anything renders, so a marker pointing
@@ -484,7 +505,7 @@ function collectAnchors(parts) {
         if (!/^\[\^\d+\]:/.test(b[0].trim())) continue;
         for (const r of parseRefs(b)) {
           anchors.add('ref' + r.n);
-          index[r.n] = { label: shortCite(r.apa.join(' ')), quotes: r.quotes.length };
+          index[r.n] = { label: shortCite(r.apa.join(' ')), quotes: r.quotes };
           r.quotes.forEach((_, i) => anchors.add('ref' + r.n + '-q' + (i + 1)));
         }
       }
