@@ -41,6 +41,7 @@ the HTML is a render of it.
 | `--provenance` | the source of record, e.g. `<repo>, <path> @ <sha>` |
 | `--sidecar-url` | URL of an already-published sidecar. Unset, a `<brief>.md.sourced` or `<brief>.html.sourced` beside the source is rendered and published as a companion artefact |
 | `--no-sidecar` | publish with no claim ledger. **Requires a reason**, which is printed into the artefact |
+| `--force` | publish even though the artefact changed since this machine last wrote it |
 | `--nav-env` | an env file holding the two variables below |
 | `--convert-only` | print the artefact markdown and write nothing |
 | `--dry-run` | resolve everything, write nothing |
@@ -108,6 +109,30 @@ rather than attached to the work. It carries the brief's topical tags plus
 Legitimate reasons, for what it is worth: `no external sources` on a brief that
 only asks questions about the reader's own data; `superseded, kept for the
 record`. "I did not run it" is not one — run `/sourced <brief>.html` instead.
+
+## Never publish over a version you did not write
+
+**Before any write, the verb reads the artefact's `updated_at` from the knowledge
+base and compares it with the stamp the ledger recorded after our own last
+publish.** If it has moved, somebody else published in between and the verb
+refuses, printing both stamps and `--force`.
+
+This is not defensive programming. Several sessions run on this machine at once,
+and two of them published the same brief from different converter versions
+minutes apart — 20 insights against 27 — with the later run silently winning.
+Neither knew, and the only thing deciding which version survived was ordering.
+
+**Silence is not consent.** The gate fires only when it can *see* the artefact
+move: no ledger row (a first publish), no determinate read path, or a matching
+stamp all publish exactly as before. A blind spot must never become a block.
+
+**Not `body_hash`.** That column exists on the artefact and would be the better
+fingerprint, but this ingest path leaves it null — so a guard built on it would
+pass every time and look like it was working. `updated_at` is written on every
+ingest and is what actually moves.
+
+The stamp is read *after* our own write, because it is what the next run compares
+against.
 
 ## Idempotency
 

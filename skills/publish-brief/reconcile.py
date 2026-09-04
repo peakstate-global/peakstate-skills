@@ -42,41 +42,6 @@ FILENAME_MAX = 255  # publish_brief writes the pointer filename as title[:255]
 
 # ------------------------------------------------------------ the read paths
 
-def prima_reader(env):
-    """(Nav-shaped client | None, why-not, the origin this read speaks for).
-
-    The determinate path: the knowledge base's own database, which can tell absent
-    apart from out-of-class. The agent surface cannot, so it is never used to decide
-    absence. The origin matters as much as the credentials: one database answers for
-    one deployment, and a pointer naming a different deployment is not absent just
-    because this database has never heard of it.
-    """
-    url = env.get("PRIMA_SUPABASE_URL")
-    key = env.get("PRIMA_SUPABASE_KEY")
-    origin = env.get("PRIMA_ORIGIN") or env.get("PRIMA_BASE")
-    if not (url and key and origin):
-        mod = pb.prima_module()
-        local = getattr(mod, "ENV_FILE", "")
-        if local and os.path.exists(local):
-            src = mod._parse_env(local)
-            url = url or src.get("NEXT_PUBLIC_SUPABASE_URL")
-            key = key or src.get("SUPABASE_SERVICE_ROLE_KEY")
-        # The origin comes from the client's own configuration, never from the app
-        # env file: that file pairs a production database with a localhost dev URL,
-        # so reading the origin from it names the wrong deployment.
-        skill_env = getattr(mod, "SKILL_ENV", "")
-        if not origin and skill_env and os.path.exists(skill_env):
-            origin = mod._parse_env(skill_env).get("PRIMA_BASE")
-    if not (url and key):
-        return None, ("no determinate read path: set PRIMA_SUPABASE_URL and "
-                      "PRIMA_SUPABASE_KEY. The agent-surface client cannot distinguish "
-                      "an absent artefact from one above its class ceiling"), None
-    if not origin:
-        return None, ("the knowledge base is readable but the deployment it answers for is "
-                      "unknown: set PRIMA_ORIGIN. Absence cannot be decided without it"), None
-    return pb.Nav(url, key), None, origin
-
-
 def fetch_all(client, path, params):
     """Every row, paged. An uncapped PostgREST read truncates silently at the
     server's row cap, and a row beyond that cap reads as deleted, so no read whose
@@ -281,7 +246,7 @@ def run(a) -> int:
     stc, conn = nav.connection(user_id)
     connection = conn[0] if stc == 200 and conn else None
 
-    reader, why_not, reader_origin = prima_reader(env)
+    reader, why_not, reader_origin = pb.prima_reader(env)
     artefacts, briefs, absent_known = {}, None, False
     if reader:
         try:

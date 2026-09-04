@@ -407,6 +407,88 @@ def sidecar_to_artefact(sidecar: Path, brief_title: str, brief_slug: str, tags):
     return "\n".join(lines)
 
 
+def prima_reader(env):
+    """(Nav-shaped client | None, why-not, the origin this read speaks for).
+
+    The determinate path: the knowledge base's own database, which can tell absent
+    apart from out-of-class. The agent surface cannot, so it is never used to decide
+    absence. The origin matters as much as the credentials: one database answers for
+    one deployment, and a pointer naming a different deployment is not absent just
+    because this database has never heard of it.
+    """
+    url = env.get("PRIMA_SUPABASE_URL")
+    key = env.get("PRIMA_SUPABASE_KEY")
+    origin = env.get("PRIMA_ORIGIN") or env.get("PRIMA_BASE")
+    if not (url and key and origin):
+        mod = prima_module()
+        local = getattr(mod, "ENV_FILE", "")
+        if local and os.path.exists(local):
+            src = mod._parse_env(local)
+            url = url or src.get("NEXT_PUBLIC_SUPABASE_URL")
+            key = key or src.get("SUPABASE_SERVICE_ROLE_KEY")
+        # The origin comes from the client's own configuration, never from the app
+        # env file: that file pairs a production database with a localhost dev URL,
+        # so reading the origin from it names the wrong deployment.
+        skill_env = getattr(mod, "SKILL_ENV", "")
+        if not origin and skill_env and os.path.exists(skill_env):
+            origin = mod._parse_env(skill_env).get("PRIMA_BASE")
+    if not (url and key):
+        return None, ("no determinate read path: set PRIMA_SUPABASE_URL and "
+                      "PRIMA_SUPABASE_KEY. The agent-surface client cannot distinguish "
+                      "an absent artefact from one above its class ceiling"), None
+    if not origin:
+        return None, ("the knowledge base is readable but the deployment it answers for is "
+                      "unknown: set PRIMA_ORIGIN. Absence cannot be decided without it"), None
+    return Nav(url, key), None, origin
+def artefact_stamp(env, slug: str):
+    """(updated_at | None, why-not). PRIMA's own record of when this artefact
+    last changed, read from its database rather than the agent surface.
+
+    Not `body_hash`: that column exists but this ingest path leaves it null, so
+    a guard built on it would pass every time and look like it was working.
+    `updated_at` is written on every ingest and is what actually moves when
+    somebody publishes over the top of you.
+    """
+    reader, why, _origin = prima_reader(env)
+    if not reader:
+        return None, why
+    st, rows = reader.get("videos", {"slug": f"eq.{slug}", "select": "updated_at"})
+    if st != 200 or not isinstance(rows, list):
+        return None, f"the read of videos returned {st}"
+    return (rows[0]["updated_at"] if rows else None), None
+
+
+def overwrite_gate(prior: dict, live_stamp, why_not, force: bool, slug: str):
+    """Refuse to publish over a version this machine did not write. Error, or None.
+
+    Several sessions run here at once and two of them have already published the
+    same brief from different converter versions, minutes apart, with the later
+    run silently winning. Neither knew. The ledger records the stamp PRIMA
+    reported after our own write, so a stamp that has moved since means somebody
+    else wrote in between — and the honest response is to stop, because the thing
+    about to be destroyed is not ours.
+
+    Silence is not consent: with no prior row, or no determinate read, this does
+    not fire. It only ever speaks when it can see that the artefact changed under
+    us, which keeps a first publish and an offline run working exactly as before.
+    """
+    seen = prior.get("prima_updated_at")
+    if force or not seen or live_stamp is None or live_stamp == seen:
+        return None
+    return "\n".join([
+        "FAILED",
+        f"  {slug} has changed in the knowledge base since this machine last published it.",
+        f"    we last wrote : {seen}",
+        f"    it now says   : {live_stamp}",
+        "",
+        "  Another session published over it. Overwriting now would destroy their",
+        "  version, and the only reason yours would win is that it ran second.",
+        "",
+        "  Look at what is there, then either take their work or say you mean it:",
+        "    --force",
+    ])
+
+
 def sidecar_gate(src: Path, sidecar_url, no_sidecar):
     """Refuse to publish a brief with no claim ledger. Returns an error, or None.
 
@@ -624,6 +706,12 @@ def run(a) -> int:
                                        f"artefact markdown {len(artefact_md)} chars",
                                        f"ledger: {prior or 'no prior attempt'}"])
 
+    # ---- Refuse to publish over somebody else's version, before any write.
+    live_stamp, stamp_why = artefact_stamp(env, slug)
+    if err := overwrite_gate(prior, live_stamp, stamp_why, a.force, slug):
+        print(err, file=sys.stderr)
+        return 1
+
     # ---- The ledger goes in before the brief that cites it. Same discipline as
     # artefact-before-pointer: a link to something not yet published is a link
     # that is wrong for as long as the second write takes, or forever if it
@@ -729,7 +817,10 @@ def run(a) -> int:
                 f"operation {opid}, recorded in {LEDGER.name}",
                 "the artefact is live in PRIMA; no nav card exists and nothing points at nothing",
             ], "fix nav, then run the same command again — it will only do the nav half")
-    ledger_write(opid, {"attachment_id": attachment_id})
+    # The stamp we leave behind is what the NEXT run compares against, so it is
+    # read after our write, not before it.
+    after_stamp, _ = artefact_stamp(env, slug)
+    ledger_write(opid, {"attachment_id": attachment_id, "prima_updated_at": after_stamp})
 
     lines = [f"artefact {artefact_id} ({slug}) — {artefact_url}",
              f"attachment {attachment_id} on project {project_id}"
@@ -847,6 +938,33 @@ def self_check() -> int:
         (Path(d) / "b.md.sourced").write_text("{}")
         assert sidecar_for(md).name == "b.md.sourced"
 
+    # P6a: prima_reader moved here from reconcile.py, where it was written
+    # against a `pb.` alias for this module. Nothing in the suite called it, so
+    # the stale names only surfaced against the live system. Given credentials
+    # outright it must not touch prima_module at all.
+    reader, why, origin = prima_reader({"PRIMA_SUPABASE_URL": "https://db.example",
+                                        "PRIMA_SUPABASE_KEY": "k",
+                                        "PRIMA_ORIGIN": "https://kb.example"})
+    assert reader is not None and why is None, why
+    assert origin == "https://kb.example"
+    assert reader.base.startswith("https://db.example"), reader.base
+
+    # P6: never publish over a version this machine did not write. Silence is
+    # not consent, so the gate only fires when it can SEE the artefact moved.
+    seen = {"prima_updated_at": "2026-09-03T00:00:00Z"}
+    assert overwrite_gate(seen, "2026-09-03T00:00:00Z", None, False, "s") is None, \
+        "unchanged since our write: publish"
+    assert overwrite_gate({}, "2026-09-04T00:00:00Z", None, False, "s") is None, \
+        "no prior row (first publish): publish"
+    assert overwrite_gate(seen, None, "no read path", False, "s") is None, \
+        "no determinate read: publish, rather than block on a blind spot"
+    assert overwrite_gate(seen, "2026-09-04T00:00:00Z", None, True, "s") is None, \
+        "--force publishes anyway"
+    blocked = overwrite_gate(seen, "2026-09-04T00:00:00Z", None, False, "s")
+    assert blocked and blocked.startswith("FAILED"), "a moved stamp is refused"
+    assert "--force" in blocked and "2026-09-04" in blocked, \
+        "the refusal shows both stamps and the way out"
+
     # P5: two publishes at once must not lose each other's ledger rows. The old
     # read-modify-write dropped whichever row was written first.
     import subprocess
@@ -920,6 +1038,8 @@ def main() -> int:
     p.add_argument("--author")
     p.add_argument("--provenance", help="the source of record, e.g. 'repo path @ commit'")
     p.add_argument("--sidecar-url", help="URL of the SOURCED sidecar; never inlined")
+    p.add_argument("--force", action="store_true",
+                   help="publish even if the artefact changed since this machine last wrote it")
     p.add_argument("--no-sidecar", metavar="REASON",
                    help="publish without a claim ledger; the reason is printed into the artefact")
     p.add_argument("--nav-env", help="env file holding NAV_SUPABASE_URL / NAV_SERVICE_KEY")
