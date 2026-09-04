@@ -370,7 +370,21 @@ function renderBlock(lines, ctx) {
 
   if (lines.length > 1 && first.includes('|') && isDivider(lines[1])) return renderTable(lines, refs);
 
-  if (/^\[\^\d+\]:/.test(t)) return renderRefs(parseRefs(lines), refs, ctx.publish);
+  /* The reference list is rendered ONCE, from every definition in the document,
+     at the first block that holds one.
+
+     It used to render per block, and a blank line between two entries makes two
+     blocks. The displayed number is computed document-wide in collectAnchors
+     while the sort ran per block, so a bibliography written with gaps came out
+     ordered 1 2 3 6 7 4 5 — each list internally alphabetical, the numbers
+     global, and the two agreeing only when every entry sat in one unbroken run.
+     Rendering the whole set at once is what makes the sort and the numbering
+     read the same list. */
+  if (/^\[\^\d+\]:/.test(t)) {
+    if (refs.listed) return '';
+    refs.listed = true;
+    return renderRefs(refs.all || parseRefs(lines), refs, ctx.publish);
+  }
 
   if (/^[a-z]\)\s/.test(t)) {
     const opts = [];
@@ -432,7 +446,7 @@ function renderBlock(lines, ctx) {
 /* A definition list is usually written with a blank line between terms, which
    the block splitter reads as separate lists. Rejoin them so the provenance
    block comes out as one <dl> rather than four. */
-const renderBody = (lines, ctx) => blocks(lines).map((b) => renderBlock(b, ctx)).join('\n\n')
+const renderBody = (lines, ctx) => blocks(lines).map((b) => renderBlock(b, ctx)).filter(Boolean).join('\n\n')
   .replace(/<\/dl>\n\n<dl(?: class="[^"]*")?>\n/g, '\n');
 
 /* ── document structure ─────────────────────────────────────────────────── */
@@ -603,7 +617,7 @@ function collectAnchors(parts, publish) {
   const display = {};
   all.slice().sort((a, b) => refSortKey(a, publish).localeCompare(refSortKey(b, publish)))
     .forEach((r, i) => { display[r.n] = String(i + 1); });
-  return { anchors, index, quoteCount, display };
+  return { anchors, index, quoteCount, display, all };
 }
 
 /* A brief is one file, and the renderer makes that literally true: brief.css and
@@ -717,8 +731,8 @@ export function render(source, opts = {}) {
      that lived in a private section still fails the build loudly rather than
      orphaning every marker that cited it. That gate is not weakened here. */
   const parts = opts.publish ? dropPrivate(outline(body)) : outline(body);
-  const { anchors, index, quoteCount, display } = collectAnchors(parts, opts.publish);
-  const refs = { anchors, missing: [], quoteCount, display };
+  const { anchors, index, quoteCount, display, all } = collectAnchors(parts, opts.publish);
+  const refs = { anchors, missing: [], quoteCount, display, all, listed: false };
   const ctx = { refs, index, publish: !!opts.publish };
 
   const out = ['<header class="brief-title">\n  <p class="eyebrow">' + inline(meta.eyebrow || '', refs) +

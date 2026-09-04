@@ -365,6 +365,37 @@ assert.ok(render(NO_ORIGIN, { publish: true }).includes('library.example/artefac
 
 assert.equal(render(ORIGIN_SRC, { publish: true }), oPublished, 'the origin swap is deterministic');
 
+/* ── one bibliography, however the source is spaced ─────────────────────
+   A blank line between two entries makes two blocks. The displayed number is
+   computed document-wide; the sort used to run per block, so a bibliography
+   written with gaps came out ordered 1 2 3 6 7 4 5. */
+
+const gapped = [
+  '---', 'title: Gapped refs', '---', '',
+  '# P', '', '## Contents', '', '## S', '', 'A[^1] B[^2] C[^3].', '',
+  '## R', '',
+  '[^1]: Zeta, A. (2020). Z. https://example.com/z', '',
+  '[^2]: Beta, B. (2021). B. https://example.com/b', '',
+  '[^3]: Alpha, C. (2019). A. https://example.com/a', '',
+].join('\n');
+const gapless = gapped.replace(/\n\n(\[\^)/g, '\n$1');
+
+const listsIn = (h) => (/<main>[\s\S]*<\/main>/.exec(h)[0].match(/<ol class="reflist">/g) || []).length;
+const shownIn = (h) => [...(/<main>[\s\S]*<\/main>/.exec(h)[0])
+  .matchAll(/<li id="ref(\d+)"><span class="rnum">(\d+)</g)].map((m) => m[2]);
+
+assert.equal(listsIn(render(gapped)), 1, 'a gapped source still renders ONE reference list');
+assert.equal(listsIn(render(gapless)), 1, 'and so does a gapless one');
+assert.deepEqual(shownIn(render(gapped)), ['1', '2', '3'],
+  'the numbers down the page are 1,2,3 — the sort and the numbering read the same list');
+assert.deepEqual(shownIn(render(gapped)), shownIn(render(gapless)),
+  'spacing in the source does not change the rendered bibliography');
+/* Alphabetical: Alpha, Beta, Zeta — so [^3] is shown first. */
+assert.ok(render(gapped).indexOf('Alpha, C.') < render(gapped).indexOf('Beta, B.'),
+  'and it is still alphabetical across the whole document');
+assert.equal(render(gapped, { publish: true }).match(/<ol class="reflist">/g).length, 1,
+  'the publish render collapses it too');
+
 /* ── reproducibility ─────────────────────────────────────────────────────── */
 
 assert.equal(render(src), html, 'rendering is deterministic');
