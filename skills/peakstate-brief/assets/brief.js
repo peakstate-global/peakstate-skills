@@ -172,10 +172,11 @@
     });
     return any;
   }
-  var DIRTY_TIP = 'This document holds answers, comments or edits that have not been '
-    + 'copied back yet. Nothing here reaches Claude on its own \u2014 press this to put '
-    + 'the whole lot on your clipboard as JSON and paste it into the chat. The dot '
-    + 'clears when you do, and comes back the moment you change something else.';
+  var DIRTY_TIP = 'This document holds answers, comments or highlights that have not '
+    + 'reached Claude yet. Nothing here travels on its own \u2014 press this to put the '
+    + 'whole lot on your clipboard as JSON, then paste it into the chat. Copying does '
+    + 'not clear this marker: it stays until Claude sends the brief back having read '
+    + 'them, so a copy you never pasted cannot look like work delivered.';
   function renderDirty() {
     if (!copyBtnEl) return;
     /* The dot hangs off the COMBO, not off the copy button. Both halves send
@@ -236,6 +237,14 @@
      the document and arrive already painted. The file is the record: deleting a
      baked highlight in the browser holds until the next regeneration, exactly
      as an addressed comment behaves. */
+  function tombKey(h) {
+    return (document.body.dataset.consumed || '') + '\u0000' + h.text + '\u0000' + (h.nth || 0);
+  }
+  function buryBaked(c) {
+    if (!c || !c.baked) return;
+    if (!state.bakedGone) state.bakedGone = {};
+    state.bakedGone[tombKey(c)] = 1;
+  }
   function adoptBaked() {
     var raw = document.body.dataset.highlights;
     if (!raw) return;
@@ -248,6 +257,11 @@
       if (!h || !h.text) return;
       var k = h.text + '\u0000' + (h.nth || 0);
       if (seen[k]) return;
+      /* A deletion has to be remembered, or the next load re-adopts the mark
+         from the file and the reader cannot get rid of it at all. The tombstone
+         is scoped to the token that delivered it, so a NEW regeneration
+         legitimately brings it back. */
+      if ((state.bakedGone || {})[tombKey(h)]) return;
       seen[k] = true;
       state.comments.push({
         cid: 'baked' + i + '-' + (h.nth || 0), text: h.text, comment: h.comment || '',
@@ -270,6 +284,11 @@
 
   function isAddressed(c) {
     var n = addrKey(c.comment);
+    /* An empty key is a prefix of every addressed entry, so a highlight with no
+       words matched all of them: it came back struck through and was dropped
+       from the exported responses without ever having been addressed. A mark
+       with nothing written on it cannot have been replied to. */
+    if (!n) return false;
     return ADDRESSED.some(function (a) { return n.indexOf(a) === 0 || a.indexOf(n) === 0; });
   }
   state.comments.forEach(function (c) {
@@ -702,7 +721,10 @@
     pop.style.top = (y + 8) + 'px';
 
     var chosen = existing ? hlOf(existing) : 'yellow';
-    var hlPicked = !!existing;
+    /* True only once a chip has been clicked in THIS popover. It is what lets
+       an empty comment box still be a complete action, and what stops a
+       words-only edit repainting a highlight the reader had cleared. */
+    var hlPicked = false;
     function paintChips() {
       Array.prototype.forEach.call(pop.querySelectorAll('.chip[data-hl]'), function (b) {
         var on = b.dataset.hl === chosen;
@@ -732,12 +754,19 @@
       /* A colour with no words is a legitimate mark — highlighting is the
          whole action for a reader flagging a passage rather than replying to
          it. Without an explicit colour, an empty box still means "cancel". */
-      if (!val && !hlPicked) { dropDraft(key); closePop(); return; }
+      /* An empty box on a FRESH selection with no colour picked means cancel.
+         On an existing mark it means "remove the words, keep the highlight" —
+         bailing there would silently discard the edit. */
+      if (!val && !hlPicked && !existing) { dropDraft(key); closePop(); return; }
       if (existing) {
-        existing.comment = val; existing.hl = chosen; existing.at = new Date().toISOString();
-        if (isAnchored(existing.cid)) recolour(existing.cid, chosen);
-        else {
-          /* The highlight was cleared earlier — a colour puts it back. */
+        existing.comment = val; existing.at = new Date().toISOString();
+        if (isAnchored(existing.cid)) { existing.hl = chosen; recolour(existing.cid, chosen); }
+        else if (hlPicked) {
+          /* The highlight was cleared earlier, and a colour was chosen just now
+             — that puts it back. Editing the WORDS of a cleared mark must not:
+             saving a typo fix used to repaint it yellow, silently undoing the
+             clear the reader had asked for. */
+          existing.hl = chosen;
           delete existing.unhl;
           var rr = findRange(main(), existing.text, existing.nth || 0);
           if (rr) wrapRange(rr, existing.cid, chosen);
@@ -795,6 +824,7 @@
       if (act === 'cancel') { dropDraft(key); closePop(); return; }
       if (act === 'copy') { copyText(quote, 'Selected text copied'); return; }
       if (act === 'del' && existing) {
+        buryBaked(existing);
         unpaint(existing.cid);
         state.comments = state.comments.filter(function (c) { return c.cid !== existing.cid; });
         dropDraft(key); save(); renderDrawer(); closePop(); toast('Comment deleted');
@@ -929,6 +959,7 @@
     }
     if (act === 'edit') { toggleDrawer(false); return editComment(c); }
     if (act === 'del') {
+      buryBaked(c);
       unpaint(c.cid);
       state.comments = state.comments.filter(function (x) { return x.cid !== c.cid; });
       save(); renderDrawer(); toast('Comment deleted');

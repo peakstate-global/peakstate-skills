@@ -235,7 +235,11 @@ function renderRefs(refs, reg) {
 /* "Barker, S. A. (2018). ..." -> "Barker (2018)". Multiple authors collapse to
    "et al." the way a reader would say it aloud. */
 function shortCite(apa) {
-  const m = /^([\s\S]*?)\((\d{4})/.exec(apa);
+  /* (n.d.) is a documented APA form, and requiring four digits silently
+     dropped every undated source out of the evidence block while its
+     reference and quotes rendered normally — a section could show a short
+     source list and an understated quote count with nothing to say why. */
+  const m = /^([\s\S]*?)\((\d{4}|n\.d\.)/.exec(apa);
   if (!m) return null;
   const head = m[1];
   const first = head.split(',')[0].replace(/\.\s*$/, '').trim();
@@ -248,7 +252,14 @@ function shortCite(apa) {
    *definition* line is a target, not a citation, so it never counts. */
 function citedIn(lines) {
   const seen = [];
+  let fence = null;
   for (const l of lines) {
+    /* A fenced block shows its text; it does not cite anything. Without this a
+       literal [^1] in a code sample gives the section an evidence block for a
+       source its prose never mentions. */
+    const f = fenceOpen(l);
+    if (fence) { if (l.trim().startsWith(fence) && /^[`~]+$/.test(l.trim())) fence = null; continue; }
+    if (f) { fence = f[1]; continue; }
     if (/^\s*\[\^\d+\]:/.test(l)) continue;
     for (const m of l.matchAll(/\[\^(\d+)(?:q\d+)?\]/g)) {
       if (!seen.includes(m[1])) seen.push(m[1]);

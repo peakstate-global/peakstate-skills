@@ -130,6 +130,17 @@
   section.done .q-body, section.done .sec-body {
     max-height: 0; opacity: 0;
     margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0;
+    /* Zero height and zero opacity hide a section from the eye only: its links,
+       its answer box and its buttons stay tabbable and stay in the
+       accessibility tree, which the old display:none never allowed. visibility
+       removes them properly, and the delay holds it until the fold has run so
+       the animation is not cut short. */
+    visibility: hidden;
+    transition: max-height .22s cubic-bezier(.2, .65, .25, 1), opacity .18s ease,
+                visibility 0s linear .22s;
+  }
+  section:not(.done) .q-body, section:not(.done) .sec-body {
+    visibility: visible; transition-delay: 0s;
   }
   section.done .qid { background: var(--done-soft); color: var(--done); }
 
