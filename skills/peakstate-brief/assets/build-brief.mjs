@@ -185,12 +185,16 @@ function parseRefs(lines) {
   let cur = null;
   for (const raw of lines) {
     const def = /^\[\^(\d+)\]:\s*(.*)$/.exec(raw);
-    if (def) { cur = { n: def[1], apa: [def[2]], quotes: [], note: null }; refs.push(cur); continue; }
+    if (def) { cur = { n: def[1], apa: [def[2]], quotes: [], note: null, origin: null }; refs.push(cur); continue; }
     if (!cur) continue;
     const line = raw.trim();
     if (!line) continue;
     if (line.startsWith('>')) {
       cur.quotes.push(line.replace(/^>\s?/, ''));
+    } else if (/^origin:/i.test(line)) {
+      /* Where the material actually came from, when the entry above cites a
+         copy. The published render swaps one for the other. */
+      cur.origin = line.replace(/^origin:\s*/i, '');
     } else if (/^note:/i.test(line)) {
       cur.note = line.replace(/^note:\s*/i, '');
     } else if (cur.quotes.length) {
@@ -202,12 +206,25 @@ function parseRefs(lines) {
   return refs;
 }
 
-function renderRefs(refs, reg) {
+/* In the published render an entry with an `origin:` line is replaced by that
+   origin, and its note goes with it.
+
+   The reason is credit, not secrecy. A library entry is a copy of somebody
+   else's work: citing the copy credits the wrong party, and points the reader
+   at a page they cannot open. The note is dropped alongside it because a note
+   on a copy describes how the copy was reached, which is true of a document
+   the published version no longer cites.
+
+   The quotes stay. They are verbatim from the material, and the material is the
+   same material. */
+function renderRefs(refs, reg, publish) {
   const items = refs.map((r) => {
+    const swap = publish && r.origin;
+    const apa = swap ? r.origin : r.apa.join(' ');
     let html = '  <li id="ref' + r.n + '">\n    <span class="rnum">' + esc(r.n) +
       '</span><span class="apa">' +
-      autolink(inline(r.apa.join(' '), reg)) + '</span>';
-    if (r.note) html += '\n    <span class="apa-note">' + inline(r.note, reg) + '</span>';
+      autolink(inline(apa, reg)) + '</span>';
+    if (r.note && !swap) html += '\n    <span class="apa-note">' + inline(r.note, reg) + '</span>';
     r.quotes.forEach((q, i) => {
       const parts = q.split(/\s+--\s+/);
       const qref = parts.length > 1 ? parts.pop() : null;
@@ -315,17 +332,28 @@ function renderBlock(lines, ctx) {
 
   if (t.startsWith('<')) return lines.join('\n');
 
-  const h = /^(#{3,6})\s+(.*)$/.exec(t);
+  const h = /^(#{3,6})\s+(.*?)(?:\s*\{#([^}]+)\})?$/.exec(t);
   if (h) {
     const lvl = Math.min(h[1].length + 1, 6);
-    return '<h' + lvl + '>' + inline(h[2], refs) + '</h' + lvl + '>';
+    /* A sub-heading carries an id derived from its own text, so prose can link
+       to it. Every other markdown renderer does this, and a glossary — the one
+       document type built entirely out of sub-headings and cross-references to
+       them — is unwritable without it. `{#custom}` overrides, the same way it
+       does on a part or a section heading.
+
+       ponytail: no de-duplication. Two sub-headings with the same text in one
+       brief produce the same id, and the link lands on the first. Add a counter
+       the day a brief legitimately repeats a sub-heading title. */
+    const hid = h[3] || slug(h[2]);
+    return '<h' + lvl + (hid ? ' id="' + escAttr(hid) + '"' : '') + '>' +
+      inline(h[2], refs) + '</h' + lvl + '>';
   }
 
   if (/^(---|\*\*\*)$/.test(t)) return '<hr>';
 
   if (lines.length > 1 && first.includes('|') && isDivider(lines[1])) return renderTable(lines, refs);
 
-  if (/^\[\^\d+\]:/.test(t)) return renderRefs(parseRefs(lines), refs);
+  if (/^\[\^\d+\]:/.test(t)) return renderRefs(parseRefs(lines), refs, ctx.publish);
 
   if (/^[a-z]\)\s/.test(t)) {
     const opts = [];
@@ -518,7 +546,7 @@ function renderSection(sec, ctx) {
 /* Footnote targets are collected before anything renders, so a marker pointing
    at a quote that does not exist is a build error rather than a dead link the
    reader finds. */
-function collectAnchors(parts) {
+function collectAnchors(parts, publish) {
   const anchors = new Set();
   const index = {};
   for (const p of parts) {
@@ -527,7 +555,7 @@ function collectAnchors(parts) {
         if (!/^\[\^\d+\]:/.test(b[0].trim())) continue;
         for (const r of parseRefs(b)) {
           anchors.add('ref' + r.n);
-          index[r.n] = { label: shortCite(r.apa.join(' ')), quotes: r.quotes };
+          index[r.n] = { label: shortCite(publish && r.origin ? r.origin : r.apa.join(' ')), quotes: r.quotes };
           r.quotes.forEach((_, i) => anchors.add('ref' + r.n + '-q' + (i + 1)));
         }
       }
@@ -646,9 +674,9 @@ export function render(source, opts = {}) {
      that lived in a private section still fails the build loudly rather than
      orphaning every marker that cited it. That gate is not weakened here. */
   const parts = opts.publish ? dropPrivate(outline(body)) : outline(body);
-  const { anchors, index } = collectAnchors(parts);
+  const { anchors, index } = collectAnchors(parts, opts.publish);
   const refs = { anchors, missing: [] };
-  const ctx = { refs, index };
+  const ctx = { refs, index, publish: !!opts.publish };
 
   const out = ['<header class="brief-title">\n  <p class="eyebrow">' + inline(meta.eyebrow || '', refs) +
     '</p>\n  <h1>' + inline(meta.title || 'Brief', refs) + '</h1>\n  <p class="sub">' +

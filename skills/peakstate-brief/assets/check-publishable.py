@@ -84,6 +84,11 @@ def _redact_path(m):
     return None
 
 
+# A URL on one of the author's own hosts. Nobody outside can open it, so citing
+# one credits nothing and proves nothing. Named rather than inlined because the
+# reference check below has to agree with the rule exactly.
+LOGIN_WALLED_URL = r"https?://[A-Za-z0-9.-]*\b(?:peakstate\.global|irama\.org)\b[^\s\"'<>)\]]*"
+
 # The author's own metrics. Gated: these words are ordinary research vocabulary,
 # and only become private when the sentence attaches them to a person.
 POSSESSIVE = r"\b(?:your|my|his|her|their|you're|I'm)\b|\bbaseline\b|\bsits (?:at|around)\b|\bcurrently\b|\btarget(?:s|ing)?\b|\baverag(?:e|es|ing)\b"
@@ -170,8 +175,7 @@ RULES = [
     Rule("secret", r"\b[A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|CLIENT_ID|PASSWORD)\b\s*[:=]\s*\S+",
          "an assigned credential", flags=0),
     Rule("secret", r"\b[a-z]{20}\.supabase\.co\b", "a Supabase project ref"),
-    Rule("secret", r"https?://[A-Za-z0-9.-]*\b(?:peakstate\.global|irama\.org)\b[^\s\"'<>)\]]*",
-         "a login-walled internal URL"),
+    Rule("secret", LOGIN_WALLED_URL, "a login-walled internal URL"),
     Rule("secret", r"\b(?:nav|prima|publish|status|zero|wealth|book|books)\.(?:peakstate\.global|irama\.org)\b",
          "an internal hostname"),
     Rule("secret", r"\bMARIPOSA\b|\bOry Hydra\b|\bFAS\b|\bFleet Agent Surface\b",
@@ -186,6 +190,64 @@ RULES = [
 ]
 
 
+FOOTNOTE_DEF = re.compile(r"^\s*\[\^(\d+)\]:")
+ORIGIN_LINE = re.compile(r"^\s*origin:\s*\S", re.I)
+_LOGIN_WALLED = re.compile(LOGIN_WALLED_URL, re.I)
+
+
+def check_references(text):
+    """Findings for references that cite the author's own library.
+
+    A library entry is usually a copy of somebody else's work. Citing the copy
+    credits the wrong party and sends the reader to a page they cannot open, so
+    a reference on a private host has to carry an `origin:` line naming where
+    the material actually came from. Without one there is nothing for the
+    published render to swap in, and the reference cannot be published at all.
+
+    This is a whole-entry check rather than a line rule, because the URL and the
+    `origin:` line are different lines of the same reference, and a line rule
+    cannot see both. Each finding names the reference, which is what the caller
+    has to show the author.
+    """
+    findings = []
+    n = None
+    start = 0
+    walled = None
+    origin = False
+
+    def close():
+        if n and walled and not origin:
+            findings.append({
+                "line_no": start,
+                "matched_text": "[^" + n + "]",
+                "class": "secret",
+                "why": "reference [^" + n + "] cites the author's own library and has no "
+                       "origin: line, so there is nothing to publish in its place",
+                "suggestion": "origin: <the APA entry for where this material actually came from>",
+            })
+
+    for line_no, line in content_lines(text, keep_blank=True):
+        m = FOOTNOTE_DEF.match(line)
+        if m:
+            close()
+            n, start, walled, origin = m.group(1), line_no, None, False
+        elif not line.strip():
+            # A blank line ends the block, and a reference entry is one block.
+            # Without this, a library URL in the prose after the last reference
+            # is reported against that reference.
+            close()
+            n = None
+        if n is None:
+            continue
+        if ORIGIN_LINE.match(line):
+            origin = True
+        hit = _LOGIN_WALLED.search(line)
+        if hit and not walled:
+            walled = hit.group(0)
+    close()
+    return findings
+
+
 def load_terms(path):
     """Extra private terms, one per line. Missing file is not an error."""
     if not path or not Path(path).exists():
@@ -198,7 +260,7 @@ def load_terms(path):
     ]
 
 
-def content_lines(text):
+def content_lines(text, keep_blank=False):
     """Yield (line_no, line) skipping <script> and <style> regions.
 
     A rendered brief carries the whole runtime inlined. Scanning it produces
@@ -207,7 +269,7 @@ def content_lines(text):
     """
     text = SKIP_REGION.sub(lambda m: "\n" * m.group(0).count("\n"), text)
     for i, line in enumerate(text.splitlines(), 1):
-        if line.strip():
+        if keep_blank or line.strip():
             yield i, line
 
 
@@ -245,6 +307,7 @@ def scan_text(text, rules):
                     "why": rule.why,
                     "suggestion": rule.suggest(m) if rule.suggest else None,
                 })
+    findings += check_references(text)
     findings.sort(key=lambda f: (f["line_no"], f["matched_text"]))
     return findings
 
@@ -343,6 +406,28 @@ def self_check():
     for want in ("vibration foundation", "expression", "fulfilment"):
         if want not in got:
             failures.append(f"personal case: did not catch {want!r}")
+
+    # a reference citing the private library with no origin: names the reference
+    _LIB = "https://" + "prima" + ".irama" + ".org/artefact/a-video"
+    no_origin = f"""Prose citing it[^1].
+
+[^1]: Someone (2024). A video. {_LIB}
+> a quoted sentence -- 04:11
+"""
+    got = [f for f in scan_text(no_origin, rules) if f["matched_text"] == "[^1]"]
+    if not got:
+        failures.append("a library reference with no origin: produced no finding naming it")
+    elif not got[0]["suggestion"]:
+        failures.append("the origin-less reference finding offers no suggestion")
+
+    with_origin = no_origin.replace("> a quoted", "origin: Someone (2024). The talk. https://example.com/t\n> a quoted")
+    if [f for f in scan_text(with_origin, rules) if f["matched_text"] == "[^1]"]:
+        failures.append("a library reference WITH an origin: still fired")
+
+    # the check is scoped to the entry, not to everything after it
+    trailing = no_origin.replace(f"{_LIB}\n", "https://example.com/x\n") + f"\nLater prose mentioning {_LIB}.\n"
+    if [f for f in scan_text(trailing, rules) if f["matched_text"] == "[^1]"]:
+        failures.append("a library URL in later prose was blamed on the last reference")
 
     # a path finding must offer a usable replacement
     paths = [f for f in scan_text(CASE_TOOLING, rules) if f["matched_text"].startswith("/Users/")]

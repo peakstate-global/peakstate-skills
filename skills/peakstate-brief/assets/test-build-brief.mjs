@@ -264,6 +264,51 @@ assert.equal(
 assert.equal(render(PUB_SRC), ordinary, 'the ordinary render is deterministic');
 assert.equal(render(PUB_SRC, { publish: true }), published, 'the publish render is deterministic');
 
+/* ── publish render: an origin swaps in for a copy ───────────────────────
+   A library entry is a copy of somebody else's work. Citing the copy credits
+   the wrong party and points the reader at a page they cannot open. */
+
+const ORIGIN_SRC = [
+  '---', 'title: Origin fixture', '---', '',
+  '# Part one', '', '## Contents', '', '## Body', '',
+  'Prose leaning on a source[^1].', '',
+  '## References', '',
+  '[^1]: Library, T. (2024). A copy of a talk. https://library.example/artefact/a-talk',
+  'origin: Speaker, S. (2023). The talk itself. https://origin.example/talk',
+  'note: Read through the library copy, not the recording.',
+  '> a quoted sentence -- 04:11', '',
+].join('\n');
+
+const oOrdinary = render(ORIGIN_SRC);
+const oPublished = render(ORIGIN_SRC, { publish: true });
+
+assert.ok(oOrdinary.includes('A copy of a talk'), 'the ordinary render still shows the library entry');
+assert.ok(oOrdinary.includes('library.example/artefact/a-talk'), 'and its URL');
+assert.ok(!oOrdinary.includes('The talk itself'), 'the ordinary render does not swap');
+assert.ok(!oOrdinary.includes('origin:'), 'the origin directive never prints as prose');
+
+assert.ok(oPublished.includes('The talk itself'), 'the publish render shows the origin entry');
+assert.ok(!oPublished.includes('library.example'), 'and carries no library URL at all');
+assert.ok(!oPublished.includes('A copy of a talk'), 'the copy entry is gone');
+assert.ok(!oPublished.includes('Read through the library copy'),
+  'the note describing the copy goes with the copy');
+assert.ok(oPublished.includes('a quoted sentence'),
+  'the quote stays — it is verbatim from the same material');
+
+/* The short cite in the evidence box follows the entry it now names. */
+assert.ok(oPublished.includes('Speaker (2023)'), 'the evidence box credits the origin');
+assert.ok(!oPublished.includes('Library (2024)'), 'and not the library');
+assert.ok(oOrdinary.includes('Library (2024)'), 'the ordinary evidence box is unchanged');
+
+/* An entry with no origin: is untouched in both renders. Refusing it is the
+   scanner's job, not the renderer's — the renderer never silently drops a
+   source. */
+const NO_ORIGIN = ORIGIN_SRC.replace(/^origin:.*\n/m, '');
+assert.ok(render(NO_ORIGIN, { publish: true }).includes('library.example/artefact/a-talk'),
+  'a reference with no origin renders as written, for the scanner to catch');
+
+assert.equal(render(ORIGIN_SRC, { publish: true }), oPublished, 'the origin swap is deterministic');
+
 /* ── reproducibility ─────────────────────────────────────────────────────── */
 
 assert.equal(render(src), html, 'rendering is deterministic');
