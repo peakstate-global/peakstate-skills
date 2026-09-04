@@ -398,6 +398,20 @@ assert.ok(render(gapped).indexOf('Alpha, C.') < render(gapped).indexOf('Beta, B.
 assert.equal(render(gapped, { publish: true }).match(/<ol class="reflist">/g).length, 1,
   'the publish render collapses it too');
 
+/* Definitions inside a ::: container are invisible to collectAnchors, so the
+   document-wide set is empty. An empty array is truthy — falling back on `||`
+   rendered an empty bibliography and lost the sources without an error. */
+const inContainer = [
+  '---', 'title: Contained refs', '---', '',
+  '# P', '', '## Contents', '', '## S', '', 'A claim.', '',
+  '## R', '', ':::verdict', '',
+  '[^1]: Solo, S. (2022). The only source. https://example.com/s', '',
+  ':::', '',
+].join('\n');
+const contained = render(inContainer);
+assert.ok(contained.includes('The only source'), 'a reference inside a container still renders');
+assert.ok(/<ol class="reflist">[\s\S]*<li id="ref1"/.test(contained), 'and is inside the list, not an empty one');
+
 /* ── the command line reaches publish mode ───────────────────────────────
    Exercised through the CLI, not through render(), because the defect this
    guards against was the CLI never passing the option: publish mode existed,

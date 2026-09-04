@@ -383,7 +383,12 @@ function renderBlock(lines, ctx) {
   if (/^\[\^\d+\]:/.test(t)) {
     if (refs.listed) return '';
     refs.listed = true;
-    return renderRefs(refs.all || parseRefs(lines), refs, ctx.publish);
+    /* `refs.all` is empty when every definition sits inside a ::: container,
+       which collectAnchors does not descend into. An empty array is truthy, so
+       `||` never fell back and the bibliography rendered empty — silently
+       losing the sources rather than failing. Length, not truthiness. */
+    const all = refs.all && refs.all.length ? refs.all : parseRefs(lines);
+    return renderRefs(all, refs, ctx.publish);
   }
 
   if (/^[a-z]\)\s/.test(t)) {
