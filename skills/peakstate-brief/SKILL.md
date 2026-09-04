@@ -476,7 +476,7 @@ network. It reads `assets/brief-template.html`, `assets/brief.css` and
 writes**, so the output is one self-contained file.
 
 - **Nothing to copy.** The runtime is in the file. Do not place `brief.css` or
-  `brief.js` next to a delivered brief; see [A brief is one file](#a-brief-is-one-file--the-runtime-is-inlined).
+  `brief.js` next to a delivered brief; see `reference/inlining.md`.
 - **Deliver the one HTML file.** It works from Drive, from an email attachment,
   from a USB stick and on a plane. The `.md` source stays beside it in the repo,
   not with the copy you send.
@@ -598,72 +598,6 @@ table with `hl-focus` rows, an inline SVG diagram, a `<details class="example">`
 a classed paragraph. This is the escape hatch, and using it is not a defeat: the
 markdown still carries the document, and the bespoke markup stays verbatim.
 
-## A brief is one file — the runtime is inlined
-
-**`build-brief.mjs` inlines `brief.css` and `brief.js` into the page it writes.**
-A delivered brief is a single self-contained HTML file of roughly 240KB that
-fetches nothing, works offline, works from Google Drive, works emailed on its
-own, and never tells a third party it was opened. There is nothing to copy beside
-it and nothing to keep in sync.
-
-**This replaced a three-rung loader — local files, then CDN copies verified by
-Subresource Integrity, then a notice — and it is worth knowing why, because the
-old design looks more careful.** Every rung had a failure the reader could
-neither diagnose nor fix: assets left behind when the file moved out of its
-folder; a moved tag orphaning the integrity hashes of every brief already sent,
-so the browser fetched the bytes and then refused them; a commit not yet pushed;
-a firewall; a plane. All of that machinery existed to deliver ~100KB that fits
-inside the document. **A brief that has to phone home is not a document.** It
-gets mailed, dropped in Drive and opened offline like one, so it has to behave
-like one.
-
-The cost is real and small: a brief freezes its runtime at build time. That was
-already true — an old brief kept whatever `brief.js` sat beside it — and the fix
-is unchanged, rebuild it from the markdown.
-
-- **Do not copy `brief.css` / `brief.js` next to a brief.** They are already in
-  it. A stray pair beside a brief is confusing, not helpful.
-- **`render(src, { link: true })`** restores the linked form. One use only:
-  hand-authoring inside a chat tool that has no filesystem to inline from.
-
-**Retrofitting a brief that already exists** — most briefs worth fixing predate
-inlining and no longer have their markdown, so re-rendering is not an option:
-
-    python3 <skill-dir>/assets/inline-brief.py <brief.html> [more.html ...]
-    python3 <skill-dir>/assets/inline-brief.py --check <brief.html>
-
-It swaps only the two tags that load the runtime and **asserts the document body
-is unchanged before it writes**, so it cannot alter what a delivered brief says.
-Idempotent: a second run reports `already ok`. Saved answers live in
-localStorage under the brief id, which it does not touch.
-
-### The portable cut — hosts with no developer machine
-
-**claude.ai, Claude Cowork and Copilot Cowork all run bundled scripts, so none of
-them needs the model to type the runtime out.** Build the drop-in folder and install
-that:
-
-    python3 <skill-dir>/assets/make-portable.py <dest>          # a folder
-    python3 <skill-dir>/assets/make-portable.py <dest> --zip    # + a zip for claude.ai
-
-Five files, ~175KB: the short `portable/SKILL.md`, `brief-template.html`, the runtime
-pair, and `inline-brief.py`. There the model authors the HTML from the template and
-runs `python3 inline-brief.py <file>` — so a brief built on a chat host is still one
-self-contained file, and the inlining costs no output tokens at all. Emitting 153KB
-of CSS and JS by hand would be roughly 42,000 tokens of exact transcription, which is
-why the script does it.
-
-Where to put it: `Documents/Cowork/skills/peakstate-brief/` in OneDrive for Copilot
-Cowork, which discovers it at the start of the next session; Settings › Capabilities
-for claude.ai, which takes the zip. Copilot Cowork allows one `SKILL.md` plus twenty
-companion files at 10MB — the cut uses four, and `make-portable.py --self-check`
-asserts it stays inside both limits.
-
-**A host with no shell at all** still works: author from the template and deliver it
-as-is, but **say in the delivery message that it loads its runtime from a CDN**, so
-the reader needs the network the first time they open it. That is the one property
-the cut can lose.
-
 ## End-of-phase brief — required section order
 
 A brief closing a work phase (see global CLAUDE.md § How I work) uses these
@@ -688,133 +622,6 @@ a paper.
    named specifically (not "the UI"), each with its OK / Needs work tick and
    answer box.
 9. **Next phase readiness** — what's unblocked, what's still waiting.
-
-## Editable documents — when the reader rewrites, not just comments
-
-**A brief carrying a draft the reader is meant to CHANGE uses a `[data-doc]` block, not a question
-with a textarea.** Comments are right for "this line is wrong"; an editable document is right for an
-article, a policy, a spec or a page of copy where the reader wants to fix the wording in place and
-hand it back. Asking someone to describe an edit in a comment box is asking them to write the diff
-by hand.
-
-    <div data-doc="article-body" data-doc-label="Article (a) body">
-      <script type="text/markdown">
-# The heading
-
-The body, in markdown, exactly as it should ship.
-      </script>
-    </div>
-
-- **The source of truth is the `<script type="text/markdown">`**, which the browser never renders,
-  so the original always survives and Revert always works. Do not write the rendered HTML yourself;
-  the runtime renders it.
-- **The runtime injects the whole editor** — the toolbar, the Raw MD toggle, Done, Revert, the
-  "edited" flag and the heading rail. Author only the markdown.
-- **Click the text to edit it. There is no Edit button.** Clicking a sentence in the rendered
-  document starts editing with the caret at the character you clicked, the way nav's project
-  Description box works. Escape or Done ends editing; ⌘Enter / ⌘S also finish.
-- **The toolbar is sticky and context-aware**, mirroring nav's: H1 H2 H3, bold, italic,
-  strikethrough, inline code, code block, bulleted and numbered lists, blockquote, body text,
-  horizontal rule, link and unlink, table controls, copy-as-markdown. A button lights up when the
-  caret is inside what it applies — H1 is highlighted inside a heading, B inside bold.
-- **Tables are supported both ways.** The table button opens a sub-toolbar (insert 3×3, add or
-  delete a row or column) which also opens itself whenever the caret lands in a table. GFM pipe
-  tables render, and serialise back to pipe tables.
-- **Raw MD is one click away**, and swaps back with "Rich editor". Both modes edit the same
-  markdown string, so the switch is a conversion, never a merge.
-- **The heading rail is nav's MiniTocSidebar**: thin bars down the document's right edge, one per
-  heading, width by level (H1 widest); the bar for the heading you are reading is highlighted as
-  you scroll; hovering the rail opens a flyout of the titles, and clicking either scrolls there.
-  Hidden under 900px and in print.
-- **Markdown stays the stored form.** Every keystroke serialises the DOM back to markdown, so the
-  responses JSON and Revert compare markdown to markdown. Edits persist to localStorage on every
-  keystroke.
-- **Edits ride in the responses JSON** under `edits: [{id, label, original, edited}]`, both sides,
-  so the author diffs rather than re-reads. An untouched document is omitted entirely.
-- **One `data-doc` per document, with a stable id** — it is the localStorage key, so keep it
-  identical across regenerations or saved edits are orphaned.
-- The renderer and the serialiser cover headings, emphasis, links, inline and fenced code, lists,
-  blockquotes, rules and GFM pipe tables. Anything outside that set is normalised to its nearest
-  markdown equivalent rather than passed through as HTML.
-- **Why it is not TipTap:** a brief is one self-contained file opened from disk, so there is no
-  bundler and no network. nav does this job with TipTap v3 + tiptap-markdown; here the same
-  behaviour is rebuilt on `contenteditable` + `execCommand`, ported from
-  `src/components/ui/{MarkdownEditor,RichTextEditor,MiniTocSidebar}.tsx`. Read those files before
-  changing the editor — the click-to-caret offset walk, the 112px active-heading fold and the
-  180ms flyout delay are all lifted from them deliberately.
-
-**Selection comments still work inside an editable document**, so a reader can mark up in reading
-view and rewrite in edit view, and both come back in the same payload.
-
-## Definitions block — put the vocabulary at the top
-
-**When a brief turns on words the reader and the writer may use differently, open with a Terms
-block.** Contested, ambiguous or newly-coined words are the commonest reason a brief gets answered
-at cross purposes, and the fix is cheap: say what each word means *here*, before anything rests on
-it. Borrowed from the SOURCED definitions block, so a brief and a position paper teach one layout.
-
-**Use it when** the brief coins a term, uses a word two parties define differently, or asks a
-question whose answer depends on which sense of a word is meant. **Skip it** for a brief with no
-such words — an empty Definitions block is worse than none.
-
-Two halves, in this order, inside one `section.brief-section`:
-
-    <section class="brief-section" data-sec="definitions">
-      <div class="sec-head">
-        <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
-        <h2>Definitions</h2>
-      </div>
-      <div class="sec-body">
-
-        <p class="defs-h">Not used here</p>
-        <div class="defs-out">
-          <div class="term"><s>Decline</s> <span class="to">→</span> <b>depreciation</b> · <b>displacement</b>
-            <span class="why">used for two things that move on different clocks</span></div>
-        </div>
-
-        <p class="defs-h">Used here</p>
-        <div class="defs-in">
-          <div class="term">
-            <div class="fam">needs</div>
-            <h4>Risk</h4>
-            <ul>
-              <li><span class="k">In this brief</span> the exposure created by something that might go wrong</li>
-              <li><span class="k">Needs</span> a <b>likelihood</b> and an <b>impact</b> — neither is a kind of risk</li>
-            </ul>
-            <div class="foot">Bears on Q3 · Q7</div>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-- **`defs-out` is what the brief sets aside.** One line each: the word struck through, the word
-  used instead in bold, and a short `why`. Never a paragraph — if it needs one, it belongs in
-  `defs-in` as a term the brief does use.
-- **A term earns `defs-out` only if using it would make a claim wrong or ambiguous. Needing a
-  caveat is not enough.** The test is on the `why` line: read it alone, and if it is a
-  *definition of the term*, the term belongs in `defs-in`; if it names a *failure the word
-  causes* — smuggles in an unobserved mechanism, covers two mechanisms with one spelling — it
-  belongs in `defs-out`. `defs-out` looks rigorous, so it attracts words that only needed a
-  footnote, and banning a word the reader already understands costs them vocabulary and buys
-  nothing. Default to `defs-in` with a `Watch` bullet carrying the caveat.
-- **`defs-in` is what the brief uses.** The `fam` tag names the relation and is optional; the
-  SOURCED families are `split`, `needs`, `disambiguate`, `gap`, `rename`, `normative`. A term
-  kept in play but carrying a trap takes a `Watch` bullet alongside its `In this brief` line.
-- **`foot` says which questions the term bears on**, so a reader can see why the word was worth
-  defining. Drop it rather than leave it vague.
-- **Never tell the reader their usage is wrong.** The block says what the words mean *in this
-  brief*. A definition good enough to borrow travels; an instruction seeds resistance.
-
-Pure CSS — the runtime does nothing with it, so the block ticks off and collapses like any other
-section.
-
-**The six SOURCED families**, if the brief uses the `fam` tag. Each names the condition the word is
-in, so the tag is a diagnosis the author can check rather than an instruction they have to derive:
-`umbrella` (covers several kinds of itself) · `compound` (needs every part supplied together) ·
-`overloaded` (two unrelated meanings, one spelling) · `unmeasured` (names something nobody
-measured) · `imprecise` (vague where an exact term exists) · `judgement` (says what ought to be, so
-no evidence settles it).
 
 ## Closing a comment the reader made
 
@@ -880,146 +687,30 @@ the reader re-send the same points, which is the round-trip this feature exists 
   brief (never restart per question, never bracket-style `[1]`) so the user can
   answer by number in chat as an alternative to the JSON.
 
-## What the template runtime already provides (do not reimplement)
+## Companion files
 
-- Tick-off per question AND per non-question section → **animates** it closed over
-  .22s (header stays, toggle back anytime); progress counter in the sticky top bar.
-  **Clicking the heading toggles it too** — the whole head is a target, with
-  `cursor: pointer` to say so, and a drag-selection inside a heading leaves the tick
-  alone and opens the comment popover instead.
-- **The tick box is hidden until the head is hovered or focused, and stays visible
-  once checked** — at which point the heading holds its offset, so the box never
-  lands on the first word. The hover region extends past the box on the left, or the
-  pointer crosses in and out of it and the box flickers.
-- **A dirty marker on the copy+download combo** whenever the document holds something
-  not yet copied back: a typed answer, a comment, a highlight, an unsaved draft or an
-  edited document. Copying or downloading marks it clean; the next change makes it
-  dirty again. Clean is stored as a **signature of the state**, not a flag, so a
-  reload cannot show clean over changed content.
-  - **It marks the pair, not one half of it.** Both buttons send the work back, so a
-    dot on only one says the other does not. One element carries it: the buttons' own
-    borders turn red and a dot sits off the combo's top right corner. **Nothing is
-    drawn around the group** — a ring outside the border is a second edge, and two
-    edges on one control read as two controls.
-  - **Only a regenerated brief clears it. The reader never can.** Copying is not
-    evidence the work arrived: a clipboard can be lost, a paste forgotten, a tab
-    closed. So the FILE declares what has been taken — `consumed:` in the front matter
-    changes when the brief is regenerated after the responses were read — and seeing a
-    new token is what marks the state clean. Copying and downloading leave the marker
-    exactly where it was.
-    **Set `consumed:` to a fresh value every time you regenerate a brief in response to
-    a reader's answers.** Forgetting it leaves the marker up on work you have already
-    acted on, which trains the reader to ignore it.
-  - **Its tooltip is a sentence saying what to do and why the marker is there**, not a
-    label. It is measured against the pair's box, so it opens below them with its right
-    edge on theirs and grows down and to the left: it can never clip the top of the
-    viewport or cross the right edge. Hovering either button shows it, and both
-    buttons' own tooltips stand down while it is up, so only one is ever on screen.
-- Answer `<textarea class="answer">` under each question — **auto-injected by the
-  runtime** into every `section.q` that doesn't already have one, so you never have
-  to add it (add one manually only to control its exact placement). Persisted to
-  localStorage as the user types.
-- **Copy icon on every code block** → the runtime injects a top-right copy
-  button into every `<pre>` (copies its `<code>`/text content, ✓ + toast on
-  success). Just write plain `<pre><code>…</code></pre>` — never hand-roll a
-  copy button.
-- **Copy summary as markdown** → the copy icon on the summary page puts the verdict
-  on the clipboard as markdown, and **appends a short References list of only the
-  sources that part cites**, numbered as they are numbered on the page. The collapsed
-  evidence block is dropped from the paste rather than flattened into it.
-- **Copy + download combo button** → JSON of `{id, question, resolved, answer}`
-  pairs plus all selection comments, all drafts and all note fields. The download
-  half writes `<brief-id>-responses-<YYYY-MM-DD>.json`, for a brief read offline or
-  answers worth keeping as a file. Both are icon-only with hover tooltips.
-- **Comments drawer** (speech-bubble icon, or press `C`) → every comment and every
-  unsaved draft in one scrollable list, with Show / Edit / Delete per row and
-  Resume / Discard per draft. A comment whose highlight could not be restored is
-  listed with a **not highlighted** badge rather than disappearing — the drawer is
-  what makes a lost highlight cosmetic instead of a lost thought.
-- **Draft rescue** — text typed into a comment popup is persisted on every
-  keystroke. Clicking away, pressing Escape, or reloading keeps it as a draft in the
-  drawer and in the exported JSON under `drafts`. Only the explicit **Discard**
-  button throws it away.
-- **Keyboard in the comment popup** — `Cmd/Ctrl+Enter` saves, `Escape` closes and
-  keeps the draft.
-- **Tooltips carry their shortcut.** Every top-bar control renders a CSS tooltip
-  from `data-tip` naming what it does and its key (`Copy responses JSON · ⌘C`).
-  **Never use the `title` attribute** — it is slow, unstyleable and hides the
-  shortcut. The smoke suite asserts a rendered brief contains zero of them, which is
-  how three survivors were found: the progress link, a resolved comment mark, and
-  fifty footnote markers. A footnote took `aria-label` rather than a tooltip, because
-  a superscript link into the references needs no hover hint.
-- **Comment anchoring survives element boundaries.** Selections flatten to a
-  whitespace-normalised string with an index map back into the text nodes, so a quote
-  crossing a `<strong>` or spanning two paragraphs anchors as one comment and
-  re-anchors on reload. The occurrence index is stored, so a repeated phrase
-  re-anchors onto the copy that was actually selected.
-- **Per-item note fields** — put `<textarea data-note="unique-key"
-  data-note-label="human label">` anywhere (under an audio sample, a mockup, a
-  table row) and the runtime persists it to localStorage and exports it under
-  `notes: [{id, label, note}]`. Use these when the reader needs to jot against
-  many items without one question per item. **Cmd/Ctrl-C with nothing selected (and focus
-  outside a field) copies the same JSON.**
-- Select any text → popover with **five highlighter colour chips, then a sixth
-  chip that clears** — and a comment
-  textarea; saved comments render as `<mark>` highlights, click to edit/delete;
-  re-anchored on reload by whitespace-insensitive text match; unanchorable ones
-  still survive in the JSON (`{selected_text, near_question, comment, highlight}`).
-- **Highlights can be baked into the file, so they stop belonging to one browser.**
-  A reader's marks live in localStorage, which does not follow them to another machine
-  and does not survive the file being sent to somebody else. Once you have read them
-  back, write them into the front matter as `highlights:` — a JSON array of
-  `{text, hl, nth, comment, near}` — and the regenerated brief arrives already
-  painted. **The file is the record**: deleting a baked highlight in the browser holds
-  until the next regeneration, exactly as an addressed comment behaves. A baked
-  highlight the reader already has is not duplicated; matching is on the text plus its
-  occurrence index.
-- **A sixth control ends the row: a circle with an X, which removes the highlight.**
-  On a mark with no words it deletes the record; on a commented mark it keeps the
-  comment and drops the colour. On a fresh selection it just closes.
-- **A colour with no comment is a complete action.** Clicking a chip on a fresh
-  selection with an empty box highlights and closes in one gesture, because
-  flagging a passage is a different job from replying to it — that is why the
-  chips are named by colour and carry no meaning. Type words first and a chip
-  only sets the colour, leaving the box open. Clicking a chip on an existing
-  highlight recolours it immediately.
-- **The sixth chip takes the highlight off.** It is a circle with an × at the end
-  of the row, same size and hit area as a colour, keyboard reachable, and it does
-  the obvious thing at each of the three points it can be pressed: on a fresh
-  selection it just closes; on an existing mark with no words it unpaints and
-  deletes the record; on an existing mark that HAS a comment it unpaints and keeps
-  the comment, which then travels in the JSON with `highlight: null` and is not
-  re-painted on reload. Picking a colour again puts the highlight back.
-- **The copy button carries a red dot whenever the document holds unsent work** —
-  a typed answer, a note, a saved comment, a highlight, an unsaved draft, or an
-  edited document block. Copying or downloading the responses clears it; the next
-  change brings it back. Clean is stored as a signature of the state, not a flag,
-  so a reload can never claim clean while the reader keeps typing. The dot's
-  tooltip is a sentence saying what to do and why, opening below the button and
-  growing down and to the left.
-- **A section head ticks itself when clicked.** The whole heading row is the
-  target and shows `cursor: pointer`; a drag that leaves a selection is a comment,
-  not a tick, and is left alone.
-- **The chips are not `hl-focus` / `hl-warn` / `hl-info`.** Those are table roles
-  with a legend contract; reusing them here would make a legend ambiguous. The
-  highlighter has its own `--hp-*` tokens, per theme, with the text colour
-  inherited so no hue needs its own foreground.
-- **Selecting text still copies normally.** The popover deliberately does not
-  focus its textarea on a fresh selection (focusing collapses the selection and
-  would break Cmd-C), so the user can copy the selection, use the popover's
-  "Copy text" button, or click into the box to comment. Never add an autofocus
-  or a `removeAllRanges()` to that path. Escape closes the popover.
-- Table cells wrap and never truncate (see the question-writing rules above).
-- Top-bar icon toggles: theme switcher (system → light → dark, default system)
-  and fixed-width vs full-width; both persisted browser-wide (`briefUI` key).
-- Progress reads "n/N questions resolved" and **is itself a jump-link to the next
-  unresolved question** (advances as each is resolved; becomes plain text once all
-  are) — so a long brief never has to be scrolled to find what's outstanding.
-  **Resolved = an answer has been typed OR the question has been ticked** — typing
-  an answer *is* resolving it, and the counter updates live as you type. The tick
-  remains meaningful on its own: it's how a question is resolved by accepting the
-  stated assumption without typing anything. Light + dark theme, print-safe,
-  `cursor: pointer` affordances, no external network assets.
+Open one when its line is true of the work in front of you; never preload them. The
+five together are 26KB the brief-writing task does not need, and this file is read in
+full every time the skill fires.
+
+| File | Read this when |
+|---|---|
+| `reference/runtime.md` | You are about to build an interaction, or wondering whether the runtime already has it |
+| `reference/definitions-block.md` | The brief coins a term, or two parties define one of its words differently |
+| `reference/editable-documents.md` | The reader is meant to REWRITE a draft in place, not just comment on it |
+| `reference/inlining.md` | You are asked why a brief is 240KB, or need to retrofit one that still links its runtime |
+| `reference/maintaining.md` | You edited `build-brief.mjs`, `brief.css` or `brief.js` and need the checks that must pass |
+
+**The three rules from those files that bind every brief**, so they are never missed by
+not opening one:
+
+- **Never reimplement what the runtime provides** — tick-off, answer boxes, the comments
+  drawer, the copy and download buttons, per-item notes, code-block copy, theme and width
+  toggles are all injected for you. Write the sections; the apparatus arrives with them.
+- **Never use the `title` attribute.** Tooltips come from `data-tip`, which carries the
+  shortcut and can be styled. The build asserts a rendered brief contains zero of them.
+- **A brief is one file.** `build-brief.mjs` inlines the runtime, so nothing is copied
+  beside a delivered brief and nothing is fetched when it opens.
 
 ## Receiving answers back
 
@@ -1077,51 +768,3 @@ who wants to know how a document was made should be one click away, not one sear
 - **Name the model, harness and version** in C2PA's `softwareAgent` shape, and say which
   model ran the adversarial pass and at what grade. "Reviewed" without naming the
   reviewer is the thing SOURCED's U rule exists to prevent.
-
-## Template changes
-
-If a brief needs a genuinely new interaction, extend
-`assets/brief-template.html` here (keep it dependency-free and backwards
-compatible with stored state) — improvements then benefit every future brief.
-
-## Verifying template changes
-
-**The renderer has its own check, and it needs nothing installed:**
-
-    node <skill-dir>/assets/test-build-brief.mjs
-
-It renders `assets/test-brief.md`, which holds one section per block type, and
-asserts the four hard requirements, the block shapes, that every internal anchor
-resolves, that a footnote with no target fails the build, that a fixed colour on
-SVG text or a locally re-declared `.diag` rule fails the build, and that two
-renders of one source are identical. Run it after any change to
-`build-brief.mjs`.
-
-`assets/smoke-test.mjs` drives `assets/test-fixture.html` with Playwright and
-covers the lot: ticks, persistence, the comment popover and drawer, JSON export,
-and the whole document editor (click-to-edit, caret placement, toolbar states,
-Raw MD, tables, the heading rail). **Run it after any runtime edit.**
-
-    mkdir -p /tmp/bt && cp assets/{brief.css,brief.js} /tmp/bt/
-    cp assets/test-fixture.html /tmp/bt/test.html
-    # smoke-test.mjs resolves playwright from ITS OWN location, so run it from a
-    # repo that has playwright installed:
-    cp assets/smoke-test.mjs <a-repo-with-playwright>/ && node smoke-test.mjs /tmp/bt
-
-All booleans true + `errors: []` = pass. The fixture must keep its `[data-doc]`
-block: the editor half of the suite is skipped when a page has none, and a
-skipped check reads exactly like a passing one.
-
-## Updating an existing brief's runtime
-
-`brief.css` / `brief.js` are **inlined into each brief at build time**, so an old
-brief keeps running its old runtime forever — a fixed bug will look unfixed in the
-file the reader actually has. **Rebuild it from its markdown**, with the same
-`brief-id` and the same output path, then hard-refresh (⌘⇧R). Stored answers,
-comments and edits are keyed on the `brief-id` in localStorage, not on the file,
-so they survive the rebuild.
-
-**If the reader has a copy elsewhere — Drive, an inbox, their desktop — send them
-the rebuilt file.** There is no way to upgrade a copy in place any more, and that
-is the trade the inlining makes: a brief that cannot be silently patched is also
-a brief that cannot silently break.

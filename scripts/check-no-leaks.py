@@ -267,8 +267,8 @@ def selftest() -> int:
 # A skill in this repo is published to the world the moment it is pushed. The
 # rule that keeps internal tooling out is not "remember to check" — it is a
 # named allowlist, so adding a skill takes a deliberate line in a file the
-# author has to write. publish-brief shipped here for weeks before anyone
-# noticed it described our own PRIMA and Navigator instances.
+# author has to write. This exists because a skill that only ever talked to
+# private infrastructure sat here for weeks before anybody noticed.
 PUBLIC_SKILLS = Path("skills/PUBLIC")
 
 
