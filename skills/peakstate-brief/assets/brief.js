@@ -143,7 +143,54 @@
   try { state = Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
   if (!Array.isArray(state.drafts)) state.drafts = [];
   if (!Array.isArray(state.comments)) state.comments = [];
-  function save() { put(KEY, JSON.stringify(state)); }
+  function save() { put(KEY, JSON.stringify(state)); renderDirty(); }
+
+  /* ── unsent work ────────────────────────────────────────────────────────
+     The reader has no way of knowing whether what is in this document has been
+     carried back to the chat, and a brief answered but never copied is the one
+     failure that wastes the whole exchange. So the copy button carries a dot
+     whenever the document holds something the last copy did not.
+
+     Clean is stored as a SIGNATURE of the state, not as a boolean: a boolean
+     survives a reload and goes on claiming clean while the reader keeps typing.
+     The signature is compared to what is on the page right now, so a reload
+     recomputes the same answer and a single keystroke changes it. */
+  function sig() {
+    return JSON.stringify([state.ticks, state.answers, state.notes, state.edits,
+      state.comments.map(function (c) { return [c.cid, c.comment, c.hl, c.unhl, c.resolved]; }),
+      state.drafts.map(function (d) { return [d.key, d.comment]; })]);
+  }
+  function hasWork() {
+    var k, any = false;
+    for (k in state.answers) if ((state.answers[k] || '').trim()) any = true;
+    for (k in state.notes) if ((state.notes[k] || '').trim()) any = true;
+    if (state.comments.length) any = true;
+    if (state.drafts.some(function (d) { return (d.comment || '').trim(); })) any = true;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-doc]'), function (doc) {
+      var e = state.edits[doc.dataset.doc];
+      if (e != null && e !== docSource(doc)) any = true;
+    });
+    return any;
+  }
+  var DIRTY_TIP = 'This document holds answers, comments or edits that have not been '
+    + 'copied back yet. Nothing here reaches Claude on its own \u2014 press this to put '
+    + 'the whole lot on your clipboard as JSON and paste it into the chat. The dot '
+    + 'clears when you do, and comes back the moment you change something else.';
+  function renderDirty() {
+    if (!copyBtnEl) return;
+    var dirty = hasWork() && sig() !== state.cleanSig;
+    var dot = copyBtnEl.querySelector('.cdot');
+    if (dirty && !dot) {
+      dot = document.createElement('span');
+      dot.className = 'cdot';
+      dot.setAttribute('aria-hidden', 'true');
+      dot.setAttribute('data-tip', DIRTY_TIP);
+      copyBtnEl.appendChild(dot);
+    } else if (!dirty && dot) { dot.remove(); }
+    copyBtnEl.setAttribute('aria-label',
+      'Copy responses JSON (' + MOD + 'C)' + (dirty ? '. ' + DIRTY_TIP : ''));
+  }
+  function markClean() { state.cleanSig = sig(); save(); }
   function toast(msg) {
     var t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
@@ -189,7 +236,7 @@
       if (!c.resolved) return;
       Array.prototype.forEach.call(
         document.querySelectorAll('mark.cmt[data-cid="' + c.cid + '"]'),
-        function (m) { m.classList.add('resolved'); m.title = 'Addressed — not sent again'; });
+        function (m) { m.classList.add('resolved'); m.setAttribute('data-tip', 'Addressed — not sent again'); });
     });
   }
   setTimeout(paintResolved, 0);
@@ -219,6 +266,20 @@
       sec.classList.toggle('done', box.checked);
       state.ticks[idOf(sec)] = box.checked; save(); renderProgress();
     });
+    /* Clicking anywhere on the heading ticks it — the box is small, quiet and
+       in the margin, and the heading is the thing the reader is actually
+       finished with. A drag that left a selection is the reader reaching for a
+       comment, so it is left alone; so is a click that landed on the label,
+       which would toggle twice and cancel itself out. */
+    var head = sec.querySelector('.sec-head, .q-head');
+    if (!head) return;
+    head.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('label.tick, a, button, input, textarea, select')) return;
+      var sel = window.getSelection();
+      if (sel && !sel.isCollapsed && sel.toString().trim()) return;
+      box.checked = !box.checked;
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+    });
   });
   /* A question counts as resolved once it has an answer typed into it, OR it has
      been ticked. Typing an answer IS resolving it — requiring a separate tick made
@@ -242,7 +303,7 @@
     if (!qs.length) {
       el.textContent = '0 questions for you';
       el.removeAttribute('href');
-      el.removeAttribute('title');
+      el.removeAttribute('data-tip');
       el.setAttribute('aria-label', 'This brief asks no questions.');
       el.classList.add('all-done', 'no-questions');
       return;
@@ -250,13 +311,13 @@
     el.textContent = done + '/' + qs.length + ' questions resolved';
     if (next) {
       el.setAttribute('href', '#' + (next.id || (next.id = 'q-' + next.dataset.q)));
-      el.setAttribute('title', 'Jump to ' + next.dataset.q + ' — next unresolved');
+      el.setAttribute('data-tip', 'Jump to ' + next.dataset.q + ' — next unresolved');
       el.setAttribute('aria-label', done + ' of ' + qs.length +
         ' questions resolved. Jump to ' + next.dataset.q + ', the next unresolved question.');
       el.classList.remove('all-done');
     } else {
       el.removeAttribute('href');
-      el.removeAttribute('title');
+      el.removeAttribute('data-tip');
       el.setAttribute('aria-label', 'All ' + qs.length + ' questions resolved');
       el.classList.add('all-done');
     }
@@ -293,6 +354,28 @@
       /* Only re-render when the answered/empty state actually flips, so the
          counter tracks typing live without doing work on every keystroke. */
       if (answered(qid) !== was) renderProgress();
+    });
+  });
+
+  /* ── legend pairs ──
+     A .legend is a flat row of <span class="chip"> swatches each followed by
+     its label text, so the flex gap falls BETWEEN a chip and its own words as
+     well as between pairs, and the two read the wrong way round. Wrapping each
+     pair gives the pair its own, tighter gap. Done here rather than in the
+     renderer so every brief already written gets it. */
+  Array.prototype.forEach.call(document.querySelectorAll('.legend'), function (lg) {
+    var wrap = null;
+    Array.prototype.slice.call(lg.childNodes).forEach(function (n) {
+      if (n.nodeType === 1 && n.classList.contains('chip')) {
+        wrap = document.createElement('span');
+        wrap.className = 'legend-i';
+        lg.insertBefore(wrap, n);
+        wrap.appendChild(n);
+        return;
+      }
+      if (!wrap) return;
+      if (n.nodeType === 3 && !n.nodeValue.trim()) return;
+      wrap.appendChild(n);
     });
   });
 
@@ -334,7 +417,7 @@
       if (c.resolved) return;   // the author has already acted on it; do not round-trip it
       out.comments.push({
         selected_text: c.text, near_question: c.near || null, comment: c.comment,
-        highlight: hlOf(c),
+        highlight: c.unhl ? null : hlOf(c),
         anchored: !!document.querySelector('mark.cmt[data-cid="' + c.cid + '"]')
       });
     });
@@ -359,11 +442,12 @@
       navigator.clipboard.writeText(txt).then(function () { toast(msg); }, fallback);
     } else fallback();
   }
-  function copyJSON() { copyText(responsesJSON(), 'Responses JSON copied'); }
+  function copyJSON() { copyText(responsesJSON(), 'Responses JSON copied'); markClean(); }
   var copyBtnEl = document.getElementById('copyBtn');
   copyBtnEl.innerHTML = ICON.copy;
   tip(copyBtnEl, 'Copy responses JSON', MOD + 'C');
   copyBtnEl.addEventListener('click', copyJSON);
+  renderDirty();
   /* Download the same payload as a file — a brief read offline, or one whose
      answers must be kept, needs an artefact rather than a clipboard. */
   function downloadJSON() {
@@ -375,6 +459,7 @@
     a.href = url; a.download = slug + '-responses-' + date + '.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    markClean();
     toast('Responses JSON downloaded');
   }
   var dlBtn = document.getElementById('downloadBtn');
@@ -549,7 +634,9 @@
       HLS.map(function (h) {
         return '<button class="chip" type="button" data-hl="' + h + '" aria-pressed="false"' +
                ' aria-label="' + h.charAt(0).toUpperCase() + h.slice(1) + ' highlight"></button>';
-      }).join('') + '</div>' +
+      }).join('') +
+      '<button class="chip chipoff" type="button" data-act="clear"></button>' +
+      '</div>' +
       '<textarea placeholder="Comment — or pick a colour to just highlight"></textarea>' +
       '<div class="row">' +
       (existing ? '<button class="btn small danger" data-act="del" type="button">Delete</button>' : '') +
@@ -568,7 +655,7 @@
     var chosen = existing ? hlOf(existing) : 'yellow';
     var hlPicked = !!existing;
     function paintChips() {
-      Array.prototype.forEach.call(pop.querySelectorAll('.chip'), function (b) {
+      Array.prototype.forEach.call(pop.querySelectorAll('.chip[data-hl]'), function (b) {
         var on = b.dataset.hl === chosen;
         b.classList.toggle('on', on);
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -599,7 +686,13 @@
       if (!val && !hlPicked) { dropDraft(key); closePop(); return; }
       if (existing) {
         existing.comment = val; existing.hl = chosen; existing.at = new Date().toISOString();
-        recolour(existing.cid, chosen);
+        if (isAnchored(existing.cid)) recolour(existing.cid, chosen);
+        else {
+          /* The highlight was cleared earlier — a colour puts it back. */
+          delete existing.unhl;
+          var rr = findRange(main(), existing.text, existing.nth || 0);
+          if (rr) wrapRange(rr, existing.cid, chosen);
+        }
         dropDraft(key); save(); renderDrawer(); closePop(); toast('Comment updated');
         return;
       }
@@ -620,6 +713,7 @@
     }
 
     paintChips();
+    tip(pop.querySelector('.chipoff'), existing ? 'Remove this highlight' : 'Close without highlighting');
     pop.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('button');
       if (btn && btn.dataset.hl) {
@@ -633,6 +727,22 @@
       }
       var act = btn && btn.dataset.act;
       if (!act) return;
+      /* Taking the highlight off is not the same as deleting the thought. If
+         there are words, the comment stays and travels in the payload without a
+         colour; if there are none, the mark WAS the whole record, so it goes. */
+      if (act === 'clear') {
+        if (!existing) { dropDraft(key); closePop(); return; }
+        unpaint(existing.cid);
+        var body = (ta.value || '').trim();
+        if (body) {
+          existing.comment = body; existing.unhl = true; existing.at = new Date().toISOString();
+          dropDraft(key); save(); renderDrawer(); closePop(); toast('Highlight removed, comment kept');
+        } else {
+          state.comments = state.comments.filter(function (c) { return c.cid !== existing.cid; });
+          dropDraft(key); save(); renderDrawer(); closePop(); toast('Highlight removed');
+        }
+        return;
+      }
       if (act === 'cancel') { dropDraft(key); closePop(); return; }
       if (act === 'copy') { copyText(quote, 'Selected text copied'); return; }
       if (act === 'del' && existing) {
@@ -677,7 +787,7 @@
          and findRange walks every text node to discover that. Retrying it on
          every drawer open made the first few clicks crawl on a brief carrying
          two dozen comments from earlier versions. Remember the miss instead. */
-      if (c.noAnchor) return;
+      if (c.noAnchor || c.unhl) return;
       var r = findRange(main(), c.text, c.nth || 0);
       if (r) wrapRange(r, c.cid, hlOf(c)); else c.noAnchor = true;
     });
@@ -728,7 +838,7 @@
       state.comments.forEach(function (c) {
         var anchored = isAnchored(c.cid);
         html += '<div class="drow' + (c.resolved ? ' resolved' : '') + '" data-cid="' + esc(c.cid) + '">' +
-          '<div class="dq"><span class="ddot" data-hl="' + hlOf(c) + '"></span>“' + esc(c.text).slice(0, 160) + '”' +
+          '<div class="dq"><span class="ddot"' + (c.unhl ? '' : ' data-hl="' + hlOf(c) + '"') + '></span>“' + esc(c.text).slice(0, 160) + '”' +
           (c.resolved ? '<span class="dbadge done">addressed</span>' : '') +
           (anchored ? '' : '<span class="dbadge">not highlighted</span>') + '</div>' +
           '<div class="db">' + esc(c.comment) + '</div>' +
@@ -838,7 +948,10 @@
     if (!sup.id) sup.id = 'cite-' + (i + 1);
     var key = a.getAttribute('href').slice(1);
     if (!citedBy[key]) citedBy[key] = sup.id;
-    if (!a.title) a.title = 'Jump to reference';
+    /* aria-label, not title: a superscript link into the references needs no
+       hover hint (the affordance is the shape), and a title attribute here put
+       50 of them in one document, against this file's own rule. */
+    if (!a.getAttribute('aria-label')) a.setAttribute('aria-label', 'Jump to reference ' + (a.textContent || '').trim());
   });
   Object.keys(citedBy).forEach(function (key) {
     var target = document.getElementById(key);
