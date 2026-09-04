@@ -414,7 +414,9 @@ brief needs that markdown has no word for are the parts the runtime keys off.
 
 `title` is the `<h1>`; `head-title` is the browser tab and defaults to `title`.
 `brief-id` is the localStorage key, so **keep it identical across
-regenerations**. `addressed` becomes `data-addressed` on `<body>` (see "Closing a
+regenerations**. `consumed:` is a token you change on every regeneration that acts on
+the reader's answers — it is the only thing that clears the unsent-work marker.
+`highlights:` is a JSON array of highlights the document now carries itself. `addressed` becomes `data-addressed` on `<body>` (see "Closing a
 comment the reader made").
 
 | Source | Renders as |
@@ -754,10 +756,19 @@ the reader re-send the same points, which is the round-trip this feature exists 
   dirty again. Clean is stored as a **signature of the state**, not a flag, so a
   reload cannot show clean over changed content.
   - **It marks the pair, not one half of it.** Both buttons send the work back, so a
-    dot on only one says the other does not. One element carries the whole thing — a
-    red ring around the combo and a dot off its top right corner — so the ring and the
-    dot cannot disagree about whether there is unsent work, and it sits above the
-    buttons, including the hovered one, which lifts itself.
+    dot on only one says the other does not. One element carries it: the buttons' own
+    borders turn red and a dot sits off the combo's top right corner. **Nothing is
+    drawn around the group** — a ring outside the border is a second edge, and two
+    edges on one control read as two controls.
+  - **Only a regenerated brief clears it. The reader never can.** Copying is not
+    evidence the work arrived: a clipboard can be lost, a paste forgotten, a tab
+    closed. So the FILE declares what has been taken — `consumed:` in the front matter
+    changes when the brief is regenerated after the responses were read — and seeing a
+    new token is what marks the state clean. Copying and downloading leave the marker
+    exactly where it was.
+    **Set `consumed:` to a fresh value every time you regenerate a brief in response to
+    a reader's answers.** Forgetting it leaves the marker up on work you have already
+    acted on, which trains the reader to ignore it.
   - **Its tooltip is a sentence saying what to do and why the marker is there**, not a
     label. It is measured against the pair's box, so it opens below them with its right
     edge on theirs and grows down and to the left: it can never clip the top of the
@@ -809,6 +820,15 @@ the reader re-send the same points, which is the round-trip this feature exists 
   textarea; saved comments render as `<mark>` highlights, click to edit/delete;
   re-anchored on reload by whitespace-insensitive text match; unanchorable ones
   still survive in the JSON (`{selected_text, near_question, comment, highlight}`).
+- **Highlights can be baked into the file, so they stop belonging to one browser.**
+  A reader's marks live in localStorage, which does not follow them to another machine
+  and does not survive the file being sent to somebody else. Once you have read them
+  back, write them into the front matter as `highlights:` — a JSON array of
+  `{text, hl, nth, comment, near}` — and the regenerated brief arrives already
+  painted. **The file is the record**: deleting a baked highlight in the browser holds
+  until the next regeneration, exactly as an addressed comment behaves. A baked
+  highlight the reader already has is not duplicated; matching is on the text plus its
+  occurrence index.
 - **A sixth control ends the row: a circle with an X, which removes the highlight.**
   On a mark with no words it deletes the record; on a commented mark it keeps the
   comment and drops the colour. On a fresh selection it just closes.

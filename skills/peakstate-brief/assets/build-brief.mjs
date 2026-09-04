@@ -628,10 +628,15 @@ export function render(source, opts = {}) {
 
   const template = inlineRuntime(opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8'), opts);
   const addressed = meta.addressed ? ' data-addressed="' + escAttr(meta.addressed) + '"' : '';
+  /* Two things the FILE tells the runtime, which the reader cannot set:
+     what work Claude has already taken (so the unsent-work marker clears), and
+     which highlights are now part of the document rather than of one browser. */
+  const consumed = meta.consumed ? ' data-consumed="' + escAttr(meta.consumed) + '"' : '';
+  const baked = meta.highlights ? ' data-highlights="' + escAttr(meta.highlights) + '"' : '';
   return template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + consumed + baked + '>')
     .replace(/<main>[\s\S]*<\/main>/, '<main>\n\n' + out.join('\n\n') + '\n\n</main>');
 }
 

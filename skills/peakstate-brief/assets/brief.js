@@ -198,7 +198,19 @@
     if (dl) dl.setAttribute('aria-label',
       'Download responses JSON' + (dirty ? '. ' + DIRTY_TIP : ''));
   }
-  function markClean() { state.cleanSig = sig(); save(); }
+  /* Only a regenerated brief clears the marker, never the reader. Copying is
+     not evidence the work arrived: the clipboard can be lost, the paste can be
+     forgotten, the tab can be closed. So the file declares what it has taken —
+     data-consumed changes when Claude regenerates the brief after reading the
+     responses — and seeing a NEW token is what marks the state clean. The
+     reader cannot set it, which is the point. */
+  function consumeToken() {
+    var tok = document.body.dataset.consumed || '';
+    if (!tok || tok === state.consumedTok) return;
+    state.consumedTok = tok;
+    state.cleanSig = sig();
+    save();
+  }
   function toast(msg) {
     var t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
@@ -218,6 +230,35 @@
      A resolved comment stays visible and readable, greyed, and is dropped from
      the exported JSON. Nothing is deleted: the reader can untick it. */
   function addrKey(x) { return (x || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40); }
+  /* Highlights the file itself carries. A reader's marks live in localStorage,
+     which does not follow them to another machine and does not survive being
+     sent to somebody else — so once Claude has seen them they are written into
+     the document and arrive already painted. The file is the record: deleting a
+     baked highlight in the browser holds until the next regeneration, exactly
+     as an addressed comment behaves. */
+  function adoptBaked() {
+    var raw = document.body.dataset.highlights;
+    if (!raw) return;
+    var list;
+    try { list = JSON.parse(raw); } catch { return; }
+    if (!Array.isArray(list)) return;
+    var seen = {};
+    state.comments.forEach(function (c) { seen[c.text + '\u0000' + (c.nth || 0)] = true; });
+    list.forEach(function (h, i) {
+      if (!h || !h.text) return;
+      var k = h.text + '\u0000' + (h.nth || 0);
+      if (seen[k]) return;
+      seen[k] = true;
+      state.comments.push({
+        cid: 'baked' + i + '-' + (h.nth || 0), text: h.text, comment: h.comment || '',
+        hl: h.hl || 'yellow', near: h.near || null, nth: h.nth || 0,
+        baked: true, at: h.at || null
+      });
+    });
+    save();
+  }
+  adoptBaked();
+
   var ADDRESSED = (document.body.dataset.addressed || '')
     .split('||').map(addrKey).filter(Boolean);
   /* Highlighter colours. The reader assigns the meaning — "this bit is for the
@@ -450,11 +491,12 @@
       navigator.clipboard.writeText(txt).then(function () { toast(msg); }, fallback);
     } else fallback();
   }
-  function copyJSON() { copyText(responsesJSON(), 'Responses JSON copied'); markClean(); }
+  function copyJSON() { copyText(responsesJSON(), 'Responses JSON copied'); }
   var copyBtnEl = document.getElementById('copyBtn');
   copyBtnEl.innerHTML = ICON.copy;
   tip(copyBtnEl, 'Copy responses JSON', MOD + 'C');
   copyBtnEl.addEventListener('click', copyJSON);
+  consumeToken();
   renderDirty();
   /* Download the same payload as a file — a brief read offline, or one whose
      answers must be kept, needs an artefact rather than a clipboard. */
@@ -467,7 +509,6 @@
     a.href = url; a.download = slug + '-responses-' + date + '.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    markClean();
     toast('Responses JSON downloaded');
   }
   var dlBtn = document.getElementById('downloadBtn');

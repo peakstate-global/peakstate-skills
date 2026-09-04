@@ -347,8 +347,11 @@
   .btn.icon svg { display: block; }
   /* Copy + download read as one control: same job, two destinations. */
   .btncombo { display: inline-flex; position: relative; }
-  .btncombo .btn.icon:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-  .btncombo .btn.icon:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
+  /* of-type, not child: the dirty marker is appended to the combo, so it is the
+     last CHILD and :last-child stopped matching the download button — which got
+     its corners back and broke the illusion of one control. */
+  .btncombo .btn.icon:first-of-type { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .btncombo .btn.icon:last-of-type { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
   .btncombo .btn.icon:hover { position: relative; z-index: 1; }
   /* No title attributes anywhere: they are slow to appear, unstyleable, and
      never show the keyboard shortcut. This renders instantly and carries it. */
@@ -379,11 +382,17 @@
     /* inset -1px covers the BORDER box, so the tooltip's right edge lands
        exactly on the combo's right edge and its top exactly below it. */
     position: absolute; inset: -1px; pointer-events: none; display: block;
-    border-radius: 8px;
-    outline: 1.5px solid var(--dirty); outline-offset: 0;
+    position: absolute; inset: -1px; pointer-events: none; display: block;
     /* Above both buttons, including the hovered one, which lifts to z-index 1. */
     z-index: 3;
   }
+  /* The control turns red; nothing is drawn around it. A ring outside the
+     border is a second edge, and two edges on one control read as two
+     controls. Hover has to be restated or .btn:hover's accent wins and the
+     button you are about to press stops looking urgent. */
+  .btncombo:has(> .cdot) .btn.icon,
+  .btncombo:has(> .cdot) .btn.icon:hover { border-color: var(--dirty); color: var(--dirty); }
+  .btncombo:has(> .cdot) .btn.icon:hover { background: color-mix(in srgb, var(--dirty) 10%, transparent); }
   .cdot::before {
     content: ""; position: absolute; top: -3px; right: -3px;
     width: 8px; height: 8px; border-radius: 50%;
