@@ -731,13 +731,21 @@ the reader re-send the same points, which is the round-trip this feature exists 
   once checked** — at which point the heading holds its offset, so the box never
   lands on the first word. The hover region extends past the box on the left, or the
   pointer crosses in and out of it and the box flickers.
-- **A dirty dot on the copy button** whenever the document holds something not yet
-  copied back: a typed answer, a comment, a highlight, an unsaved draft or an edited
-  document. Copying or downloading marks it clean; the next change makes it dirty
-  again. Clean is stored as a **signature of the state**, not a flag, so a reload
-  cannot show clean over changed content. Its tooltip is a sentence saying what to do
-  and why the dot is there, rendered below the button and aligned to its right edge so
-  it grows down and left and can never leave the viewport.
+- **A dirty marker on the copy+download combo** whenever the document holds something
+  not yet copied back: a typed answer, a comment, a highlight, an unsaved draft or an
+  edited document. Copying or downloading marks it clean; the next change makes it
+  dirty again. Clean is stored as a **signature of the state**, not a flag, so a
+  reload cannot show clean over changed content.
+  - **It marks the pair, not one half of it.** Both buttons send the work back, so a
+    dot on only one says the other does not. One element carries the whole thing — a
+    red ring around the combo and a dot off its top right corner — so the ring and the
+    dot cannot disagree about whether there is unsent work, and it sits above the
+    buttons, including the hovered one, which lifts itself.
+  - **Its tooltip is a sentence saying what to do and why the marker is there**, not a
+    label. It is measured against the pair's box, so it opens below them with its right
+    edge on theirs and grows down and to the left: it can never clip the top of the
+    viewport or cross the right edge. Hovering either button shows it, and both
+    buttons' own tooltips stand down while it is up, so only one is ever on screen.
 - Answer `<textarea class="answer">` under each question — **auto-injected by the
   runtime** into every `section.q` that doesn't already have one, so you never have
   to add it (add one manually only to control its exact placement). Persisted to

@@ -346,7 +346,7 @@
   .btn.icon { display: inline-flex; align-items: center; justify-content: center; gap: .25rem; }
   .btn.icon svg { display: block; }
   /* Copy + download read as one control: same job, two destinations. */
-  .btncombo { display: inline-flex; }
+  .btncombo { display: inline-flex; position: relative; }
   .btncombo .btn.icon:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
   .btncombo .btn.icon:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
   .btncombo .btn.icon:hover { position: relative; z-index: 1; }
@@ -365,34 +365,43 @@
   }
   [data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transform: translateY(0); }
   @media (hover: none) { [data-tip]::after { display: none; } }
-  /* ── the copy button's unsent-work dot ──
-     .cdot is stretched over the whole button, so its ::after — the same
+  /* ── the unsent-work dot, on the copy+download COMBO ──
+     .cdot is stretched over the whole combo, so its ::after — the same
      data-tip mechanism as every other tooltip — is measured against the
-     BUTTON's box: it opens below the button, its right edge on the button's
-     right edge, and grows down and to the left. It can therefore never clip
-     the top of the viewport, and never crosses the right edge.
-     The dot itself is painted by ::before, in the top right corner. */
+     PAIR's box: it opens below them, its right edge on their right edge, and
+     grows down and to the left. It can therefore never clip the top of the
+     viewport, and never crosses the right edge. Because it covers both halves,
+     hovering either one shows the sentence.
+     The dot itself is painted by ::before, off the top right corner, and the
+     ring by an outline on the same element — one element, so the ring and the
+     dot cannot disagree about whether there is unsent work. */
   .cdot {
-    /* inset -1px covers the button's BORDER box, so the tooltip's right edge
-       lands exactly on the button's right edge and its top exactly below it. */
+    /* inset -1px covers the BORDER box, so the tooltip's right edge lands
+       exactly on the combo's right edge and its top exactly below it. */
     position: absolute; inset: -1px; pointer-events: none; display: block;
+    border-radius: 8px;
+    outline: 1.5px solid var(--dirty); outline-offset: 0;
+    /* Above both buttons, including the hovered one, which lifts to z-index 1. */
+    z-index: 3;
   }
   .cdot::before {
-    content: ""; position: absolute; top: -2px; right: -2px;
+    content: ""; position: absolute; top: -3px; right: -3px;
     width: 8px; height: 8px; border-radius: 50%;
     background: var(--dirty); box-shadow: 0 0 0 1.5px var(--bg);
+    z-index: 1;
   }
   /* A sentence, not a label — so it wraps, and it is wide enough to read. */
   .cdot::after {
     white-space: normal; width: max-content;
     max-width: min(21rem, calc(100vw - 2rem)); text-align: left; line-height: 1.4;
   }
-  .btn:hover > .cdot::after, .btn:focus-visible > .cdot::after,
-  .cdot:hover::after { opacity: 1; transform: translateY(0); }
+  .btncombo:hover > .cdot::after, .btncombo:focus-within > .cdot::after,
+  .btn:hover > .cdot::after, .btn:focus-visible > .cdot::after
+    { opacity: 1; transform: translateY(0); }
   /* One tooltip at a time: while there is unsent work, the dot's sentence is
      the more useful of the two, so the button's own tip stands down. Its
      aria-label is untouched, so the control is still named for a screen reader. */
-  .btn:has(> .cdot)::after { content: none; }
+  .btn:has(> .cdot)::after, .btncombo:has(> .cdot) .btn::after { content: none; }
   .cbadge {
     font: 600 .62rem/1 var(--font-ui); background: var(--accent); color: #fff;
     border-radius: 8px; padding: .15rem .3rem; min-width: 1rem; text-align: center;

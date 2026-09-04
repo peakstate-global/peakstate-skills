@@ -35,7 +35,7 @@
       '<button class="btn icon" id="cmtBtn" type="button"></button>' +
       '<button class="btn icon" id="widthBtn" type="button"></button>' +
       '<button class="btn icon" id="themeBtn" type="button"></button>' +
-      '<span class="btncombo">' +
+      '<span class="btncombo" id="btnCombo">' +
       '<button class="btn icon" id="copyBtn" type="button"></button>' +
       '<button class="btn icon" id="downloadBtn" type="button"></button>' +
       '</span>';
@@ -178,17 +178,25 @@
     + 'clears when you do, and comes back the moment you change something else.';
   function renderDirty() {
     if (!copyBtnEl) return;
+    /* The dot hangs off the COMBO, not off the copy button. Both halves send
+       the work back, so a marker on one of them says the other does not — and
+       the tooltip has to be measured against the pair's box or its right edge
+       lands in the middle of the group. */
+    var combo = document.getElementById('btnCombo') || copyBtnEl;
     var dirty = hasWork() && sig() !== state.cleanSig;
-    var dot = copyBtnEl.querySelector('.cdot');
+    var dot = combo.querySelector(':scope > .cdot');
     if (dirty && !dot) {
       dot = document.createElement('span');
       dot.className = 'cdot';
       dot.setAttribute('aria-hidden', 'true');
       dot.setAttribute('data-tip', DIRTY_TIP);
-      copyBtnEl.appendChild(dot);
+      combo.appendChild(dot);
     } else if (!dirty && dot) { dot.remove(); }
     copyBtnEl.setAttribute('aria-label',
       'Copy responses JSON (' + MOD + 'C)' + (dirty ? '. ' + DIRTY_TIP : ''));
+    var dl = document.getElementById('downloadBtn');
+    if (dl) dl.setAttribute('aria-label',
+      'Download responses JSON' + (dirty ? '. ' + DIRTY_TIP : ''));
   }
   function markClean() { state.cleanSig = sig(); save(); }
   function toast(msg) {
