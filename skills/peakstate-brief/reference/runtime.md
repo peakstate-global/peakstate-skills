@@ -11,14 +11,18 @@
   pointer crosses in and out of it and the box flickers.
 - **A dirty marker on the copy+download combo** whenever the document holds something
   not yet copied back: a typed answer, a comment, a highlight, an unsaved draft or an
-  edited document. Copying or downloading marks it clean; the next change makes it
-  dirty again. Clean is stored as a **signature of the state**, not a flag, so a
+  edited document. Clean is stored as a **signature of the state**, not a flag, so a
   reload cannot show clean over changed content.
   - **It marks the pair, not one half of it.** Both buttons send the work back, so a
     dot on only one says the other does not. One element carries it: the buttons' own
-    borders turn red and a dot sits off the combo's top right corner. **Nothing is
-    drawn around the group** — a ring outside the border is a second edge, and two
-    edges on one control read as two controls.
+    borders turn red, a red dot sits off the combo's top right corner, and a red glow
+    surrounds the pair. **No ring is drawn around the group** — a hard ring outside the
+    border is a second edge, and two edges on one control read as two controls.
+  - **Copy, download or ⌘C turns the dot green with a white tick and the borders
+    green. The glow stays red.** Two signals answer two different questions: green says
+    "I copied it", red says "Claude has not read it yet". The tooltip changes with the
+    state. The green tick is recorded against the signature it copied, so one more
+    keystroke returns the control to red.
   - **Only a regenerated brief clears it. The reader never can.** Copying is not
     evidence the work arrived: a clipboard can be lost, a paste forgotten, a tab
     closed. So the FILE declares what has been taken — `consumed:` in the front matter

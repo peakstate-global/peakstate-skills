@@ -418,11 +418,31 @@
   .btncombo:has(> .cdot) .btn.icon,
   .btncombo:has(> .cdot) .btn.icon:hover { border-color: var(--dirty); color: var(--dirty); }
   .btncombo:has(> .cdot) .btn.icon:hover { background: color-mix(in srgb, var(--dirty) 10%, transparent); }
+  /* The glow is the UNSENT signal and only a regenerated brief clears it, so it
+     stays red after a copy: the clipboard is not delivery. It sits on the combo
+     rather than on either button, for the same reason the dot does. */
+  .btncombo:has(> .cdot) {
+    border-radius: 8px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dirty) 16%, transparent),
+                0 0 14px 2px color-mix(in srgb, var(--dirty) 42%, transparent);
+  }
+  /* Copied: the border and the dot go green, the glow does not. Two signals,
+     two questions — green answers "did I copy it", red answers "has Claude
+     read it", and they are not the same question. */
+  .btncombo:has(> .cdot.copied) .btn.icon,
+  .btncombo:has(> .cdot.copied) .btn.icon:hover { border-color: var(--done); color: var(--done); }
+  .btncombo:has(> .cdot.copied) .btn.icon:hover { background: color-mix(in srgb, var(--done) 10%, transparent); }
   .cdot::before {
     content: ""; position: absolute; top: -3px; right: -3px;
     width: 8px; height: 8px; border-radius: 50%;
     background: var(--dirty); box-shadow: 0 0 0 1.5px var(--bg);
     z-index: 1;
+  }
+  /* A tick needs room to read at this size, so the copied dot is 2px wider. */
+  .cdot.copied::before {
+    top: -4px; right: -4px; width: 11px; height: 11px;
+    background: var(--done) center/7px 7px no-repeat
+      url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path d="M2 6.4 4.7 9 10 3.2" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
   }
   /* A sentence, not a label — so it wraps, and it is wide enough to read. */
   .cdot::after {

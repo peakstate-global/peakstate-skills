@@ -252,6 +252,13 @@
     + 'whole lot on your clipboard as JSON, then paste it into the chat. Copying does '
     + 'not clear this marker: it stays until Claude sends the brief back having read '
     + 'them, so a copy you never pasted cannot look like work delivered.';
+  var COPIED_TIP = 'Copied. The answers, comments and highlights in this document are '
+    + 'on your clipboard \u2014 paste them into the chat. The glow stays red until '
+    + 'Claude sends the brief back having read them, because a copy you never pasted '
+    + 'is not work delivered.';
+  /* Copying is recorded against the SIGNATURE it copied, not as a flag: type one
+     more character and the green tick is wrong, so it must go back to red. */
+  function markCopied() { state.copiedSig = sig(); save(); renderDirty(); }
   function renderDirty() {
     if (!copyBtnEl) return;
     /* The dot hangs off the COMBO, not off the copy button. Both halves send
@@ -260,19 +267,24 @@
        lands in the middle of the group. */
     var combo = document.getElementById('btnCombo') || copyBtnEl;
     var dirty = hasWork() && sig() !== state.cleanSig;
+    var copied = dirty && state.copiedSig === sig();
+    var tipText = copied ? COPIED_TIP : DIRTY_TIP;
     var dot = combo.querySelector(':scope > .cdot');
     if (dirty && !dot) {
       dot = document.createElement('span');
       dot.className = 'cdot';
       dot.setAttribute('aria-hidden', 'true');
-      dot.setAttribute('data-tip', DIRTY_TIP);
       combo.appendChild(dot);
-    } else if (!dirty && dot) { dot.remove(); }
+    } else if (!dirty && dot) { dot.remove(); dot = null; }
+    if (dot) {
+      dot.classList.toggle('copied', copied);
+      dot.setAttribute('data-tip', tipText);
+    }
     copyBtnEl.setAttribute('aria-label',
-      'Copy responses JSON (' + MOD + 'C)' + (dirty ? '. ' + DIRTY_TIP : ''));
+      'Copy responses JSON (' + MOD + 'C)' + (dirty ? '. ' + tipText : ''));
     var dl = document.getElementById('downloadBtn');
     if (dl) dl.setAttribute('aria-label',
-      'Download responses JSON' + (dirty ? '. ' + DIRTY_TIP : ''));
+      'Download responses JSON' + (dirty ? '. ' + tipText : ''));
   }
   /* Only a regenerated brief clears the marker, never the reader. Copying is
      not evidence the work arrived: the clipboard can be lost, the paste can be
@@ -585,7 +597,7 @@
       navigator.clipboard.writeText(txt).then(function () { toast(msg); }, fallback);
     } else fallback();
   }
-  function copyJSON() { copyText(responsesJSON(), 'Responses JSON copied'); }
+  function copyJSON() { copyText(responsesJSON(), 'Responses JSON copied'); markCopied(); }
   var copyBtnEl = document.getElementById('copyBtn');
   copyBtnEl.innerHTML = ICON.copy;
   tip(copyBtnEl, 'Copy responses JSON', MOD + 'C');
@@ -604,6 +616,7 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     toast('Responses JSON downloaded');
+    markCopied();
   }
   var dlBtn = document.getElementById('downloadBtn');
   if (dlBtn) {
