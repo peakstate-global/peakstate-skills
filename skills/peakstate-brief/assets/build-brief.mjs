@@ -66,14 +66,21 @@ function inline(text, refs) {
   t = t.replace(/<\/?[a-zA-Z][^<>]*>/g, (m) => (INLINE_HTML.test(m) ? park(m) : m));
   t = esc(t);
   t = t.replace(/\[\^(\d+)(?:q(\d+))?\]/g, (m, n, q) => {
-    let id = 'ref' + n + '-q' + (q || 1);
-    /* A source with no pull quote has no quote anchor, so a bare marker lands
-       on the entry itself rather than on an id nothing renders. */
-    if (refs && !refs.anchors.has(id)) {
-      if (!q && refs.anchors.has('ref' + n)) id = 'ref' + n;
-      else refs.missing.push(m + ' -> #' + id);
+    /* Every marker lands on the ENTRY. Quotes no longer render at the back, so
+       there is no per-quote anchor to jump to — the quote itself is in the
+       evidence block of the section the reader is already standing in.
+       The qN part of the syntax is still validated, so a marker naming a quote
+       the source does not have is still a build error rather than a silent
+       link to the wrong place. */
+    const id = 'ref' + n;
+    if (refs) {
+      if (!refs.anchors.has(id)) refs.missing.push(m + ' -> #' + id);
+      else if (q && refs.quoteCount && +q > (refs.quoteCount[n] || 0)) {
+        refs.missing.push(m + ' -> quote ' + q + ' of ' + (refs.quoteCount[n] || 0));
+      }
     }
-    return '<sup class="fn"><a href="#' + id + '">' + n + '</a></sup>';
+    const shown = (refs && refs.display && refs.display[n]) || n;
+    return '<sup class="fn"><a href="#' + id + '">' + shown + '</a></sup>';
   });
   /* Lazy, so bold may hold emphasis: `**a *b* c**` is one bold run, not two. */
   t = t.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
@@ -202,21 +209,31 @@ function parseRefs(lines) {
   return refs;
 }
 
+/* Sort key: the APA first element, which is what a reader scans down. Markup
+   and leading quotes are stripped so "*Anon*" files under A, not under an
+   asterisk. */
+function refSortKey(r) {
+  return r.apa.join(' ').replace(/[*_`"'\u201c\u2018]/g, '').trim().toLowerCase();
+}
+
+/* Alphabetical by first element, numbered in that order. The numbers a reader
+   sees are therefore positions in the list, not the order the author happened
+   to cite things in — which is why the display number is decoupled from the
+   authoring key everywhere else in this file.
+
+   No quotes here. Every quote now sits in the evidence block of the section
+   that actually leans on it, where it is read in context; repeating the set at
+   the back made the reference list a second copy of the same passages and
+   buried the entries a reader came here to find. */
 function renderRefs(refs, reg) {
-  const items = refs.map((r) => {
-    let html = '  <li id="ref' + r.n + '">\n    <span class="rnum">' + esc(r.n) +
-      '</span><span class="apa">' +
-      autolink(inline(r.apa.join(' '), reg)) + '</span>';
-    if (r.note) html += '\n    <span class="apa-note">' + inline(r.note, reg) + '</span>';
-    r.quotes.forEach((q, i) => {
-      const parts = q.split(/\s+--\s+/);
-      const qref = parts.length > 1 ? parts.pop() : null;
-      html += '\n    <blockquote class="pull" id="ref' + r.n + '-q' + (i + 1) + '">' +
-        inline(parts.join(' -- '), reg) +
-        (qref ? '<span class="qref">' + inline(qref, reg) + '</span>' : '') + '</blockquote>';
+  const items = refs.slice().sort((a, b) => refSortKey(a).localeCompare(refSortKey(b)))
+    .map((r) => {
+      const d = (reg && reg.display && reg.display[r.n]) || r.n;
+      let html = '  <li id="ref' + r.n + '"><span class="rnum">' + esc(d) + '</span>' +
+        autolink(inline(r.apa.join(' '), reg));
+      if (r.note) html += '\n    <span class="apa-note">' + inline(r.note, reg) + '</span>';
+      return html + '</li>';
     });
-    return html + '\n  </li>';
-  });
   return '<ol class="reflist">\n' + items.join('\n') + '\n</ol>';
 }
 
@@ -282,8 +299,8 @@ function proveIt(lines, index, reg) {
     r.quotes.forEach((q, i) => {
       const parts = q.split(/\s+--\s+/);
       const qref = parts.length > 1 ? parts.pop() : null;
-      body += '\n      <blockquote class="pull"><a class="l5src" href="#ref' + k + '-q' +
-        (i + 1) + '">' + esc(r.label) + '</a>' + inline(parts.join(' -- '), reg) +
+      body += '\n      <blockquote class="pull"><a class="l5src" href="#ref' + k +
+        '">' + esc(r.label) + '</a>' + inline(parts.join(' -- '), reg) +
         (qref ? '<span class="qref">' + inline(qref, reg) + '</span>' : '') + '</blockquote>';
     });
   }
@@ -510,6 +527,8 @@ function renderSection(sec, ctx) {
 function collectAnchors(parts) {
   const anchors = new Set();
   const index = {};
+  const quoteCount = {};
+  const all = [];
   for (const p of parts) {
     for (const s of p.sections) {
       for (const b of blocks(s.lines)) {
@@ -517,12 +536,19 @@ function collectAnchors(parts) {
         for (const r of parseRefs(b)) {
           anchors.add('ref' + r.n);
           index[r.n] = { label: shortCite(r.apa.join(' ')), quotes: r.quotes };
-          r.quotes.forEach((_, i) => anchors.add('ref' + r.n + '-q' + (i + 1)));
+          quoteCount[r.n] = r.quotes.length;
+          all.push(r);
         }
       }
     }
   }
-  return { anchors, index };
+  /* The number a marker shows is the entry's position in the ALPHABETICAL list,
+     computed once here so the markers and the list cannot disagree. The [^n]
+     key stays whatever the author wrote; it is an id, not a number. */
+  const display = {};
+  all.slice().sort((a, b) => refSortKey(a).localeCompare(refSortKey(b)))
+    .forEach((r, i) => { display[r.n] = String(i + 1); });
+  return { anchors, index, quoteCount, display };
 }
 
 /* A brief is one file, and the renderer makes that literally true: brief.css and
@@ -599,8 +625,8 @@ export function render(source, opts = {}) {
   const src = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const [meta, body] = frontMatter(src);
   const parts = outline(body);
-  const { anchors, index } = collectAnchors(parts);
-  const refs = { anchors, missing: [] };
+  const { anchors, index, quoteCount, display } = collectAnchors(parts);
+  const refs = { anchors, missing: [], quoteCount, display };
   const ctx = { refs, index };
 
   const out = ['<header class="brief-title">\n  <p class="eyebrow">' + inline(meta.eyebrow || '', refs) +

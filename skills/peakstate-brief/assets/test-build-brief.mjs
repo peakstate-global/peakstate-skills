@@ -83,13 +83,20 @@ has('<div class="legend"><span class="chip hl-focus"></span>', 'a :::html block 
 
 /* ── footnotes resolve ───────────────────────────────────────────────────── */
 
-has('<sup class="fn"><a href="#ref1-q1">1</a></sup>', 'footnote marker');
-has('<sup class="fn"><a href="#ref1-q2">1</a></sup>', 'a marker may point at a later quote');
-has('<blockquote class="pull" id="ref1-q2">', 'each quote gets its own anchor');
-has('<span class="qref">Standfirst, second sentence</span>', 'a quote carries its locator');
+const REF_FIXTURE_BAD_QUOTE = '# P\n\n## S\n\nA claim[^1q9].\n\n## References\n\n' +
+  '[^1]: Example, A. (2026). *A thing*. Somewhere. https://example.com\n' +
+  '    > "one quote only" -- p. 1\n';
+
+
+has('<a href="#ref1">', 'a footnote marker lands on the reference entry');
+assert.ok(!main.includes('href="#ref1-q'), 'markers no longer point at per-quote anchors');
+assert.ok(!/<blockquote class="pull" id="ref\d/.test(main),
+  'the reference list carries no quotes — they live in each section evidence block');
+has('<span class="qref">Standfirst, second sentence</span>',
+  'a quote still carries its locator, inside the evidence block');
 has('<span class="apa-note">', 'an unretrievable source says so');
-has('<sup class="fn"><a href="#ref3">3</a></sup>', 'a quoteless source is cited on its entry');
-assert.ok(!main.includes('id="ref3-q1"'), 'no quote means no quote anchor');
+assert.throws(() => render(REF_FIXTURE_BAD_QUOTE),
+  /footnote markers with no target/, 'a marker naming a quote the source lacks is still a build error');
 
 /* ── attribute escaping ──────────────────────────────────────────────────── */
 
@@ -127,7 +134,7 @@ assert.ok(linked.includes('<script src="brief.js"'),
 has('<details class="l5">', 'a section that cites a source gets an expandable evidence block');
 has('<summary>Ramsden (2026).<span class="l5n">2 quotes</span></summary>',
   'the summary names the sources and counts the quotes, with no label prefix');
-has('class="l5src" href="#ref1-q1"', 'each quote links to its exact passage in the references');
+has('class="l5src" href="#ref1"', 'each quote in the evidence block links to its reference entry');
 has('<div class="l5body">', 'the quotes themselves are inside the block, not just counted');
 has('<summary>Internal corpus (2026); Australian Bureau of Statistics (2026).' +
   '<span class="l5n">1 quote</span></summary>',
@@ -135,7 +142,16 @@ has('<summary>Internal corpus (2026); Australian Bureau of Statistics (2026).' +
 const listsSec = main.slice(main.indexOf('id="s-lists"')).split('</section>')[0];
 assert.ok(!listsSec.includes('class="l5"'),
   'a section that cites nothing gets no "Prove it" box');
-has('<span class="rnum">1</span><span class="apa">', 'each reference carries its number badge');
+has('<span class="rnum">', 'each reference carries its number badge');
+{
+  const list = main.slice(main.indexOf('<ol class="reflist">')).split('</ol>')[0];
+  const keys = [...list.matchAll(/<li id="ref(\d+)"/g)].map((m) => m[1]);
+  const nums = [...list.matchAll(/<span class="rnum">(\d+)<\/span>/g)].map((m) => m[1]);
+  assert.deepEqual(nums, nums.slice().sort((a, b) => a - b),
+    'displayed numbers run 1..n down the alphabetical list');
+  assert.ok(keys.join() !== nums.join() || keys.length < 2,
+    'the authoring key and the displayed number are decoupled');
+}
 assert.equal((main.match(/<span class="rnum">/g) || []).length, 3,
   'one badge per reference, no more');
 assert.equal((main.match(/<div class="endmark" aria-hidden="true"><\/div>/g) || []).length, 1,

@@ -326,24 +326,37 @@ Markup:
 expected five sources and you found three, state that in the brief — a silently
 incomplete evidence base is worse than a stated one.
 
-### The house reference format — APA entry, then its quotes beneath it
+### The house reference format — a plain alphabetical bibliography
 
-**One `<li>` per source, never one per quote.** The APA entry comes first, then every
-passage that source supports, stacked underneath it as `<blockquote class="pull">`
-elements with their own ids (`ref7-q4`) and a `<span class="qref">` naming where in the
-source it sits — the section heading, page, timestamp or cell. A source cited eleven
-times has eleven blockquotes under one entry, numbered `q1…q11`.
+**You still author quotes under each source. They no longer render at the back.** The
+markdown is unchanged: one footnote definition per source, its APA entry, then every
+passage it supports as a `> ` line with `-- locator`. What changed is where they come
+out. Each quote is now shown in the **evidence block of the section that leans on it**,
+in context, next to the argument it supports — instead of being stacked at the end where
+the reader has to hold the claim in their head while they go and find it.
 
-This is the format, and it is not optional, because it is what makes the References
-section *checkable* rather than decorative: the reader lands on the exact sentence the
-footnote was claiming, not on a link to a page they now have to search. It also makes
-the author's own overreach visible — if you cannot find a passage to sit under the
-entry, the claim was an inference and must be relabelled in the body.
+**So the References section is a bibliography and looks like one:**
+
+- **Alphabetical by first element**, and numbered in that order. **The number a reader
+  sees is a position in the list, not the `[^n]` key you authored with** — the renderer
+  computes the mapping once so the markers and the list cannot disagree. Keep writing
+  `[^1]`, `[^2]` in whatever order suits you.
+- **Every footnote marker lands on the entry**, not on a per-quote anchor, because the
+  quote itself is already on screen in the section the reader is standing in.
+- **APA hanging indent, no rail, no quotes.** The rail said "quoted aside"; a
+  bibliography is not one.
+- **`qN` in a marker is still validated.** `[^2q6]` against a source carrying four
+  quotes is a build error, so a marker cannot claim evidence that does not exist.
+
+**Nothing about checkability is given up, and that is the test this had to pass.** The
+verbatim passage, its locator and its link to the source are all still there, one screen
+closer to the claim. If you cannot find a passage to sit under an entry, the claim was
+an inference and must be relabelled in the body — unchanged.
 
 Where a source could not be retrieved, or was retrieved but its body could not be read,
-say so in an `<span class="apa-note">` on that entry rather than quietly omitting the
-quote. Same for a community forum thread or any non-authoritative source: the note says
-what it is, so a reader knows not to lean on it.
+say so in a `note:` line on that entry rather than quietly omitting the quote. Same for a
+community forum thread or any non-authoritative source: the note says what it is, so a
+reader knows not to lean on it.
 
 ## How to build one — author markdown, render the HTML
 

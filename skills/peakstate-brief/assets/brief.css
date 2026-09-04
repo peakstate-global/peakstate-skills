@@ -204,9 +204,20 @@
     background: var(--accent-soft); border-radius: 3px; padding: .1em .3em; margin-left: .12em;
   }
   sup.fn a:hover, sup.fn a:focus-visible { text-decoration: underline; outline-offset: 2px; }
-  ol.reflist { padding-left: 1.4rem; margin: .5rem 0 0; }
-  ol.reflist > li { margin: 0 0 .9rem; padding-left: .2rem; scroll-margin-top: 4rem; }
-  ol.reflist > li:target { background: var(--accent-soft); border-radius: 6px; padding: .35rem .5rem .35rem .3rem; }
+  /* APA hanging indent, per the design prototype: the entry text wraps at
+     3.6rem while its first line pulls back 1.6rem, and the number sits in the
+     gutter that leaves, out of the indent flow. No rail, no left border — the
+     list is a list, not a quoted passage. */
+  ol.reflist { list-style: none; padding: 0 1.3rem; margin: .5rem 0 0; font-size: .95rem; }
+  ol.reflist > li {
+    position: relative; margin: .55rem 0; color: var(--muted);
+    padding-left: 3.6rem; text-indent: -1.6rem; line-height: 1.62;
+    scroll-margin-top: 4rem;
+  }
+  ol.reflist > li:target { background: var(--accent-soft); border-radius: 6px; }
+  ol.reflist > li a { color: var(--accent); overflow-wrap: anywhere; }
+  .reflist .rnum { position: absolute; left: 0; top: .12rem; text-indent: 0; }
+  .reflist .apa-note { display: block; text-indent: 0; font-size: .82rem; margin-top: .25rem; }
   .apa { display: block; font-size: .88rem; line-height: 1.5; text-indent: -1.4rem; padding-left: 1.4rem; }
   .apa a { color: var(--accent); overflow-wrap: anywhere; }
   .apa .apa-note { color: var(--muted); font-size: .8rem; }
@@ -882,22 +893,17 @@ details.l5 > summary:focus-visible { outline: 2px solid var(--accent); outline-o
 .endmark { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg);
            margin: 2.6rem auto 0; }
 
-/* ── level 5 — prove it ─────────────────────────────────────────
-   One more step right, smaller, muted, behind a hairline rail. Still serif:
-   a reference is prose the reader reads, not a control they act on.        */
-.sec-body > ol.reflist, .q-body > ol.reflist {
-  margin-left: var(--step); padding-left: 1.5rem;
-  border-left: 1px solid var(--line);
-}
-.sec-body > ol.reflist > li, .q-body > ol.reflist > li { font-size: .95rem; margin: .55rem 0; }
-ol.reflist { color: var(--muted); }
+/* ── the reference list ─────────────────────────────────────────
+   No rail. The rail said "this is a quoted aside"; with the quotes moved into
+   each section's evidence block, what is left is a plain bibliography and it
+   should look like one. Still serif: a reference is prose the reader reads,
+   not a control they act on.
 
-/* The reference number is a badge, not a list marker: it holds its shape when
-   the entry wraps, and it reads as the same object as the footnote that sent
-   the reader here. The native marker goes, or the number appears twice. */
-ol.reflist { list-style: none; padding-left: 0; }
-ol.reflist > li { position: relative; padding-left: 2.3rem; }
-ol.reflist > li:target { padding-left: 2.3rem; }
+   The number is a badge, not a list marker — it holds its shape when the entry
+   wraps, and reads as the same object as the footnote that sent the reader
+   here. The native marker goes, or the number appears twice. */
+.sec-body > ol.reflist, .q-body > ol.reflist { margin-left: 0; }
+ol.reflist { color: var(--muted); }
 ol.reflist > li > .apa { text-indent: 0; padding-left: 0; }
 .rnum {
   position: absolute; left: 0; top: .12rem; text-indent: 0;
