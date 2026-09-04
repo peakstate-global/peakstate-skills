@@ -637,17 +637,32 @@ is unchanged before it writes**, so it cannot alter what a delivered brief says.
 Idempotent: a second run reports `already ok`. Saved answers live in
 localStorage under the brief id, which it does not touch.
 
-### Attaching the skill to a chat tool
+### The portable cut — hosts with no developer machine
 
-**For ChatGPT, Copilot chat, or Microsoft 365 Copilot CoWork, attach two files:
-this `SKILL.md` and `assets/brief-template.html`.** That is the whole skill for
-those hosts. The model fills in the content and emits one HTML file; because the
-template already knows how to reach its runtime, the result works when the reader
-opens it, with nothing to copy and no second build to choose.
+**claude.ai, Claude Cowork and Copilot Cowork all run bundled scripts, so none of
+them needs the model to type the runtime out.** Build the drop-in folder and install
+that:
 
-CoWork reads a skill's `SKILL.md` from `Documents/Cowork/Skills/<skill-name>/` in
-OneDrive and needs no install step. Its handling of a skill's other bundled files
-is undocumented, which is the second reason the template stands alone.
+    python3 <skill-dir>/assets/make-portable.py <dest>          # a folder
+    python3 <skill-dir>/assets/make-portable.py <dest> --zip    # + a zip for claude.ai
+
+Five files, ~175KB: the short `portable/SKILL.md`, `brief-template.html`, the runtime
+pair, and `inline-brief.py`. There the model authors the HTML from the template and
+runs `python3 inline-brief.py <file>` — so a brief built on a chat host is still one
+self-contained file, and the inlining costs no output tokens at all. Emitting 153KB
+of CSS and JS by hand would be roughly 42,000 tokens of exact transcription, which is
+why the script does it.
+
+Where to put it: `Documents/Cowork/skills/peakstate-brief/` in OneDrive for Copilot
+Cowork, which discovers it at the start of the next session; Settings › Capabilities
+for claude.ai, which takes the zip. Copilot Cowork allows one `SKILL.md` plus twenty
+companion files at 10MB — the cut uses four, and `make-portable.py --self-check`
+asserts it stays inside both limits.
+
+**A host with no shell at all** still works: author from the template and deliver it
+as-is, but **say in the delivery message that it loads its runtime from a CDN**, so
+the reader needs the network the first time they open it. That is the one property
+the cut can lose.
 
 ## End-of-phase brief — required section order
 
