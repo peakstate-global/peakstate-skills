@@ -246,8 +246,11 @@
   #toast.show { opacity: 1; }
   @media print {
     .topbar, #cpop, #cdrawer, #toast, .codecopy { display: none !important; }
+    /* transition: none as well as the values — a delayed visibility transition
+       is still a transition, and paper does not animate: the delay alone was
+       enough to print a ticked section blank. */
     section.done .q-body, section.done .sec-body,
-    section.done .l5 { max-height: none; opacity: 1; }
+    section.done .l5 { max-height: none; opacity: 1; visibility: visible; transition: none; }
     /* Force the light tokens: a dark theme prints as a black page. The
        selector has to carry the same weight as :root[data-theme="dark"], or a
        reader who chose dark and hit print got a black page anyway. */
@@ -959,7 +962,13 @@ label.tick:has(input:checked) { opacity: 1; transform: translateX(0); pointer-ev
    readers least able to tolerate it. */
 @media (prefers-reduced-motion: reduce) {
   label.tick, .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transition: none; }
-  .sec-body, .q-body, .l5 { transition: none; }
+  /* section.done raises the specificity of the collapse transition, so a bare
+     .sec-body rule no longer wins and the fold ran anyway. Matched here rather
+     than moved, because the delayed visibility is what keeps the animation from
+     being cut short when motion IS allowed. */
+  .sec-body, .q-body, .l5,
+  section.done .q-body, section.done .sec-body,
+  section:not(.done) .q-body, section:not(.done) .sec-body { transition: none; }
 }
 
 /* ── request 2 — the summary is a page ─────────────────────────────
@@ -1085,6 +1094,7 @@ body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap { max-wid
      repeats the v1 print reset because the collapse rules above it are newer
      and would otherwise win the cascade. */
   section.done .q-body, section.done .sec-body, section.done .l5 {
+    visibility: visible;
     max-height: none; opacity: 1;
   }
   section.done .l5 { margin: 1rem 0 0; padding: .7rem .85rem; border-width: 1px; }

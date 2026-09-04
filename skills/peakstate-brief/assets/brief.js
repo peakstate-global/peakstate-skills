@@ -761,7 +761,11 @@
       if (existing) {
         existing.comment = val; existing.at = new Date().toISOString();
         if (isAnchored(existing.cid)) { existing.hl = chosen; recolour(existing.cid, chosen); }
-        else if (hlPicked) {
+        /* Key on the reader's own decision, not on this popover's state. A mark
+           can be unanchored for reasons nobody chose — re-rendering a document
+           block wipes its marks — and those must still re-anchor on an edit.
+           Only an explicit clear (unhl) means "leave it off". */
+        else if (!existing.unhl || hlPicked) {
           /* The highlight was cleared earlier, and a colour was chosen just now
              — that puts it back. Editing the WORDS of a cleared mark must not:
              saving a typo fix used to repaint it yellow, silently undoing the
