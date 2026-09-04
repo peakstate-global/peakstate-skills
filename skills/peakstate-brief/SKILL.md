@@ -167,6 +167,16 @@ still doing all the work.
    summary page**, because a list of sections inside a boxed verdict reads as part
    of the verdict.
 
+8. **One label scheme per question** — a question's answer options are `a) b) c)`
+   and **nothing else inside that question may carry a letter or number the reader
+   could reply with**. Mockups, treatments, variants, columns and tables in a
+   question get named — "the quiet block", "the surfaced block" — never lettered
+   `A` / `B` or numbered `1` / `2`. A reader who answers `B` when the options are
+   `a) b) c)` and the mockups are `A` / `B` has given an ambiguous answer, and the
+   round trip to disambiguate it costs more than the brief saved. Test before
+   building: search the question's rendered text for a bare letter or digit outside
+   the `<ul class="options">`; a hit is a defect, not a style note.
+
 Self-check before sending: open the file, confirm you can see the H1 title block,
 the Contents, numbered questions with a "Your answer" box under each, the comments /
 width / theme / copy+download icons top-right, and — if the brief cites anything —
