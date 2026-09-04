@@ -1,0 +1,5 @@
+# Skills this repo may publish. One name per line.
+# Adding a line is a decision: everything in that folder becomes public on push.
+# Internal tooling (anything that talks to our own PRIMA, Navigator or Publish
+# instances) belongs in claude-config, not here.
+peakstate-brief

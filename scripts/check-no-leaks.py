@@ -264,6 +264,42 @@ def selftest() -> int:
     return 0 if ok else 1
 
 
+# A skill in this repo is published to the world the moment it is pushed. The
+# rule that keeps internal tooling out is not "remember to check" — it is a
+# named allowlist, so adding a skill takes a deliberate line in a file the
+# author has to write. publish-brief shipped here for weeks before anyone
+# noticed it described our own PRIMA and Navigator instances.
+PUBLIC_SKILLS = Path("skills/PUBLIC")
+
+
+def approved_skills() -> set:
+    if not PUBLIC_SKILLS.is_file():
+        return set()
+    out = set()
+    for line in PUBLIC_SKILLS.read_text(errors="ignore").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            out.add(line)
+    return out
+
+
+def check_new_skills(files, hits) -> None:
+    """Refuse a skill this repo has not been told it may publish."""
+    approved = approved_skills()
+    seen = set()
+    for name in files:
+        parts = Path(name).parts
+        if len(parts) < 2 or parts[0] != "skills":
+            continue
+        skill = parts[1]
+        if skill in approved or skill in seen or skill == PUBLIC_SKILLS.name:
+            continue
+        seen.add(skill)
+        hits.append((name, 0, "skill not approved for a public repo",
+                     f"{skill} — internal tooling stays in claude-config; if it really is "
+                     f"public, add '{skill}' to skills/PUBLIC and say so when you ask"))
+
+
 def main() -> int:
     if "--selftest" in sys.argv:
         return selftest()
@@ -296,6 +332,7 @@ def main() -> int:
         check_portability(name, path, text, hard_hits)
 
     check_shell(files, hard_hits)
+    check_new_skills(files, hard_hits)
 
     if soft_hits:
         print(f"note: {len(soft_hits)} mention(s) of your own app domains (allowed):")
