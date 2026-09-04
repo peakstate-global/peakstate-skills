@@ -42,15 +42,28 @@ function esc(t) {
    resolves — comments the author never addressed. */
 const escAttr = (t) => esc(t).replace(/"/g, '&quot;');
 
+/* Inline HTML that survives esc(). A block starting with `<` is already passed
+   through verbatim, but there is no block level inside a table cell or a list
+   item, so an author following this skill's own advice to put hl-focus /
+   hl-warn / hl-info on a cell had no way to do it and got the tag printed at
+   the reader. The allowlist is presentational tags carrying at most a class:
+   anything else — a script, an iframe, an onclick — still escapes to text, so
+   the escaping guarantee holds where it matters. */
+const INLINE_HTML =
+  /^<\/?(?:span|b|i|em|strong|s|del|ins|sub|sup|kbd|abbr|mark|small|wbr|br)(?:\s+class="[-\w\s]*")?\s*\/?>$/;
+
 /* Code spans are lifted out before any other rule runs, so `**not bold**`
    inside backticks stays literal. A fence of two or more backticks lets a span
    hold a backtick, the same way CommonMark does. */
 function inline(text, refs) {
   const spans = [];
-  let t = text.replace(/(`+)([\s\S]*?)\1/g, (_, ticks, body) => {
-    spans.push('<code>' + esc(body.replace(/^ (.*) $/, '$1')) + '</code>');
+  const park = (html) => {
+    spans.push(html);
     return SENTINEL + (spans.length - 1) + SENTINEL;
-  });
+  };
+  let t = text.replace(/(`+)([\s\S]*?)\1/g, (_, ticks, body) =>
+    park('<code>' + esc(body.replace(/^ (.*) $/, '$1')) + '</code>'));
+  t = t.replace(/<\/?[a-zA-Z][^<>]*>/g, (m) => (INLINE_HTML.test(m) ? park(m) : m));
   t = esc(t);
   t = t.replace(/\[\^(\d+)(?:q(\d+))?\]/g, (m, n, q) => {
     let id = 'ref' + n + '-q' + (q || 1);
@@ -191,7 +204,8 @@ function parseRefs(lines) {
 
 function renderRefs(refs, reg) {
   const items = refs.map((r) => {
-    let html = '  <li id="ref' + r.n + '">\n    <span class="apa">' +
+    let html = '  <li id="ref' + r.n + '">\n    <span class="rnum">' + esc(r.n) +
+      '</span><span class="apa">' +
       autolink(inline(r.apa.join(' '), reg)) + '</span>';
     if (r.note) html += '\n    <span class="apa-note">' + inline(r.note, reg) + '</span>';
     r.quotes.forEach((q, i) => {
@@ -204,6 +218,67 @@ function renderRefs(refs, reg) {
     return html + '\n  </li>';
   });
   return '<ol class="reflist">\n' + items.join('\n') + '\n</ol>';
+}
+
+/* ── level 5, the evidence a section rests on ─────────────────────────────
+   Built from the footnote markers already in a section's prose: which sources
+   it leans on, and — when opened — the verbatim quotes those sources carry,
+   with their locators. Nothing is authored for it, so a section that cites
+   nothing gets no box rather than an empty one.
+
+   It expands rather than counting. A closed line saying "4 quotes" asks the
+   reader to take the evidence on trust, which is the opposite of what a level
+   labelled "prove it" is for; the count is the handle, the quotes are the
+   point. Closed by default, because this is the bottom of the pyramid and most
+   readers stop above it. */
+
+/* "Barker, S. A. (2018). ..." -> "Barker (2018)". Multiple authors collapse to
+   "et al." the way a reader would say it aloud. */
+function shortCite(apa) {
+  const m = /^([\s\S]*?)\((\d{4})/.exec(apa);
+  if (!m) return null;
+  const head = m[1];
+  const first = head.split(',')[0].replace(/\.\s*$/, '').trim();
+  if (!first) return null;
+  const many = /&|\bet al\b/.test(head) || head.split(',').length > 2;
+  return first + (many ? ' et al.' : '') + ' (' + m[2] + ')';
+}
+
+/* Markers cited by a section's prose, in first-use order. A reference
+   *definition* line is a target, not a citation, so it never counts. */
+function citedIn(lines) {
+  const seen = [];
+  for (const l of lines) {
+    if (/^\s*\[\^\d+\]:/.test(l)) continue;
+    for (const m of l.matchAll(/\[\^(\d+)(?:q\d+)?\]/g)) {
+      if (!seen.includes(m[1])) seen.push(m[1]);
+    }
+  }
+  return seen;
+}
+
+function proveIt(lines, index, reg) {
+  const cited = citedIn(lines).filter((n) => index[n] && index[n].label);
+  if (!cited.length) return '';
+  const n = cited.reduce((a, k) => a + index[k].quotes.length, 0);
+  const heads = esc(cited.map((k) => index[k].label).join('; '));
+  /* No quotes anywhere in the cited sources: there is nothing to open, so it
+     stays a line rather than pretending to be expandable. */
+  if (!n) return '\n  <p class="l5">' + heads + '.</p>';
+  let body = '';
+  for (const k of cited) {
+    const r = index[k];
+    r.quotes.forEach((q, i) => {
+      const parts = q.split(/\s+--\s+/);
+      const qref = parts.length > 1 ? parts.pop() : null;
+      body += '\n      <blockquote class="pull"><a class="l5src" href="#ref' + k + '-q' +
+        (i + 1) + '">' + esc(r.label) + '</a>' + inline(parts.join(' -- '), reg) +
+        (qref ? '<span class="qref">' + inline(qref, reg) + '</span>' : '') + '</blockquote>';
+    });
+  }
+  return '\n  <details class="l5">\n    <summary>' + heads + '.' +
+    '<span class="l5n">' + n + ' quote' + (n === 1 ? '' : 's') + '</span></summary>' +
+    '\n    <div class="l5body">' + body + '\n    </div>\n  </details>';
 }
 
 /* ── block renderer ─────────────────────────────────────────────────────── */
@@ -286,7 +361,9 @@ function renderBlock(lines, ctx) {
       else if (rows.length && /^\s{2,}/.test(l) && rows[rows.length - 1].dd.length) rows[rows.length - 1].dd.push(s);
       else rows.push({ dt: s, dd: [] });
     }
-    const cls = ctx.sec === 'provenance' ? ' class="provblock"' : '';
+    /* "Provenance", "Provenance statement" and "Provenance and limitations" are
+       all the same block, so match the prefix rather than one exact heading. */
+    const cls = /^provenance/.test(ctx.sec || '') ? ' class="provblock"' : '';
     return '<dl' + cls + '>\n' + rows.map((r) =>
       '  <dt>' + inline(r.dt, refs) + '</dt>\n  <dd>' + inline(r.dd.join(' '), refs) + '</dd>').join('\n') + '\n</dl>';
   }
@@ -405,13 +482,15 @@ function renderSection(sec, ctx) {
       '  <div class="q-head">\n' +
       '    <label class="tick"><input type="checkbox" aria-label="Mark ' + sec.q + ' resolved"></label>\n' +
       '    <h3><span class="qid">' + sec.q + '</span> ' + inline(sec.title, ctx.refs) + '</h3>\n' +
-      '  </div>\n  <div class="q-body">\n' + body + '\n  </div>\n</section>';
+      '  </div>\n  <div class="q-body">\n' + body + '\n  </div>' +
+      proveIt(sec.lines, ctx.index || {}, ctx.refs) + '\n</section>';
   }
   return '<section class="brief-section" id="' + sec.id + '" data-sec="' + data + '">\n' +
     '  <div class="sec-head">\n' +
     '    <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>\n' +
     '    <h3>' + inline(sec.title, ctx.refs) + '</h3>\n' +
-    '  </div>\n  <div class="sec-body">\n' + body + '\n  </div>\n</section>';
+    '  </div>\n  <div class="sec-body">\n' + body + '\n  </div>' +
+    proveIt(sec.lines, ctx.index || {}, ctx.refs) + '\n</section>';
 }
 
 /* Footnote targets are collected before anything renders, so a marker pointing
@@ -419,18 +498,20 @@ function renderSection(sec, ctx) {
    reader finds. */
 function collectAnchors(parts) {
   const anchors = new Set();
+  const index = {};
   for (const p of parts) {
     for (const s of p.sections) {
       for (const b of blocks(s.lines)) {
         if (!/^\[\^\d+\]:/.test(b[0].trim())) continue;
         for (const r of parseRefs(b)) {
           anchors.add('ref' + r.n);
+          index[r.n] = { label: shortCite(r.apa.join(' ')), quotes: r.quotes };
           r.quotes.forEach((_, i) => anchors.add('ref' + r.n + '-q' + (i + 1)));
         }
       }
     }
   }
-  return anchors;
+  return { anchors, index };
 }
 
 /* A brief is one file, and the renderer makes that literally true: brief.css and
@@ -507,15 +588,21 @@ export function render(source, opts = {}) {
   const src = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const [meta, body] = frontMatter(src);
   const parts = outline(body);
-  const refs = { anchors: collectAnchors(parts), missing: [] };
-  const ctx = { refs };
+  const { anchors, index } = collectAnchors(parts);
+  const refs = { anchors, missing: [] };
+  const ctx = { refs, index };
 
   const out = ['<header class="brief-title">\n  <p class="eyebrow">' + inline(meta.eyebrow || '', refs) +
     '</p>\n  <h1>' + inline(meta.title || 'Brief', refs) + '</h1>\n  <p class="sub">' +
     inline(meta.sub || '', refs) + '</p>\n</header>'];
 
   const named = parts.filter((p) => p.title);
+  /* The first named part is the summary page. CSS cannot box a run of siblings,
+     so the wrapper is the one markup addition the v4 treatment needs. A brief
+     with no named parts is a single subject and gets no wrapper. */
+  const summaryPart = named[0] || null;
   for (const part of parts) {
+    if (part === summaryPart) out.push('<div class="summary-page">');
     if (part.title) {
       out.push('<h2 class="part" id="' + part.id + '"><span class="pnum">Part ' +
         PARTWORDS[named.indexOf(part) + 1] + '</span> ' + inline(part.title, refs) + '</h2>');
@@ -526,7 +613,11 @@ export function render(source, opts = {}) {
       if (sec.id === 's-toc' && !sec.lines.some((l) => l.trim())) sec.lines = renderToc(parts).split('\n');
       out.push(renderSection(sec, ctx));
     }
+    if (part === summaryPart) out.push('</div>');
   }
+
+  /* The printer's diamond: the document is over, and nothing below is missing. */
+  out.push('<div class="endmark" aria-hidden="true"></div>');
 
   if (refs.missing.length) {
     throw new Error('footnote markers with no target: ' + [...new Set(refs.missing)].join(', '));
@@ -537,10 +628,15 @@ export function render(source, opts = {}) {
 
   const template = inlineRuntime(opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8'), opts);
   const addressed = meta.addressed ? ' data-addressed="' + escAttr(meta.addressed) + '"' : '';
+  /* Two things the FILE tells the runtime, which the reader cannot set:
+     what work Claude has already taken (so the unsent-work marker clears), and
+     which highlights are now part of the document rather than of one browser. */
+  const consumed = meta.consumed ? ' data-consumed="' + escAttr(meta.consumed) + '"' : '';
+  const baked = meta.highlights ? ' data-highlights="' + escAttr(meta.highlights) + '"' : '';
   return template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + consumed + baked + '>')
     .replace(/<main>[\s\S]*<\/main>/, '<main>\n\n' + out.join('\n\n') + '\n\n</main>');
 }
 

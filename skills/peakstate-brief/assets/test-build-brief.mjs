@@ -38,6 +38,23 @@ has('<header class="brief-title">', 'title block');
 has('<h1>Renderer fixture brief</h1>', 'one H1, from the front matter');
 has('<h2 class="part" id="part-1"><span class="pnum">Part one</span>', 'parts are numbered in words');
 has('<p class="partlede">', 'a part carries its lede');
+
+/* The summary page wraps the FIRST named part and every section under it, and
+   nothing else. CSS cannot box a run of siblings, so this wrapper is load-
+   bearing: if it moves or repeats, the whole treatment boxes the wrong thing. */
+assert.equal((main.match(/<div class="summary-page">/g) || []).length, 1,
+  'exactly one summary page');
+const page = /<div class="summary-page">([\s\S]*?)\n<\/div>/.exec(main);
+assert.ok(page, 'the summary page opens and closes');
+assert.ok(page[1].includes('id="part-1"'), 'the summary page opens on the first part');
+assert.ok(page[1].includes('id="s-prose"') && page[1].includes('id="s-raw"'),
+  "the first part's sections are inside the page");
+assert.ok(!page[1].includes('id="part-2"'), 'the second part is outside the page');
+assert.ok(!page[1].includes('id="s-toc"'), 'the contents sits above the page');
+const solo = /<main>[\s\S]*<\/main>/.exec(
+  render('---\ntitle: Single\n---\n\n## Only section\n\nBody.\n'))[0];
+assert.ok(!solo.includes('summary-page'),
+  'a brief with no named parts gets no summary page');
 has('<p class="assume"><strong>My assumption:</strong>', 'assumption block');
 has('<strong>If wrong:</strong>', 'the if-wrong half stays in the same paragraph');
 has('<ul class="options">\n  <li><b>a)</b> ', 'options list');
@@ -47,6 +64,9 @@ assert.equal((main.match(/<dl/g) || []).length, 1, 'the provenance terms are one
 /* ── blocks the ticket names ─────────────────────────────────────────────── */
 
 has('<div class="tblwrap nopin"><table>', 'GFM pipe table');
+has('<span class="hl-warn">Highlighted</span>', 'allowlisted inline HTML survives in a table cell');
+has('&lt;script&gt;alert(1)&lt;/script&gt;', 'non-allowlisted inline HTML still escapes');
+has('<code>&lt;span&gt;</code>', 'inline HTML inside a code span stays literal');
 has('<code>a | b</code>', 'an escaped pipe stays inside its cell');
 has('<ol>\n<li>The first step, which has sub-steps.\n<ol>', 'ordered list nested in an ordered list');
 has('<ul>\n<li>A bullet.', 'bullets nested under a numbered step');
@@ -99,6 +119,29 @@ assert.ok(html.includes('briefUI'), 'brief.js really is in the page');
 const linked = render(src, { link: true });
 assert.ok(linked.includes('<script src="brief.js"'),
   'opts.link keeps the linked form for hosts with no filesystem');
+
+/* ── the prototype's three markup features ───────────────────────────────
+   Each is emitted from the document's own structure, so the check is that the
+   structure drove it — not just that the class appears somewhere. */
+
+has('<details class="l5">', 'a section that cites a source gets an expandable evidence block');
+has('<summary>Ramsden (2026).<span class="l5n">2 quotes</span></summary>',
+  'the summary names the sources and counts the quotes, with no label prefix');
+has('class="l5src" href="#ref1-q1"', 'each quote links to its exact passage in the references');
+has('<div class="l5body">', 'the quotes themselves are inside the block, not just counted');
+has('<summary>Internal corpus (2026); Australian Bureau of Statistics (2026).' +
+  '<span class="l5n">1 quote</span></summary>',
+  'a question cites both its sources and counts only the quotes that exist, singular');
+const listsSec = main.slice(main.indexOf('id="s-lists"')).split('</section>')[0];
+assert.ok(!listsSec.includes('class="l5"'),
+  'a section that cites nothing gets no "Prove it" box');
+has('<span class="rnum">1</span><span class="apa">', 'each reference carries its number badge');
+assert.equal((main.match(/<span class="rnum">/g) || []).length, 3,
+  'one badge per reference, no more');
+assert.equal((main.match(/<div class="endmark" aria-hidden="true"><\/div>/g) || []).length, 1,
+  'exactly one endmark, and it closes the document');
+assert.ok(/<div class="endmark"[^>]*><\/div>\n\n<\/main>/.test(main),
+  'the endmark is the last thing in the document');
 
 /* ── dark mode ───────────────────────────────────────────────────────────────
    These four cases exist because a black-on-black diagram shipped. The author

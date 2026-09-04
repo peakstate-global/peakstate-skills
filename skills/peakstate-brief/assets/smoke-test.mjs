@@ -12,6 +12,17 @@ const okProgress = (await page.locator('#progress').textContent()) === '0/1 ques
 await page.fill('#ans-Q1', 'my test answer');
 // tick
 await page.check('section[data-q="Q1"] .tick input');
+/* Collapsing animates over .22s, so asserting straight after check() catches
+   the body mid-fold and reports it visible. Wait for the settled height rather
+   than for a duration: it is the thing the assertion actually means. */
+await page.locator('section[data-q="Q1"] .q-body')
+  .evaluate((e) => new Promise((done) => {
+    const t = setTimeout(done, 1000);
+    const tick = () => (e.getBoundingClientRect().height === 0
+      ? (clearTimeout(t), done())
+      : requestAnimationFrame(tick));
+    tick();
+  }));
 const collapsed = await page.locator('section[data-q="Q1"] .q-body').isHidden();
 const okProgress2 = (await page.locator('#progress').textContent()) === '1/1 questions resolved';
 // selection comment
@@ -38,6 +49,10 @@ const okDownload = /^[a-z0-9-]+-responses-\d{4}-\d{2}-\d{2}\.json$/.test(dlName)
 await page.reload();
 const persistTick = await page.locator('section[data-q="Q1"]').evaluate(el => el.classList.contains('done'));
 await page.uncheck('section[data-q="Q1"] .tick input');
+/* Un-ticking now animates the body back open over .22s. Selecting text before
+   it settles scrolls to a position the layout is about to move, which leaves
+   the pointer over the topbar and the comment popover never opens. */
+await page.waitForTimeout(400);
 const persistAns = await page.inputValue('#ans-Q1');
 const reanchored = await page.locator('mark.cmt').count();
 // cross-element selection: the .assume paragraph wraps <strong> children, so the

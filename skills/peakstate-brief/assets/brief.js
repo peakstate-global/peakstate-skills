@@ -35,7 +35,7 @@
       '<button class="btn icon" id="cmtBtn" type="button"></button>' +
       '<button class="btn icon" id="widthBtn" type="button"></button>' +
       '<button class="btn icon" id="themeBtn" type="button"></button>' +
-      '<span class="btncombo">' +
+      '<span class="btncombo" id="btnCombo">' +
       '<button class="btn icon" id="copyBtn" type="button"></button>' +
       '<button class="btn icon" id="downloadBtn" type="button"></button>' +
       '</span>';
@@ -143,7 +143,74 @@
   try { state = Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
   if (!Array.isArray(state.drafts)) state.drafts = [];
   if (!Array.isArray(state.comments)) state.comments = [];
-  function save() { put(KEY, JSON.stringify(state)); }
+  function save() { put(KEY, JSON.stringify(state)); renderDirty(); }
+
+  /* ── unsent work ────────────────────────────────────────────────────────
+     The reader has no way of knowing whether what is in this document has been
+     carried back to the chat, and a brief answered but never copied is the one
+     failure that wastes the whole exchange. So the copy button carries a dot
+     whenever the document holds something the last copy did not.
+
+     Clean is stored as a SIGNATURE of the state, not as a boolean: a boolean
+     survives a reload and goes on claiming clean while the reader keeps typing.
+     The signature is compared to what is on the page right now, so a reload
+     recomputes the same answer and a single keystroke changes it. */
+  function sig() {
+    return JSON.stringify([state.ticks, state.answers, state.notes, state.edits,
+      state.comments.map(function (c) { return [c.cid, c.comment, c.hl, c.unhl, c.resolved]; }),
+      state.drafts.map(function (d) { return [d.key, d.comment]; })]);
+  }
+  function hasWork() {
+    var k, any = false;
+    for (k in state.answers) if ((state.answers[k] || '').trim()) any = true;
+    for (k in state.notes) if ((state.notes[k] || '').trim()) any = true;
+    if (state.comments.length) any = true;
+    if (state.drafts.some(function (d) { return (d.comment || '').trim(); })) any = true;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-doc]'), function (doc) {
+      var e = state.edits[doc.dataset.doc];
+      if (e != null && e !== docSource(doc)) any = true;
+    });
+    return any;
+  }
+  var DIRTY_TIP = 'This document holds answers, comments or edits that have not been '
+    + 'copied back yet. Nothing here reaches Claude on its own \u2014 press this to put '
+    + 'the whole lot on your clipboard as JSON and paste it into the chat. The dot '
+    + 'clears when you do, and comes back the moment you change something else.';
+  function renderDirty() {
+    if (!copyBtnEl) return;
+    /* The dot hangs off the COMBO, not off the copy button. Both halves send
+       the work back, so a marker on one of them says the other does not — and
+       the tooltip has to be measured against the pair's box or its right edge
+       lands in the middle of the group. */
+    var combo = document.getElementById('btnCombo') || copyBtnEl;
+    var dirty = hasWork() && sig() !== state.cleanSig;
+    var dot = combo.querySelector(':scope > .cdot');
+    if (dirty && !dot) {
+      dot = document.createElement('span');
+      dot.className = 'cdot';
+      dot.setAttribute('aria-hidden', 'true');
+      dot.setAttribute('data-tip', DIRTY_TIP);
+      combo.appendChild(dot);
+    } else if (!dirty && dot) { dot.remove(); }
+    copyBtnEl.setAttribute('aria-label',
+      'Copy responses JSON (' + MOD + 'C)' + (dirty ? '. ' + DIRTY_TIP : ''));
+    var dl = document.getElementById('downloadBtn');
+    if (dl) dl.setAttribute('aria-label',
+      'Download responses JSON' + (dirty ? '. ' + DIRTY_TIP : ''));
+  }
+  /* Only a regenerated brief clears the marker, never the reader. Copying is
+     not evidence the work arrived: the clipboard can be lost, the paste can be
+     forgotten, the tab can be closed. So the file declares what it has taken —
+     data-consumed changes when Claude regenerates the brief after reading the
+     responses — and seeing a NEW token is what marks the state clean. The
+     reader cannot set it, which is the point. */
+  function consumeToken() {
+    var tok = document.body.dataset.consumed || '';
+    if (!tok || tok === state.consumedTok) return;
+    state.consumedTok = tok;
+    state.cleanSig = sig();
+    save();
+  }
   function toast(msg) {
     var t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
@@ -163,8 +230,44 @@
      A resolved comment stays visible and readable, greyed, and is dropped from
      the exported JSON. Nothing is deleted: the reader can untick it. */
   function addrKey(x) { return (x || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40); }
+  /* Highlights the file itself carries. A reader's marks live in localStorage,
+     which does not follow them to another machine and does not survive being
+     sent to somebody else — so once Claude has seen them they are written into
+     the document and arrive already painted. The file is the record: deleting a
+     baked highlight in the browser holds until the next regeneration, exactly
+     as an addressed comment behaves. */
+  function adoptBaked() {
+    var raw = document.body.dataset.highlights;
+    if (!raw) return;
+    var list;
+    try { list = JSON.parse(raw); } catch { return; }
+    if (!Array.isArray(list)) return;
+    var seen = {};
+    state.comments.forEach(function (c) { seen[c.text + '\u0000' + (c.nth || 0)] = true; });
+    list.forEach(function (h, i) {
+      if (!h || !h.text) return;
+      var k = h.text + '\u0000' + (h.nth || 0);
+      if (seen[k]) return;
+      seen[k] = true;
+      state.comments.push({
+        cid: 'baked' + i + '-' + (h.nth || 0), text: h.text, comment: h.comment || '',
+        hl: h.hl || 'yellow', near: h.near || null, nth: h.nth || 0,
+        baked: true, at: h.at || null
+      });
+    });
+    save();
+  }
+  adoptBaked();
+
   var ADDRESSED = (document.body.dataset.addressed || '')
     .split('||').map(addrKey).filter(Boolean);
+  /* Highlighter colours. The reader assigns the meaning — "this bit is for the
+     client" is not a meaning a tool can name — so the chips are named by colour
+     and nothing else. Yellow is first and is what every pre-existing comment
+     already is, so saved state carries forward untouched. */
+  var HLS = ['yellow', 'green', 'blue', 'pink', 'purple'];
+  var hlOf = function (c) { return HLS.indexOf(c && c.hl) > -1 ? c.hl : 'yellow'; };
+
   function isAddressed(c) {
     var n = addrKey(c.comment);
     return ADDRESSED.some(function (a) { return n.indexOf(a) === 0 || a.indexOf(n) === 0; });
@@ -182,7 +285,7 @@
       if (!c.resolved) return;
       Array.prototype.forEach.call(
         document.querySelectorAll('mark.cmt[data-cid="' + c.cid + '"]'),
-        function (m) { m.classList.add('resolved'); m.title = 'Addressed — not sent again'; });
+        function (m) { m.classList.add('resolved'); m.setAttribute('data-tip', 'Addressed — not sent again'); });
     });
   }
   setTimeout(paintResolved, 0);
@@ -212,6 +315,20 @@
       sec.classList.toggle('done', box.checked);
       state.ticks[idOf(sec)] = box.checked; save(); renderProgress();
     });
+    /* Clicking anywhere on the heading ticks it — the box is small, quiet and
+       in the margin, and the heading is the thing the reader is actually
+       finished with. A drag that left a selection is the reader reaching for a
+       comment, so it is left alone; so is a click that landed on the label,
+       which would toggle twice and cancel itself out. */
+    var head = sec.querySelector('.sec-head, .q-head');
+    if (!head) return;
+    head.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('label.tick, a, button, input, textarea, select')) return;
+      var sel = window.getSelection();
+      if (sel && !sel.isCollapsed && sel.toString().trim()) return;
+      box.checked = !box.checked;
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+    });
   });
   /* A question counts as resolved once it has an answer typed into it, OR it has
      been ticked. Typing an answer IS resolving it — requiring a separate tick made
@@ -235,7 +352,7 @@
     if (!qs.length) {
       el.textContent = '0 questions for you';
       el.removeAttribute('href');
-      el.removeAttribute('title');
+      el.removeAttribute('data-tip');
       el.setAttribute('aria-label', 'This brief asks no questions.');
       el.classList.add('all-done', 'no-questions');
       return;
@@ -243,13 +360,13 @@
     el.textContent = done + '/' + qs.length + ' questions resolved';
     if (next) {
       el.setAttribute('href', '#' + (next.id || (next.id = 'q-' + next.dataset.q)));
-      el.setAttribute('title', 'Jump to ' + next.dataset.q + ' — next unresolved');
+      el.setAttribute('data-tip', 'Jump to ' + next.dataset.q + ' — next unresolved');
       el.setAttribute('aria-label', done + ' of ' + qs.length +
         ' questions resolved. Jump to ' + next.dataset.q + ', the next unresolved question.');
       el.classList.remove('all-done');
     } else {
       el.removeAttribute('href');
-      el.removeAttribute('title');
+      el.removeAttribute('data-tip');
       el.setAttribute('aria-label', 'All ' + qs.length + ' questions resolved');
       el.classList.add('all-done');
     }
@@ -286,6 +403,28 @@
       /* Only re-render when the answered/empty state actually flips, so the
          counter tracks typing live without doing work on every keystroke. */
       if (answered(qid) !== was) renderProgress();
+    });
+  });
+
+  /* ── legend pairs ──
+     A .legend is a flat row of <span class="chip"> swatches each followed by
+     its label text, so the flex gap falls BETWEEN a chip and its own words as
+     well as between pairs, and the two read the wrong way round. Wrapping each
+     pair gives the pair its own, tighter gap. Done here rather than in the
+     renderer so every brief already written gets it. */
+  Array.prototype.forEach.call(document.querySelectorAll('.legend'), function (lg) {
+    var wrap = null;
+    Array.prototype.slice.call(lg.childNodes).forEach(function (n) {
+      if (n.nodeType === 1 && n.classList.contains('chip')) {
+        wrap = document.createElement('span');
+        wrap.className = 'legend-i';
+        lg.insertBefore(wrap, n);
+        wrap.appendChild(n);
+        return;
+      }
+      if (!wrap) return;
+      if (n.nodeType === 3 && !n.nodeValue.trim()) return;
+      wrap.appendChild(n);
     });
   });
 
@@ -327,6 +466,7 @@
       if (c.resolved) return;   // the author has already acted on it; do not round-trip it
       out.comments.push({
         selected_text: c.text, near_question: c.near || null, comment: c.comment,
+        highlight: c.unhl ? null : hlOf(c),
         anchored: !!document.querySelector('mark.cmt[data-cid="' + c.cid + '"]')
       });
     });
@@ -356,6 +496,8 @@
   copyBtnEl.innerHTML = ICON.copy;
   tip(copyBtnEl, 'Copy responses JSON', MOD + 'C');
   copyBtnEl.addEventListener('click', copyJSON);
+  consumeToken();
+  renderDirty();
   /* Download the same payload as a file — a brief read offline, or one whose
      answers must be kept, needs an artefact rather than a clipboard. */
   function downloadJSON() {
@@ -473,7 +615,7 @@
 
   /* Wrap every text node the range touches in its own <mark>, instead of one
      surroundContents() that throws the moment the range crosses an element. */
-  function wrapRange(range, cid) {
+  function wrapRange(range, cid, hl) {
     var all = textNodesIn(main()).filter(function (n) {
       try { return range.intersectsNode(n); } catch { return false; }
     });
@@ -488,7 +630,7 @@
       var r = document.createRange();
       try { r.setStart(node, a); r.setEnd(node, b); } catch { return; }
       var mk = document.createElement('mark');
-      mk.className = 'cmt'; mk.dataset.cid = cid;
+      mk.className = 'cmt'; mk.dataset.cid = cid; mk.dataset.hl = hl || 'yellow';
       try { r.surroundContents(mk); made = true; } catch {}
     });
     return made;
@@ -500,6 +642,10 @@
       while (m.firstChild) parent.insertBefore(m.firstChild, m);
       m.remove(); parent.normalize();
     });
+  }
+  function recolour(cid, hl) {
+    Array.prototype.forEach.call(document.querySelectorAll('mark.cmt[data-cid="' + cid + '"]'),
+      function (m) { m.dataset.hl = hl; });
   }
   function isAnchored(cid) { return !!document.querySelector('mark.cmt[data-cid="' + cid + '"]'); }
 
@@ -533,19 +679,37 @@
     pop.id = 'cpop';
     pop.innerHTML =
       '<div class="quote">“' + String(quote).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }).slice(0, 180) + '”</div>' +
-      '<textarea placeholder="Comment — saved locally"></textarea>' +
+      '<div class="chips" role="group" aria-label="Highlight colour">' +
+      HLS.map(function (h) {
+        return '<button class="chip" type="button" data-hl="' + h + '" aria-pressed="false"' +
+               ' aria-label="' + h.charAt(0).toUpperCase() + h.slice(1) + ' highlight"></button>';
+      }).join('') +
+      '<button class="chip chipoff" type="button" data-act="clear"></button>' +
+      '</div>' +
+      '<textarea placeholder="Comment — or pick a colour to just highlight"></textarea>' +
       '<div class="row">' +
       (existing ? '<button class="btn small danger" data-act="del" type="button">Delete</button>' : '') +
       (existing ? '' : '<button class="btn small" data-act="copy" type="button">Copy text</button>') +
       '<button class="btn small" data-act="cancel" type="button">Discard</button>' +
       '<button class="btn small primary" data-act="save" type="button">Save</button></div>' +
       '<p class="pophint">' + MOD + 'Enter saves · Esc closes and keeps a draft' +
+      (existing ? '' : ' · a colour with no comment highlights straight away') +
       (existing ? '' : ' · selection stays live, ' + MOD + 'C copies it') + '</p>';
     document.body.appendChild(pop);
     var vw = document.documentElement.clientWidth;
     var w = pop.offsetWidth;
     pop.style.left = Math.max(8, Math.min(x - w / 2, vw - w - 8)) + 'px';
     pop.style.top = (y + 8) + 'px';
+
+    var chosen = existing ? hlOf(existing) : 'yellow';
+    var hlPicked = !!existing;
+    function paintChips() {
+      Array.prototype.forEach.call(pop.querySelectorAll('.chip[data-hl]'), function (b) {
+        var on = b.dataset.hl === chosen;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
 
     var ta = pop.querySelector('textarea');
     ta.value = (prefill != null ? prefill : (draft ? draft.comment : (existing ? existing.comment : '')));
@@ -565,31 +729,69 @@
 
     function commit() {
       var val = ta.value.trim();
-      if (!val) { dropDraft(key); closePop(); return; }
+      /* A colour with no words is a legitimate mark — highlighting is the
+         whole action for a reader flagging a passage rather than replying to
+         it. Without an explicit colour, an empty box still means "cancel". */
+      if (!val && !hlPicked) { dropDraft(key); closePop(); return; }
       if (existing) {
-        existing.comment = val; existing.at = new Date().toISOString();
+        existing.comment = val; existing.hl = chosen; existing.at = new Date().toISOString();
+        if (isAnchored(existing.cid)) recolour(existing.cid, chosen);
+        else {
+          /* The highlight was cleared earlier — a colour puts it back. */
+          delete existing.unhl;
+          var rr = findRange(main(), existing.text, existing.nth || 0);
+          if (rr) wrapRange(rr, existing.cid, chosen);
+        }
         dropDraft(key); save(); renderDrawer(); closePop(); toast('Comment updated');
         return;
       }
       var cid = 'c' + Date.now() + Math.floor(Math.random() * 1000);
       var range = pendingRange || (draft ? findRange(main(), draft.text, draft.nth || 0) : null);
       var c = {
-        cid: cid, text: quote, comment: val,
+        cid: cid, text: quote, comment: val, hl: chosen,
         near: range ? nearestQ(range.startContainer) : (draft ? draft.near : null),
         nth: range ? occurrenceOf(main(), range) : 0,
         at: new Date().toISOString()
       };
       state.comments.push(c);
-      if (range) wrapRange(range, cid);
+      if (range) wrapRange(range, cid, chosen);
       dropDraft(key); save(); renderDrawer(); closePop();
       var sel = window.getSelection(); if (sel) sel.removeAllRanges();
-      toast(isAnchored(cid) ? 'Comment saved' : 'Comment saved (no highlight — find it in Comments)');
+      toast(isAnchored(cid) ? (val ? 'Comment saved' : 'Highlighted')
+                            : 'Saved (no highlight — find it in Comments)');
     }
 
+    paintChips();
+    tip(pop.querySelector('.chipoff'), existing ? 'Remove this highlight' : 'Close without highlighting');
     pop.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('button');
+      if (btn && btn.dataset.hl) {
+        chosen = btn.dataset.hl; hlPicked = true; paintChips();
+        /* One click is the whole gesture when there is nothing to write: an
+           existing mark recolours, a fresh selection with an empty box is
+           highlighted and done. A box with words in it only takes the colour,
+           so the reader can still finish the sentence. */
+        if (existing || !ta.value.trim()) commit();
+        return;
+      }
       var act = btn && btn.dataset.act;
       if (!act) return;
+      /* Taking the highlight off is not the same as deleting the thought. If
+         there are words, the comment stays and travels in the payload without a
+         colour; if there are none, the mark WAS the whole record, so it goes. */
+      if (act === 'clear') {
+        if (!existing) { dropDraft(key); closePop(); return; }
+        unpaint(existing.cid);
+        var body = (ta.value || '').trim();
+        if (body) {
+          existing.comment = body; existing.unhl = true; existing.at = new Date().toISOString();
+          dropDraft(key); save(); renderDrawer(); closePop(); toast('Highlight removed, comment kept');
+        } else {
+          state.comments = state.comments.filter(function (c) { return c.cid !== existing.cid; });
+          dropDraft(key); save(); renderDrawer(); closePop(); toast('Highlight removed');
+        }
+        return;
+      }
       if (act === 'cancel') { dropDraft(key); closePop(); return; }
       if (act === 'copy') { copyText(quote, 'Selected text copied'); return; }
       if (act === 'del' && existing) {
@@ -634,9 +836,9 @@
          and findRange walks every text node to discover that. Retrying it on
          every drawer open made the first few clicks crawl on a brief carrying
          two dozen comments from earlier versions. Remember the miss instead. */
-      if (c.noAnchor) return;
+      if (c.noAnchor || c.unhl) return;
       var r = findRange(main(), c.text, c.nth || 0);
-      if (r) wrapRange(r, c.cid); else c.noAnchor = true;
+      if (r) wrapRange(r, c.cid, hlOf(c)); else c.noAnchor = true;
     });
     paintResolved();
     renderDrawer();
@@ -685,7 +887,7 @@
       state.comments.forEach(function (c) {
         var anchored = isAnchored(c.cid);
         html += '<div class="drow' + (c.resolved ? ' resolved' : '') + '" data-cid="' + esc(c.cid) + '">' +
-          '<div class="dq">“' + esc(c.text).slice(0, 160) + '”' +
+          '<div class="dq"><span class="ddot"' + (c.unhl ? '' : ' data-hl="' + hlOf(c) + '"') + '></span>“' + esc(c.text).slice(0, 160) + '”' +
           (c.resolved ? '<span class="dbadge done">addressed</span>' : '') +
           (anchored ? '' : '<span class="dbadge">not highlighted</span>') + '</div>' +
           '<div class="db">' + esc(c.comment) + '</div>' +
@@ -795,7 +997,10 @@
     if (!sup.id) sup.id = 'cite-' + (i + 1);
     var key = a.getAttribute('href').slice(1);
     if (!citedBy[key]) citedBy[key] = sup.id;
-    if (!a.title) a.title = 'Jump to reference';
+    /* aria-label, not title: a superscript link into the references needs no
+       hover hint (the affordance is the shape), and a title attribute here put
+       50 of them in one document, against this file's own rule. */
+    if (!a.getAttribute('aria-label')) a.setAttribute('aria-label', 'Jump to reference ' + (a.textContent || '').trim());
   });
   Object.keys(citedBy).forEach(function (key) {
     var target = document.getElementById(key);
@@ -833,6 +1038,58 @@
     });
     pre.appendChild(btn);
   });
+
+  /* ── copy buttons on the standfirst and the summary page ──
+     Two affordances at the top of the pyramid: the standfirst copies the
+     question and the answer as plain text, and the summary page copies itself
+     as markdown. Both reuse copyText, the toast and the data-tip helper. */
+  function copybtn(tipText, extraClass, onCopy) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'copybtn' + (extraClass ? ' ' + extraClass : '');
+    b.innerHTML = ICON.copy;
+    tip(b, tipText);
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      onCopy();
+      b.classList.add('copied');
+      clearTimeout(b._h);
+      b._h = setTimeout(function () { b.classList.remove('copied'); }, 1200);
+    });
+    return b;
+  }
+
+  var titleEl = document.querySelector('.brief-title');
+  var subEl = titleEl && titleEl.querySelector('.sub');
+  if (subEl && !titleEl.querySelector('.subrow')) {
+    var row = document.createElement('div');
+    row.className = 'subrow';
+    subEl.parentNode.insertBefore(row, subEl);
+    row.appendChild(subEl);
+    row.appendChild(copybtn('Copy question + answer', '', function () {
+      var h1 = titleEl.querySelector('h1');
+      copyText(((h1 && h1.textContent) || '').trim() + '\n' + subEl.textContent.trim(),
+        'Question and answer copied');
+    }));
+  }
+
+  var summary = document.querySelector('.summary-page');
+  if (summary && !summary.querySelector(':scope > .pagecopy')) {
+    summary.insertBefore(copybtn('Copy summary as markdown', 'pagecopy', function () {
+      /* htmlToMd walks block children, so the section shells are flattened
+         first — otherwise a whole section collapses into one inline run. */
+      var clone = summary.cloneNode(true);
+      clone.querySelectorAll('.copybtn, label.tick, .cmt-btn').forEach(function (n) { n.remove(); });
+      /* "Part one" is a label, not the first words of the heading. */
+      clone.querySelectorAll('.pnum').forEach(function (n) { n.textContent = n.textContent.trim() + ' —'; });
+      var shell;
+      while ((shell = clone.querySelector('section, .sec-head, .q-head, .sec-body, .q-body'))) {
+        while (shell.firstChild) shell.parentNode.insertBefore(shell.firstChild, shell);
+        shell.remove();
+      }
+      copyText(htmlToMd(clone), 'Summary copied as markdown');
+    }), summary.firstChild);
+  }
 
   reanchor();
   renderProgress();
