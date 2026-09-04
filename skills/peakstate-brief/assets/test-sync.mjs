@@ -31,6 +31,7 @@ if (!DIR) { console.error('usage: test-sync.mjs <dir with brief.js, brief.css, t
 /* ── the fixture, published and unpublished ─────────────────────────────── */
 const fixture = readFileSync(join(DIR, 'test-fixture.html'), 'utf8');
 assert.ok(/<body data-brief-id="[^"]+"/.test(fixture), 'the fixture carries a brief id');
+const BRIEF_ID = /<body data-brief-id="([^"]+)"/.exec(fixture)[1];
 const published = fixture.replace(/<body (data-brief-id="[^"]+")/,
   '<body $1 data-publish-slug="test-brief" data-visibility="private"');
 assert.notEqual(published, fixture, 'the published fixture is stamped');
@@ -41,6 +42,16 @@ const HOST_PAGE = (sandbox) => `<!doctype html><meta charset="utf-8"><title>host
   window.__seen = [];
   window.__offline = location.search.indexOf('offline') > -1;
   window.__mute = location.search.indexOf('mute') > -1;   // a framer that never answers
+  /* A host that only starts listening after the document has already said hello.
+     The real one installs its listener in an effect, after hydration, while the
+     browser is already fetching the framed bytes -- so the first hello is not
+     answered late, it is never seen at all. */
+  window.__eathello = location.search.indexOf('eathello') > -1;
+  /* The real host VALIDATES every inbound message and echoes the correlation id
+     back as a string (host-protocol.ts, messageId). Echoing d.id verbatim instead
+     would make this double more forgiving than the page it stands in for, and a
+     document that sent a number would pass here and fail in production. */
+  window.__id = function (v) { return String(v); };
   /* The host owns the storage. localStorage on THIS page, because the host has a
      real origin and survives the frame being reloaded — which is what "the same
      device" means to the cases below. */
@@ -56,6 +67,7 @@ const HOST_PAGE = (sandbox) => `<!doctype html><meta charset="utf-8"><title>host
     var w = document.getElementById('f').contentWindow;
     if (window.__mute) return;
     if (d.type === 'brief-sync-hello') {
+      if (window.__eathello) { window.__eathello = false; return; }
       w.postMessage({ v: 1, type: 'brief-sync-init', state: window.__store() }, '*');
       return;
     }
@@ -64,9 +76,9 @@ const HOST_PAGE = (sandbox) => `<!doctype html><meta charset="utf-8"><title>host
       return;
     }
     if (d.type !== 'brief-sync-put') return;
-    if (window.__offline) { w.postMessage({ v: 1, type: 'brief-sync-res', id: d.id, ok: false, error: 'offline' }, '*'); return; }
+    if (window.__offline) { w.postMessage({ v: 1, type: 'brief-sync-res', id: window.__id(d.id), ok: false, error: 'offline' }, '*'); return; }
     var r = await window.__review({ base: d.base, next: d.next });
-    w.postMessage({ v: 1, type: 'brief-sync-res', id: d.id, ok: true, store: r.store, overCap: false }, '*');
+    w.postMessage({ v: 1, type: 'brief-sync-res', id: window.__id(d.id), ok: true, store: r.store, overCap: false }, '*');
   });
 </script>`;
 
@@ -336,6 +348,19 @@ sandbox = 'allow-scripts';
   await frame.locator('section[data-q="Q1"] .tick input').check();
   await page.waitForTimeout(2000);
   out.noInitTypedFine = await frame.locator('#ans-Q1').inputValue();
+  /* A late init. The wait has already given up and opened the brief with no store,
+     and the reader has been told nothing is being kept. Taking the host's store
+     NOW would hand this empty document the reader's saved answers as its storage,
+     and the next change would persist the empty state straight over them. So the
+     init is ignored, and the give-up is final. */
+  await page.evaluate((k) => {
+    document.getElementById('f').contentWindow.postMessage({ v: 1, type: 'brief-sync-init',
+      state: { [k]: JSON.stringify({ answers: { Q1: 'the reader\'s earlier saved answer' }, ticks: {}, comments: [] }) } }, '*');
+  }, 'brief:' + BRIEF_ID);
+  await page.waitForTimeout(1200);
+  await frame.locator('section[data-q="Q1"] .tick input').uncheck();   // a change, which would persist
+  await page.waitForTimeout(1500);
+  out.lateInitStillShowsTyped = await frame.locator('#ans-Q1').inputValue();
   out.noInitMessages = [...new Set(await page.evaluate(() => window.__seen))];
   out.noInitServerKeys = Object.keys(STORE);
   out.noInitErrors = errors;
@@ -345,7 +370,10 @@ assert.ok(out.noInitInertWhileWaiting, 'the document is unanswerable while it wa
 assert.ok(out.noInitReleased, 'the wait ends and the document becomes readable and answerable');
 assert.ok(out.noInitToldTheReader, 'the reader is told nothing is being kept');
 assert.equal(out.noInitTypedFine, 'typed into a brief nobody is holding', 'typing still works');
-assert.deepEqual(out.noInitMessages, ['brief-sync-hello'], 'nothing but the hello was ever sent');
+assert.equal(out.lateInitStillShowsTyped, 'typed into a brief nobody is holding',
+  'a late init did not replace what the reader had already typed');
+assert.deepEqual(out.noInitMessages, ['brief-sync-hello'],
+  'nothing but the hello was ever sent — a late init is ignored, not adopted');
 assert.deepEqual(out.noInitServerKeys, [], 'nothing reached the server');
 assert.deepEqual(out.noInitErrors, [], 'nothing threw');
 
@@ -380,6 +408,89 @@ assert.equal(out.topLevelUsedOwnStorage, 'typed at the top level', 'it wrote its
 assert.equal(out.topLevelAfterReload, 'typed at the top level', 'and read it back on reload');
 assert.deepEqual(out.topLevelServerKeys, [], 'an unframed brief posts nothing to a host');
 assert.deepEqual(out.topLevelErrors, [], 'nothing threw');
+
+/* ── 9. the correlation id survives the round trip ───────────────────────
+   The host normalises every id it echoes (see __id above, and messageId in
+   host-protocol.ts). If the document generates an id of a different type it
+   compares "1" against 1 with !==, drops the reply, never clears `inflight`, and
+   the write half of every round is lost: nothing reaches the server at all, and
+   the 15s drop timer re-probes for as long as the tab is open — every tab in the
+   building hitting the review rate limiter, for ever. So this waits past that
+   timer with nobody touching the page: the answer on the server proves the reply
+   was matched, and the silence afterwards proves nothing is re-probing. */
+STORE = {};
+briefHtml = published;
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html');
+  await page.frameLocator('#f').locator('#ans-Q1').fill('an answer that has to reach the server');
+  await page.waitForTimeout(2500);
+  out.idRoundServerHas = serverAnswer('Q1');
+  const puts = () => page.evaluate(() => window.__seen.filter((t) => t === 'brief-sync-put').length);
+  const settled = await puts();
+  await page.waitForTimeout(17000);         // past the document's 15s drop timer
+  out.idRoundPutsWhileIdle = (await puts()) - settled;
+  await ctx.close();
+}
+assert.equal(out.idRoundServerHas, 'an answer that has to reach the server',
+  'the reply was matched, so the write reached the server');
+assert.equal(out.idRoundPutsWhileIdle, 0,
+  'the sync went idle — no unanswered round left the drop timer re-probing');
+
+/* ── 10. the hello can be lost, and the document must not accept that ────
+   The host answers nothing until the SECOND hello, which is what a listener
+   installed after this document already spoke looks like from in here. One hello
+   and no retry means no init ever arrives, the 8s wait gives up, and every tick,
+   answer and comment is discarded for the whole session. */
+STORE = {};
+briefHtml = published;
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html?eathello=1');
+  await page.waitForTimeout(3000);          // well inside the 8s give-up
+  out.lostHelloOpened = await frameEval(page, () => document.body.inert === false);
+  out.lostHelloNoWarning = await frameEval(page, () => !document.getElementById('nopersist'));
+  await page.frameLocator('#f').locator('#ans-Q1').fill('typed after a hello nobody heard');
+  await page.waitForTimeout(2000);
+  out.lostHelloHostHolds = (await deviceBlob(page))?.answers?.Q1 ?? null;
+  out.lostHelloServerHas = serverAnswer('Q1');
+  await ctx.close();
+}
+assert.ok(out.lostHelloOpened, 'the retried hello was answered long before the give-up');
+assert.ok(out.lostHelloNoWarning, 'the reader was never told storage had failed');
+assert.equal(out.lostHelloHostHolds, 'typed after a hello nobody heard', 'the host is holding the answer');
+assert.equal(out.lostHelloServerHas, 'typed after a hello nobody heard', 'and it reached the server');
+
+/* ── 11. a store the host will refuse is not lost silently ───────────────
+   Over the host's cap, `brief-store-set` is dropped on arrival and there is no
+   return channel to say so. The document measures the same cap before it posts,
+   so the framed reader gets the same warning the unframed one gets from a quota
+   throw. */
+STORE = {};
+briefHtml = published;
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html');
+  await page.waitForTimeout(1200);
+  await page.frameLocator('#f').locator('#ans-Q1').fill('x'.repeat(270000));
+  await page.waitForTimeout(1500);
+  out.overCapWarned = await frameEval(page, () => !!document.getElementById('nopersist'));
+  /* The last store the host accepted is still there and still readable — the
+     refusal drops the change, it does not corrupt what was already kept. */
+  out.overCapHeldLength = ((await deviceBlob(page))?.answers?.Q1 ?? '').length;
+  await ctx.close();
+}
+assert.ok(out.overCapWarned, 'the reader is told the over-cap change is not being kept');
+assert.ok(out.overCapHeldLength < 270000, 'the over-cap value was never handed to the host');
 
 await browser.close();
 server.close();

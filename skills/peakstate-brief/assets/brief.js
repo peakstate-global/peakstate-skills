@@ -28,6 +28,11 @@
      setItem there breaks every tick and every keystroke, so all writes go through
      put() and the reader is told once, visibly, that nothing is being kept. ── */
   var storeOK = true;
+  /* The host refuses a store whose JSON is over this, and `brief-store-set` is
+     fire-and-forget, so a refusal comes back as silence. Measuring it here is what
+     turns that silence into the same warning the unframed path gets from a quota
+     throw. Keep in step with MAX_REVIEW_BYTES on the host. */
+  var MAX_STORE_BYTES = 256000;
   function put(k, v) {
     if (HOSTED) {
       /* No hostStore means no init ever arrived: there is nowhere to put this and
@@ -35,7 +40,19 @@
          been told, once, that nothing is being kept. Sending only on a change
          keeps a fresh load from writing the host a value it just handed over. */
       if (!hostStore || hostStore[k] === v) return !!hostStore;
-      hostStore[k] = v;
+      /* Built beside the store rather than in it: an over-cap value the host will
+         refuse must not be left in memory either, or this device reads back a
+         value no reload will ever return. */
+      var candidate = {}, ck;
+      for (ck in hostStore) candidate[ck] = hostStore[ck];
+      candidate[k] = v;
+      if (JSON.stringify(candidate).length > MAX_STORE_BYTES) {
+        warnNoPersist('This brief has grown past what the page holding it will keep, so your '
+          + 'latest ticks, answers and comments are no longer being stored — they will be gone '
+          + 'when you reload or close the page. Use "Download responses" before you leave.');
+        return false;
+      }
+      hostStore = candidate;
       window.parent.postMessage({ v: 1, type: 'brief-store-set', data: hostStore }, host);
       return true;
     }
@@ -1763,7 +1780,10 @@
      time anything here executes, `host` is already pinned (or the wait timed out
      and this whole section stays idle, because flush() will not run without it). */
   var base = null;        // the last store Publish returned to THIS browser
-  var seq = 0, inflight = 0, mode = '', needWrite = false;
+  /* The correlation id is a STRING on the wire, because the host normalises every
+     id it echoes back to one (host-protocol.ts). A number here would be compared
+     against "1" with !==, never match, and every reply would be dropped. */
+  var seq = 0, inflight = '', mode = '', needWrite = false;
   var pending = false, syncTimer = null, dropTimer = null, capWarned = false;
   var failures = 0;
 
@@ -1901,7 +1921,7 @@
      sit in one brief together and want to watch each other type. */
   function post(next, kind) {
     mode = kind;
-    inflight = ++seq;
+    inflight = String(++seq);
     window.parent.postMessage({ v: 1, type: 'brief-sync-put', id: inflight,
       briefId: BRIEF, slug: PUB, base: base, next: next }, host);
     /* A host that never answers must not wedge the sync for the rest of the
@@ -1910,7 +1930,7 @@
     clearTimeout(dropTimer);
     dropTimer = setTimeout(function () {
       if (!inflight) return;
-      inflight = 0; pending = true; schedule();
+      inflight = ''; pending = true; schedule();
     }, 15000);
   }
   function flush() {
@@ -1944,7 +1964,7 @@
       if (!d || d.v !== 1 || e.source !== window.parent) return;
       if (e.origin !== host || d.type !== 'brief-sync-res' || d.id !== inflight) return;
       var was = mode;
-      inflight = 0;
+      inflight = '';
       clearTimeout(dropTimer);
       /* A refused round is a round that still has to happen. Without this the
          sync stalls until the reader's next save or an `online` event, with
@@ -1992,11 +2012,12 @@
     HOSTED = !!(PUB && FRAMED);
     if (!HOSTED) { init(); return; }
     document.body.inert = true;
-    var started = false, wait;
+    var started = false, wait, helloTimer, hellos = 0;
     function start() {
       if (started) return;
       started = true;
       clearTimeout(wait);
+      clearTimeout(helloTimer);
       document.body.inert = false;
       init();
     }
@@ -2021,14 +2042,33 @@
          page can frame it and speak first. That header is a load-bearing
          dependency of this code, not an incidental one: drop it and any origin
          could frame the document and harvest the answers. */
-      if (host) return;
+      /* `started`, not just `host`: once the wait above has given up and opened the
+         brief, this document is running with no store and the reader has been told
+         so. Adopting a store now would replace an empty in-memory state's home with
+         the reader's real saved answers, and the next tick would persist the empty
+         state straight over them. Losing the sync for this visit is recoverable;
+         losing the answers is not. The hello retries below are what keep this
+         branch rare -- a host that speaks at all is heard well before the wait
+         ends. */
+      if (host || started) return;
       host = e.origin;
       hostStore = normaliseStore(d.state);
       start();
     });
     /* Carries no reader data — it only says this document is ready and asks the
-       host to name itself. Answers and comments go to a known origin, never to '*'. */
-    window.parent.postMessage({ v: 1, type: 'brief-sync-hello', briefId: BRIEF, slug: PUB }, '*');
+       host to name itself. Answers and comments go to a known origin, never to '*'.
+
+       Re-sent until an init lands, because ONE hello can be lost outright: the host
+       installs its listener in an effect after hydration, while the browser starts
+       fetching these bytes during the server render, so a warm cache posts this
+       before there is anything listening. Every send is identical and carries no
+       state, and the host answers each one with the same init, of which this
+       document keeps the first. It stops as soon as the brief starts, either way. */
+    function hello() {
+      window.parent.postMessage({ v: 1, type: 'brief-sync-hello', briefId: BRIEF, slug: PUB }, '*');
+      if (++hellos < 8) helloTimer = setTimeout(hello, 1000);
+    }
+    hello();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
