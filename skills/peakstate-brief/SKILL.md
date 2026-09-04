@@ -713,10 +713,20 @@ the reader re-send the same points, which is the round-trip this feature exists 
   `notes: [{id, label, note}]`. Use these when the reader needs to jot against
   many items without one question per item. **Cmd/Ctrl-C with nothing selected (and focus
   outside a field) copies the same JSON.**
-- Select any text → popover with a comment textarea; saved comments render as
-  `<mark>` highlights, click to edit/delete; re-anchored on reload by
-  whitespace-insensitive text match; unanchorable ones still survive in the JSON
-  (`{selected_text, near_question, comment}`).
+- Select any text → popover with **five highlighter colour chips** and a comment
+  textarea; saved comments render as `<mark>` highlights, click to edit/delete;
+  re-anchored on reload by whitespace-insensitive text match; unanchorable ones
+  still survive in the JSON (`{selected_text, near_question, comment, highlight}`).
+- **A colour with no comment is a complete action.** Clicking a chip on a fresh
+  selection with an empty box highlights and closes in one gesture, because
+  flagging a passage is a different job from replying to it — that is why the
+  chips are named by colour and carry no meaning. Type words first and a chip
+  only sets the colour, leaving the box open. Clicking a chip on an existing
+  highlight recolours it immediately.
+- **The chips are not `hl-focus` / `hl-warn` / `hl-info`.** Those are table roles
+  with a legend contract; reusing them here would make a legend ambiguous. The
+  highlighter has its own `--hp-*` tokens, per theme, with the text colour
+  inherited so no hue needs its own foreground.
 - **Selecting text still copies normally.** The popover deliberately does not
   focus its textarea on a fresh selection (focusing collapses the selection and
   would break Cmd-C), so the user can copy the selection, use the popover's

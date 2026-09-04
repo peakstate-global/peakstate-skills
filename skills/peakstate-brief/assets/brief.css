@@ -9,6 +9,7 @@
     --bg: #f7f3ec; --fg: #201d18; --muted: #6c665c; --card: #fffdf8;
     --line: #ded7c9; --accent: #8c3a24; --accent-soft: #f7eae4;
     --done: #2f6d46; --done-soft: #e7f1ea; --mark: #ffe6a3; --mark-fg: #4a3800;
+    --hp-yellow: #ffe6a3; --hp-green: #cfe6cd; --hp-blue: #d3e4fb; --hp-pink: #fbd7d2; --hp-purple: #e2dcf3;
     --danger: #a83228; --code: #f1ece1;
     /* --desk is the surface the paper sits on; --gold marks a chapter break. */
     --desk: #efe9df; --gold: #9a7c33;
@@ -18,6 +19,7 @@
     --bg: #121110; --fg: #ece6da; --muted: #9a9285; --card: #1b1917;
     --line: #322e28; --accent: #e59a7c; --accent-soft: #2e211c;
     --done: #74c48d; --done-soft: #17251b; --mark: #55440f; --mark-fg: #ffe9a8;
+    --hp-yellow: #55440f; --hp-green: #1f3a26; --hp-blue: #1b3347; --hp-pink: #4b211b; --hp-purple: #2e2848;
     --danger: #e8877c; --code: #232019;
     --desk: #0c0b0a; --gold: #c9a961;
     --shadow: 0 1px 1px rgba(0,0,0,.3), 0 10px 30px -22px rgba(0,0,0,.9);
@@ -27,6 +29,7 @@
     --bg: #121110; --fg: #ece6da; --muted: #9a9285; --card: #1b1917;
     --line: #322e28; --accent: #e59a7c; --accent-soft: #2e211c;
     --done: #74c48d; --done-soft: #17251b; --mark: #55440f; --mark-fg: #ffe9a8;
+    --hp-yellow: #55440f; --hp-green: #1f3a26; --hp-blue: #1b3347; --hp-pink: #4b211b; --hp-purple: #2e2848;
     --danger: #e8877c; --code: #232019;
     --desk: #0c0b0a; --gold: #c9a961;
     --shadow: 0 1px 1px rgba(0,0,0,.3), 0 10px 30px -22px rgba(0,0,0,.9);
@@ -230,7 +233,8 @@
     section.done .q-body, section.done .sec-body,
     section.done .l5 { max-height: none; opacity: 1; }
     /* Force the light tokens: a dark theme prints as a black page. */
-    :root { --bg: #f7f3ec; --fg: #201d18; --muted: #6c665c; --card: #fffdf8; --line: #ded7c9; --accent: #8c3a24; --accent-soft: #f7eae4; --done: #2f6d46; --done-soft: #e7f1ea; --mark: #ffe6a3; --mark-fg: #4a3800; --danger: #a83228; --code: #f1ece1; --desk: #efe9df; --gold: #9a7c33; --shadow: 0 1px 1px rgba(60,45,30,.04), 0 10px 30px -22px rgba(60,45,30,.5); }
+    :root { --bg: #f7f3ec; --fg: #201d18; --muted: #6c665c; --card: #fffdf8; --line: #ded7c9; --accent: #8c3a24; --accent-soft: #f7eae4; --done: #2f6d46; --done-soft: #e7f1ea; --mark: #ffe6a3; --mark-fg: #4a3800;
+    --hp-yellow: #ffe6a3; --hp-green: #cfe6cd; --hp-blue: #d3e4fb; --hp-pink: #fbd7d2; --hp-purple: #e2dcf3; --danger: #a83228; --code: #f1ece1; --desk: #efe9df; --gold: #9a7c33; --shadow: 0 1px 1px rgba(60,45,30,.04), 0 10px 30px -22px rgba(60,45,30,.5); }
     body { background: #fff; font-size: 11pt; }
     section.brief-section, section.q { break-inside: avoid; }
     .q-head, .sec-head { break-after: avoid; }
@@ -957,3 +961,45 @@ body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap { max-wid
   h2.part { break-after: avoid; }
   .brief-title { break-after: avoid; }
 }
+
+/* ── highlighter colours ──────────────────────────────────────────────────
+   The reader assigns the meaning. "This bit is for the client" is not a
+   category a tool can name, so the chips are named by colour and carry no
+   semantics — unlike hl-focus / hl-warn / hl-info, which are table roles with
+   a legend contract and are deliberately NOT reused here.
+   Text colour is inherited rather than paired per hue: five foreground tokens
+   is five more chances for one of them to fail a contrast check in one theme,
+   and the backgrounds are tuned so --fg reads on all of them in both. */
+mark.cmt[data-hl="yellow"] { background: var(--hp-yellow); }
+mark.cmt[data-hl="green"]  { background: var(--hp-green); }
+mark.cmt[data-hl="blue"]   { background: var(--hp-blue); }
+mark.cmt[data-hl="pink"]   { background: var(--hp-pink); }
+mark.cmt[data-hl="purple"] { background: var(--hp-purple); }
+mark.cmt[data-hl] { color: var(--fg); }
+
+#cpop .chips { display: flex; gap: .3rem; margin: .1rem 0 .5rem; }
+#cpop .chip {
+  width: 1.35rem; height: 1.35rem; padding: 0; border-radius: 50%;
+  border: 1px solid var(--line); cursor: pointer;
+  transition: transform .12s cubic-bezier(.2,.65,.25,1), box-shadow .12s ease;
+}
+#cpop .chip:hover { transform: scale(1.12); }
+#cpop .chip.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--fg); }
+#cpop .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#cpop .chip[data-hl="yellow"] { background: var(--hp-yellow); }
+#cpop .chip[data-hl="green"]  { background: var(--hp-green); }
+#cpop .chip[data-hl="blue"]   { background: var(--hp-blue); }
+#cpop .chip[data-hl="pink"]   { background: var(--hp-pink); }
+#cpop .chip[data-hl="purple"] { background: var(--hp-purple); }
+
+#cdrawer .ddot {
+  display: inline-block; width: .6rem; height: .6rem; border-radius: 50%;
+  margin-right: .4rem; vertical-align: baseline; border: 1px solid var(--line);
+}
+#cdrawer .ddot[data-hl="yellow"] { background: var(--hp-yellow); }
+#cdrawer .ddot[data-hl="green"]  { background: var(--hp-green); }
+#cdrawer .ddot[data-hl="blue"]   { background: var(--hp-blue); }
+#cdrawer .ddot[data-hl="pink"]   { background: var(--hp-pink); }
+#cdrawer .ddot[data-hl="purple"] { background: var(--hp-purple); }
+
+@media (prefers-reduced-motion: reduce) { #cpop .chip { transition: none; } }

@@ -12,6 +12,17 @@ const okProgress = (await page.locator('#progress').textContent()) === '0/1 ques
 await page.fill('#ans-Q1', 'my test answer');
 // tick
 await page.check('section[data-q="Q1"] .tick input');
+/* Collapsing animates over .22s, so asserting straight after check() catches
+   the body mid-fold and reports it visible. Wait for the settled height rather
+   than for a duration: it is the thing the assertion actually means. */
+await page.locator('section[data-q="Q1"] .q-body')
+  .evaluate((e) => new Promise((done) => {
+    const t = setTimeout(done, 1000);
+    const tick = () => (e.getBoundingClientRect().height === 0
+      ? (clearTimeout(t), done())
+      : requestAnimationFrame(tick));
+    tick();
+  }));
 const collapsed = await page.locator('section[data-q="Q1"] .q-body').isHidden();
 const okProgress2 = (await page.locator('#progress').textContent()) === '1/1 questions resolved';
 // selection comment

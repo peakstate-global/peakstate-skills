@@ -165,6 +165,13 @@
   function addrKey(x) { return (x || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40); }
   var ADDRESSED = (document.body.dataset.addressed || '')
     .split('||').map(addrKey).filter(Boolean);
+  /* Highlighter colours. The reader assigns the meaning — "this bit is for the
+     client" is not a meaning a tool can name — so the chips are named by colour
+     and nothing else. Yellow is first and is what every pre-existing comment
+     already is, so saved state carries forward untouched. */
+  var HLS = ['yellow', 'green', 'blue', 'pink', 'purple'];
+  var hlOf = function (c) { return HLS.indexOf(c && c.hl) > -1 ? c.hl : 'yellow'; };
+
   function isAddressed(c) {
     var n = addrKey(c.comment);
     return ADDRESSED.some(function (a) { return n.indexOf(a) === 0 || a.indexOf(n) === 0; });
@@ -327,6 +334,7 @@
       if (c.resolved) return;   // the author has already acted on it; do not round-trip it
       out.comments.push({
         selected_text: c.text, near_question: c.near || null, comment: c.comment,
+        highlight: hlOf(c),
         anchored: !!document.querySelector('mark.cmt[data-cid="' + c.cid + '"]')
       });
     });
@@ -473,7 +481,7 @@
 
   /* Wrap every text node the range touches in its own <mark>, instead of one
      surroundContents() that throws the moment the range crosses an element. */
-  function wrapRange(range, cid) {
+  function wrapRange(range, cid, hl) {
     var all = textNodesIn(main()).filter(function (n) {
       try { return range.intersectsNode(n); } catch { return false; }
     });
@@ -488,7 +496,7 @@
       var r = document.createRange();
       try { r.setStart(node, a); r.setEnd(node, b); } catch { return; }
       var mk = document.createElement('mark');
-      mk.className = 'cmt'; mk.dataset.cid = cid;
+      mk.className = 'cmt'; mk.dataset.cid = cid; mk.dataset.hl = hl || 'yellow';
       try { r.surroundContents(mk); made = true; } catch {}
     });
     return made;
@@ -500,6 +508,10 @@
       while (m.firstChild) parent.insertBefore(m.firstChild, m);
       m.remove(); parent.normalize();
     });
+  }
+  function recolour(cid, hl) {
+    Array.prototype.forEach.call(document.querySelectorAll('mark.cmt[data-cid="' + cid + '"]'),
+      function (m) { m.dataset.hl = hl; });
   }
   function isAnchored(cid) { return !!document.querySelector('mark.cmt[data-cid="' + cid + '"]'); }
 
@@ -533,19 +545,35 @@
     pop.id = 'cpop';
     pop.innerHTML =
       '<div class="quote">“' + String(quote).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }).slice(0, 180) + '”</div>' +
-      '<textarea placeholder="Comment — saved locally"></textarea>' +
+      '<div class="chips" role="group" aria-label="Highlight colour">' +
+      HLS.map(function (h) {
+        return '<button class="chip" type="button" data-hl="' + h + '" aria-pressed="false"' +
+               ' aria-label="' + h.charAt(0).toUpperCase() + h.slice(1) + ' highlight"></button>';
+      }).join('') + '</div>' +
+      '<textarea placeholder="Comment — or pick a colour to just highlight"></textarea>' +
       '<div class="row">' +
       (existing ? '<button class="btn small danger" data-act="del" type="button">Delete</button>' : '') +
       (existing ? '' : '<button class="btn small" data-act="copy" type="button">Copy text</button>') +
       '<button class="btn small" data-act="cancel" type="button">Discard</button>' +
       '<button class="btn small primary" data-act="save" type="button">Save</button></div>' +
       '<p class="pophint">' + MOD + 'Enter saves · Esc closes and keeps a draft' +
+      (existing ? '' : ' · a colour with no comment highlights straight away') +
       (existing ? '' : ' · selection stays live, ' + MOD + 'C copies it') + '</p>';
     document.body.appendChild(pop);
     var vw = document.documentElement.clientWidth;
     var w = pop.offsetWidth;
     pop.style.left = Math.max(8, Math.min(x - w / 2, vw - w - 8)) + 'px';
     pop.style.top = (y + 8) + 'px';
+
+    var chosen = existing ? hlOf(existing) : 'yellow';
+    var hlPicked = !!existing;
+    function paintChips() {
+      Array.prototype.forEach.call(pop.querySelectorAll('.chip'), function (b) {
+        var on = b.dataset.hl === chosen;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
 
     var ta = pop.querySelector('textarea');
     ta.value = (prefill != null ? prefill : (draft ? draft.comment : (existing ? existing.comment : '')));
@@ -565,29 +593,44 @@
 
     function commit() {
       var val = ta.value.trim();
-      if (!val) { dropDraft(key); closePop(); return; }
+      /* A colour with no words is a legitimate mark — highlighting is the
+         whole action for a reader flagging a passage rather than replying to
+         it. Without an explicit colour, an empty box still means "cancel". */
+      if (!val && !hlPicked) { dropDraft(key); closePop(); return; }
       if (existing) {
-        existing.comment = val; existing.at = new Date().toISOString();
+        existing.comment = val; existing.hl = chosen; existing.at = new Date().toISOString();
+        recolour(existing.cid, chosen);
         dropDraft(key); save(); renderDrawer(); closePop(); toast('Comment updated');
         return;
       }
       var cid = 'c' + Date.now() + Math.floor(Math.random() * 1000);
       var range = pendingRange || (draft ? findRange(main(), draft.text, draft.nth || 0) : null);
       var c = {
-        cid: cid, text: quote, comment: val,
+        cid: cid, text: quote, comment: val, hl: chosen,
         near: range ? nearestQ(range.startContainer) : (draft ? draft.near : null),
         nth: range ? occurrenceOf(main(), range) : 0,
         at: new Date().toISOString()
       };
       state.comments.push(c);
-      if (range) wrapRange(range, cid);
+      if (range) wrapRange(range, cid, chosen);
       dropDraft(key); save(); renderDrawer(); closePop();
       var sel = window.getSelection(); if (sel) sel.removeAllRanges();
-      toast(isAnchored(cid) ? 'Comment saved' : 'Comment saved (no highlight — find it in Comments)');
+      toast(isAnchored(cid) ? (val ? 'Comment saved' : 'Highlighted')
+                            : 'Saved (no highlight — find it in Comments)');
     }
 
+    paintChips();
     pop.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('button');
+      if (btn && btn.dataset.hl) {
+        chosen = btn.dataset.hl; hlPicked = true; paintChips();
+        /* One click is the whole gesture when there is nothing to write: an
+           existing mark recolours, a fresh selection with an empty box is
+           highlighted and done. A box with words in it only takes the colour,
+           so the reader can still finish the sentence. */
+        if (existing || !ta.value.trim()) commit();
+        return;
+      }
       var act = btn && btn.dataset.act;
       if (!act) return;
       if (act === 'cancel') { dropDraft(key); closePop(); return; }
@@ -636,7 +679,7 @@
          two dozen comments from earlier versions. Remember the miss instead. */
       if (c.noAnchor) return;
       var r = findRange(main(), c.text, c.nth || 0);
-      if (r) wrapRange(r, c.cid); else c.noAnchor = true;
+      if (r) wrapRange(r, c.cid, hlOf(c)); else c.noAnchor = true;
     });
     paintResolved();
     renderDrawer();
@@ -685,7 +728,7 @@
       state.comments.forEach(function (c) {
         var anchored = isAnchored(c.cid);
         html += '<div class="drow' + (c.resolved ? ' resolved' : '') + '" data-cid="' + esc(c.cid) + '">' +
-          '<div class="dq">“' + esc(c.text).slice(0, 160) + '”' +
+          '<div class="dq"><span class="ddot" data-hl="' + hlOf(c) + '"></span>“' + esc(c.text).slice(0, 160) + '”' +
           (c.resolved ? '<span class="dbadge done">addressed</span>' : '') +
           (anchored ? '' : '<span class="dbadge">not highlighted</span>') + '</div>' +
           '<div class="db">' + esc(c.comment) + '</div>' +
