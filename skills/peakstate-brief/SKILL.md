@@ -162,8 +162,10 @@ still doing all the work.
 
 6. **One H1, H2 parts, H3 sections** — see "Heading structure" below. A brief
    whose only headings are section titles has no skimmable shape.
-7. **A Contents section**, first in `<main>` after the title block, on any brief
-   with more than about four sections.
+7. **A Contents section**, on any brief with more than about four sections. Write
+   `## Contents` wherever it suits the source; the renderer lifts it **above the
+   summary page**, because a list of sections inside a boxed verdict reads as part
+   of the verdict.
 
 Self-check before sending: open the file, confirm you can see the H1 title block,
 the Contents, numbered questions with a "Your answer" box under each, the comments /
@@ -262,8 +264,10 @@ checked" was screenshotted mid-page with the question nowhere on screen.
 
 ## Contents — a brief over about four sections gets one
 
-First section in `<main>` after the title block, `data-sec="toc"`, so it ticks off and
-collapses like anything else. Nest an `<ol>` per part inside `<nav class="toc">`, one
+First thing in `<main>` after the title block, `data-sec="toc"`, so it ticks off and
+collapses like anything else. **Its position is the renderer's call, not yours** — a
+`## Contents` written inside part one is hoisted out of the summary page and rendered
+above it, so the box holds the verdict and nothing else. Nest an `<ol>` per part inside `<nav class="toc">`, one
 `<li>` per section, each with a `<span class="tnote">` saying in a few words what is in
 it — a bare list of section names tells the reader nothing they cannot see by scrolling.
 
@@ -538,8 +542,19 @@ comment the reader made").
 
 **The contents list is generated, never authored.** Every section gets an `id`
 automatically, entries are numbered continuously across parts, and a renamed
-section cannot leave a dead anchor behind. Put `## Contents` where you want it
-and leave its body empty.
+section cannot leave a dead anchor behind. Put `## Contents` anywhere and leave its
+body empty; it always renders above the summary page.
+
+**Two sections are placed by the renderer rather than by the source order.** The
+contents go above the summary page, and a section whose id is `s-definitions` is
+moved *into* it — the words a brief turns on are read before the verdict that uses
+them. Author them wherever they read best in the markdown.
+
+**A part lede that cites a source gets its own evidence block**, the same collapsed
+quotes block a section gets, listing only the sources that lede leans on. Without it
+the summary page — usually a lede and nothing else — would be the one place in a
+brief where a footnote marker has no quote under it, and it is the part most likely
+to be copied out on its own.
 
 **References are footnote definitions**, and the renderer builds the house format
 from them — one `<li>` per source, the APA entry first, every quote stacked
@@ -879,6 +894,10 @@ the reader re-send the same points, which is the round-trip this feature exists 
   button into every `<pre>` (copies its `<code>`/text content, ✓ + toast on
   success). Just write plain `<pre><code>…</code></pre>` — never hand-roll a
   copy button.
+- **Copy summary as markdown** → the copy icon on the summary page puts the verdict
+  on the clipboard as markdown, and **appends a short References list of only the
+  sources that part cites**, numbered as they are numbered on the page. The collapsed
+  evidence block is dropped from the paste rather than flattened into it.
 - **Copy + download combo button** → JSON of `{id, question, resolved, answer}`
   pairs plus all selection comments, all drafts and all note fields. The download
   half writes `<brief-id>-responses-<YYYY-MM-DD>.json`, for a brief read offline or

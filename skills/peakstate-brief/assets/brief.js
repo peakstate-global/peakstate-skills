@@ -1108,6 +1108,31 @@
     }));
   }
 
+  /* The footnote markers inside one part of the document, resolved against the
+     brief's own reference list. Numbering follows the markers, so the copied
+     extract and the page agree. Returns '' when the part cites nothing. */
+  function citedRefs(scope) {
+    var seen = {}, cited = [];
+    scope.querySelectorAll('sup.fn a[href^="#ref"]').forEach(function (a) {
+      var id = a.getAttribute('href').slice(1);
+      if (seen[id]) return;
+      seen[id] = 1;
+      var li = document.getElementById(id);
+      if (!li) return;
+      /* The entry is the li's own text: its number badge, any note and the
+         back-link are apparatus, not the citation. A hand-authored brief wraps
+         it in .apa, a rendered one does not, so both shapes are handled. */
+      var apaEl = li.querySelector('.apa');
+      var src = apaEl || li.cloneNode(true);
+      if (!apaEl) src.querySelectorAll('.rnum, .backref, .apa-note, blockquote').forEach(function (n) { n.remove(); });
+      var apa = (src.textContent || '').trim().replace(/\s+/g, ' ');
+      if (apa) cited.push({ n: parseInt(a.textContent, 10) || 0, apa: apa });
+    });
+    if (!cited.length) return '';
+    cited.sort(function (x, y) { return x.n - y.n; });
+    return '\n\n## References\n\n' + cited.map(function (c) { return c.n + '. ' + c.apa; }).join('\n\n');
+  }
+
   var summary = document.querySelector('.summary-page');
   if (summary && !summary.querySelector(':scope > .pagecopy')) {
     summary.insertBefore(copybtn('Copy summary as markdown', 'pagecopy', function () {
@@ -1122,7 +1147,13 @@
         while (shell.firstChild) shell.parentNode.insertBefore(shell.firstChild, shell);
         shell.remove();
       }
-      copyText(htmlToMd(clone), 'Summary copied as markdown');
+      /* The evidence block is a collapsed on-page control, and htmlToMd would
+         flatten it into one unreadable run. Pasted markdown gets the same
+         information as a short References list instead — only the sources the
+         summary actually cites, numbered as they are numbered on the page, so a
+         copied verdict carries its footnotes rather than bare digits. */
+      clone.querySelectorAll('.l5').forEach(function (n) { n.remove(); });
+      copyText(htmlToMd(clone) + citedRefs(summary), 'Summary copied as markdown');
     }), summary.firstChild);
   }
 

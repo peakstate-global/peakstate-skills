@@ -89,6 +89,30 @@ const REF_FIXTURE_BAD_QUOTE = '# P\n\n## S\n\nA claim[^1q9].\n\n## References\n\
 
 
 has('<a href="#ref1">', 'a footnote marker lands on the reference entry');
+/* Placement the renderer owns, not the author: the contents sit above the
+   summary page wherever they were written, definitions ride inside it, and a
+   part lede that cites a source carries its own evidence block. */
+{
+  const src = ['---', 'title: Placement', 'brief-id: placement', '---', '',
+    '# The verdict', '', 'The lede, which cites something[^1].', '',
+    '## Contents', '', '# Later', '',
+    '## Definitions {#s-definitions}', '', 'What the words mean here.', '',
+    '## References', '',
+    '[^1]: Someone, A. (2026). *A source*. https://example.com/a',
+    '    > "the quoted passage" -- p. 1', ''].join('\n');
+  const out = render(src);
+  const body = out.slice(out.indexOf('<main>'));
+  assert.ok(body.indexOf('class="toc"') < body.indexOf('summary-page'),
+    'the contents render above the summary page even when authored inside part one');
+  const box = /<div class="summary-page">([\s\S]*?)\n<\/div>/.exec(body);
+  assert.ok(box && box[1].includes('id="s-definitions"'),
+    'definitions are hoisted into the summary page');
+  assert.ok(box && box[1].includes('<details class="l5"'),
+    'a part lede that cites a source gets its own evidence block');
+  assert.ok(box[1].indexOf('<details class="l5"') < box[1].indexOf('id="s-definitions"'),
+    'the lede evidence sits under the lede, before the sections');
+}
+
 assert.ok(!main.includes('href="#ref1-q'), 'markers no longer point at per-quote anchors');
 assert.ok(!/<blockquote class="pull" id="ref\d/.test(main),
   'the reference list carries no quotes — they live in each section evidence block');

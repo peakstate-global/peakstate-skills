@@ -513,6 +513,16 @@ function tocEntry(s) {
     (note ? ' <span class="tnote">' + inline(note) + '</span>' : '') + '</li>';
 }
 
+/* Take a section out of whatever part the author put it in, so the renderer
+   can place it where the document needs it. Returns null when there is none. */
+function hoist(parts, id) {
+  for (const p of parts) {
+    const i = p.sections.findIndex((s) => s.id === id);
+    if (i >= 0) return p.sections.splice(i, 1)[0];
+  }
+  return null;
+}
+
 /* The contents list is generated, never authored, so a section rename cannot
    leave a dead anchor behind — the commonest defect in a hand-built brief. */
 function renderToc(parts) {
@@ -713,18 +723,40 @@ export function render(source, opts = {}) {
      so the wrapper is the one markup addition the v4 treatment needs. A brief
      with no named parts is a single subject and gets no wrapper. */
   const summaryPart = named[0] || null;
+
+  /* Definitions ride inside the summary page however the author ordered them:
+     the words a brief turns on are read BEFORE the verdict that uses them, and
+     the hoist runs first so the contents list them in the place they render.
+
+     The contents belong to the document, not to its first part. Authored
+     anywhere, they render ABOVE the summary page: a reader arriving at a boxed
+     verdict with the list of sections inside the box reads the list as part of
+     the verdict, which it never is. */
+  const defsSec = summaryPart ? hoist(parts, 's-definitions') : null;
+  if (defsSec) summaryPart.sections.push(defsSec);
+  const tocSec = hoist(parts, 's-toc');
+  if (tocSec) {
+    if (!tocSec.lines.some((l) => l.trim())) tocSec.lines = renderToc(parts).split('\n');
+    out.push(renderSection(tocSec, ctx));
+  }
   for (const part of parts) {
     if (part === summaryPart) out.push('<div class="summary-page">');
     if (part.title) {
       out.push('<h2 class="part" id="' + part.id + '"><span class="pnum">Part ' +
         PARTWORDS[named.indexOf(part) + 1] + '</span> ' + inline(part.title, refs) + '</h2>');
       const lede = part.lede.filter((l) => l.trim());
-      if (lede.length) out.push('<p class="partlede">' + inline(lede.map((l) => l.trim()).join(' '), refs) + '</p>');
+      if (lede.length) {
+        out.push('<p class="partlede">' + inline(lede.map((l) => l.trim()).join(' '), refs) + '</p>');
+        /* A part lede that cites sources gets the same collapsed evidence block
+           a section gets, listing only the sources IT leans on. Without it the
+           summary page — usually a lede and nothing else — is the one place in
+           a brief where a footnote has no quote under it, and it is the part
+           most likely to be copied out on its own. */
+        const led = proveIt(lede, index, refs);
+        if (led) out.push(led.trim());
+      }
     }
-    for (const sec of part.sections) {
-      if (sec.id === 's-toc' && !sec.lines.some((l) => l.trim())) sec.lines = renderToc(parts).split('\n');
-      out.push(renderSection(sec, ctx));
-    }
+    for (const sec of part.sections) out.push(renderSection(sec, ctx));
     if (part === summaryPart) out.push('</div>');
   }
 
