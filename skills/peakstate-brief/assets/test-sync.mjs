@@ -10,8 +10,11 @@
    give a frame an origin to be sandboxed away from.
 
    The fake host page here is the CONTRACT the real Publish page has to meet:
-   answer the document's hello, forward its `base`/`next` to the review endpoint,
-   and post the reply back. The Node side implements the documented server merge
+   answer the document's hello WITH THE STATE IT HOLDS, keep every `brief-store-set`
+   the document sends, forward its `base`/`next` to the review endpoint, and post
+   the reply back. It holds the store in its OWN localStorage, which is the whole
+   point: the framed document has an opaque origin and has none of its own. The
+   Node side implements the documented server merge
    — an unprefixed key is taken whole, the highest numeric lastEdit wins, a tie
    resolves to the server — so a regression in how the runtime stamps lastEdit
    shows up here as a lost answer rather than as a passing test. */
@@ -28,6 +31,7 @@ if (!DIR) { console.error('usage: test-sync.mjs <dir with brief.js, brief.css, t
 /* ── the fixture, published and unpublished ─────────────────────────────── */
 const fixture = readFileSync(join(DIR, 'test-fixture.html'), 'utf8');
 assert.ok(/<body data-brief-id="[^"]+"/.test(fixture), 'the fixture carries a brief id');
+const BRIEF_ID = /<body data-brief-id="([^"]+)"/.exec(fixture)[1];
 const published = fixture.replace(/<body (data-brief-id="[^"]+")/,
   '<body $1 data-publish-slug="test-brief" data-visibility="private"');
 assert.notEqual(published, fixture, 'the published fixture is stamped');
@@ -37,16 +41,44 @@ const HOST_PAGE = (sandbox) => `<!doctype html><meta charset="utf-8"><title>host
 <script>
   window.__seen = [];
   window.__offline = location.search.indexOf('offline') > -1;
+  window.__mute = location.search.indexOf('mute') > -1;   // a framer that never answers
+  /* A host that only starts listening after the document has already said hello.
+     The real one installs its listener in an effect, after hydration, while the
+     browser is already fetching the framed bytes -- so the first hello is not
+     answered late, it is never seen at all. */
+  window.__eathello = location.search.indexOf('eathello') > -1;
+  /* The real host VALIDATES every inbound message and echoes the correlation id
+     back as a string (host-protocol.ts, messageId). Echoing d.id verbatim instead
+     would make this double more forgiving than the page it stands in for, and a
+     document that sent a number would pass here and fail in production. */
+  window.__id = function (v) { return String(v); };
+  /* The host owns the storage. localStorage on THIS page, because the host has a
+     real origin and survives the frame being reloaded — which is what "the same
+     device" means to the cases below. */
+  window.__store = function () {
+    var o = {};
+    for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); }
+    return o;
+  };
   addEventListener('message', async function (e) {
     var d = e.data;
     if (!d || d.v !== 1) return;
     window.__seen.push(d.type);
     var w = document.getElementById('f').contentWindow;
-    if (d.type === 'brief-sync-hello') { w.postMessage({ v: 1, type: 'brief-sync-init' }, '*'); return; }
+    if (window.__mute) return;
+    if (d.type === 'brief-sync-hello') {
+      if (window.__eathello) { window.__eathello = false; return; }
+      w.postMessage({ v: 1, type: 'brief-sync-init', state: window.__store() }, '*');
+      return;
+    }
+    if (d.type === 'brief-store-set') {
+      for (var k in d.data) localStorage.setItem(k, d.data[k]);
+      return;
+    }
     if (d.type !== 'brief-sync-put') return;
-    if (window.__offline) { w.postMessage({ v: 1, type: 'brief-sync-res', id: d.id, ok: false, error: 'offline' }, '*'); return; }
+    if (window.__offline) { w.postMessage({ v: 1, type: 'brief-sync-res', id: window.__id(d.id), ok: false, error: 'offline' }, '*'); return; }
     var r = await window.__review({ base: d.base, next: d.next });
-    w.postMessage({ v: 1, type: 'brief-sync-res', id: d.id, ok: true, store: r.store, overCap: false }, '*');
+    w.postMessage({ v: 1, type: 'brief-sync-res', id: window.__id(d.id), ok: true, store: r.store, overCap: false }, '*');
   });
 </script>`;
 
@@ -158,9 +190,7 @@ briefHtml = published;
   await comment(frame, 'section.brief-section .sec-body p', 'written while offline');
   await page.waitForTimeout(2000);
   out.offlineServerEmpty = Object.keys(STORE).length === 0;
-  out.offlineHeldLocally = await frameEval(page, () => JSON.parse(
-    localStorage.getItem(Object.keys(localStorage).find((k) => k.indexOf('brief:') === 0))
-  ).comments.length);
+  out.offlineHeldLocally = (await deviceBlob(page)).comments.length;
   /* Back on the network: nothing else happens on the page, the reconnection
      itself is what sends the held comment. */
   await page.evaluate(() => { window.__offline = false; });
@@ -254,6 +284,214 @@ assert.equal(out.serverBeforeReopen, 'new answer from A', "A's newer answer reac
 assert.equal(out.serverAfterReopen, 'new answer from A', 'reopening B did not overwrite the newer answer');
 assert.equal(out.reopenedShows, 'new answer from A', 'the reopened device shows the newer answer');
 
+/* ── 6. the real thing: an opaque origin, where localStorage THROWS ──────
+   `sandbox="allow-scripts"` with no allow-same-origin is what Publish serves, and
+   it is the only configuration where the bug this ticket exists for is visible:
+   the frame has no origin, so `localStorage` is not empty, it raises. The case
+   proves three things at once -- the call really does throw, nothing in the
+   document breaks because of it, and the answers still survive a reload, because
+   the host is holding them. */
+STORE = {};
+briefHtml = published;
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html');
+  const frame = page.frameLocator('#f');
+  out.opaqueStorageThrows = await frameEval(page, () => {
+    try { localStorage.getItem('probe'); return false; } catch (e) { return true; }
+  });
+  await frame.locator('#ans-Q1').fill('typed with no storage of my own');
+  await frame.locator('section[data-q="Q1"] .tick input').check();
+  await page.waitForTimeout(2000);
+  out.opaqueHostHolds = (await deviceBlob(page)).answers.Q1;
+  out.opaqueServerHas = serverAnswer('Q1');
+  /* Reload the whole host page: the frame is built again from nothing and has to
+     be handed its state back. This is the failure the ticket names. */
+  await page.reload();
+  await page.waitForTimeout(1500);
+  out.opaqueAfterReload = await page.frameLocator('#f').locator('#ans-Q1').inputValue();
+  out.opaqueTickAfterReload = await page.frameLocator('#f').locator('section[data-q="Q1"] .tick input').isChecked();
+  out.opaqueErrors = errors;
+  await ctx.close();
+}
+assert.ok(out.opaqueStorageThrows, 'the framed document really cannot touch localStorage');
+assert.equal(out.opaqueHostHolds, 'typed with no storage of my own', 'the host kept the answer for it');
+assert.equal(out.opaqueServerHas, 'typed with no storage of my own', 'the answer still reached the server');
+assert.equal(out.opaqueAfterReload, 'typed with no storage of my own', 'the answer survived a reload');
+assert.ok(out.opaqueTickAfterReload, 'the tick survived a reload');
+assert.deepEqual(out.opaqueErrors, [], 'nothing threw');
+
+/* ── 7. framed by a page that never answers ──────────────────────────────
+   No init, no state. The document must not throw, must not reach for storage it
+   cannot touch, and must not sit unusable for ever. It says once that nothing is
+   being kept, then lets the reader read and type. */
+STORE = {};
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(ORIGIN + '/host.html?mute=1');
+  await page.waitForTimeout(1200);
+  out.noInitInertWhileWaiting = await frameEval(page, () => document.body.inert === true);
+  await page.waitForTimeout(9000);          // past the document's 8s wait
+  out.noInitReleased = await frameEval(page, () => document.body.inert === false);
+  out.noInitToldTheReader = await frameEval(page, () => !!document.getElementById('nopersist'));
+  const frame = page.frameLocator('#f');
+  await frame.locator('#ans-Q1').fill('typed into a brief nobody is holding');
+  await frame.locator('section[data-q="Q1"] .tick input').check();
+  await page.waitForTimeout(2000);
+  out.noInitTypedFine = await frame.locator('#ans-Q1').inputValue();
+  /* A late init. The wait has already given up and opened the brief with no store,
+     and the reader has been told nothing is being kept. Taking the host's store
+     NOW would hand this empty document the reader's saved answers as its storage,
+     and the next change would persist the empty state straight over them. So the
+     init is ignored, and the give-up is final. */
+  await page.evaluate((k) => {
+    document.getElementById('f').contentWindow.postMessage({ v: 1, type: 'brief-sync-init',
+      state: { [k]: JSON.stringify({ answers: { Q1: 'the reader\'s earlier saved answer' }, ticks: {}, comments: [] }) } }, '*');
+  }, 'brief:' + BRIEF_ID);
+  await page.waitForTimeout(1200);
+  await frame.locator('section[data-q="Q1"] .tick input').uncheck();   // a change, which would persist
+  await page.waitForTimeout(1500);
+  out.lateInitStillShowsTyped = await frame.locator('#ans-Q1').inputValue();
+  out.noInitMessages = [...new Set(await page.evaluate(() => window.__seen))];
+  out.noInitServerKeys = Object.keys(STORE);
+  out.noInitErrors = errors;
+  await ctx.close();
+}
+assert.ok(out.noInitInertWhileWaiting, 'the document is unanswerable while it waits for its state');
+assert.ok(out.noInitReleased, 'the wait ends and the document becomes readable and answerable');
+assert.ok(out.noInitToldTheReader, 'the reader is told nothing is being kept');
+assert.equal(out.noInitTypedFine, 'typed into a brief nobody is holding', 'typing still works');
+assert.equal(out.lateInitStillShowsTyped, 'typed into a brief nobody is holding',
+  'a late init did not replace what the reader had already typed');
+assert.deepEqual(out.noInitMessages, ['brief-sync-hello'],
+  'nothing but the hello was ever sent — a late init is ignored, not adopted');
+assert.deepEqual(out.noInitServerKeys, [], 'nothing reached the server');
+assert.deepEqual(out.noInitErrors, [], 'nothing threw');
+
+/* ── 8. not framed at all: the ordinary case, unchanged ──────────────────
+   A published brief opened at the top level is not hosted by anything, so it uses
+   its own localStorage exactly as it always has -- no hello, no waiting, no inert
+   pause -- and its answers survive a reload without a host in sight. */
+STORE = {};
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(ORIGIN + '/brief.html');
+  await page.locator('#ans-Q1').fill('typed at the top level');
+  await page.locator('section[data-q="Q1"] .tick input').check();
+  await page.waitForTimeout(600);
+  out.topLevelNeverInert = await page.evaluate(() => document.body.inert === false);
+  out.topLevelUsedOwnStorage = await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.indexOf('brief:') === 0);
+    return k ? JSON.parse(localStorage.getItem(k)).answers.Q1 : null;
+  });
+  await page.reload();
+  await page.waitForTimeout(600);
+  out.topLevelAfterReload = await page.locator('#ans-Q1').inputValue();
+  out.topLevelServerKeys = Object.keys(STORE);
+  out.topLevelErrors = errors;
+  await ctx.close();
+}
+assert.ok(out.topLevelNeverInert, 'an unframed brief is answerable immediately');
+assert.equal(out.topLevelUsedOwnStorage, 'typed at the top level', 'it wrote its own localStorage');
+assert.equal(out.topLevelAfterReload, 'typed at the top level', 'and read it back on reload');
+assert.deepEqual(out.topLevelServerKeys, [], 'an unframed brief posts nothing to a host');
+assert.deepEqual(out.topLevelErrors, [], 'nothing threw');
+
+/* ── 9. the correlation id survives the round trip ───────────────────────
+   The host normalises every id it echoes (see __id above, and messageId in
+   host-protocol.ts). If the document generates an id of a different type it
+   compares "1" against 1 with !==, drops the reply, never clears `inflight`, and
+   the write half of every round is lost: nothing reaches the server at all, and
+   the 15s drop timer re-probes for as long as the tab is open — every tab in the
+   building hitting the review rate limiter, for ever. So this waits past that
+   timer with nobody touching the page: the answer on the server proves the reply
+   was matched, and the silence afterwards proves nothing is re-probing. */
+STORE = {};
+briefHtml = published;
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html');
+  await page.frameLocator('#f').locator('#ans-Q1').fill('an answer that has to reach the server');
+  await page.waitForTimeout(2500);
+  out.idRoundServerHas = serverAnswer('Q1');
+  const puts = () => page.evaluate(() => window.__seen.filter((t) => t === 'brief-sync-put').length);
+  const settled = await puts();
+  await page.waitForTimeout(17000);         // past the document's 15s drop timer
+  out.idRoundPutsWhileIdle = (await puts()) - settled;
+  await ctx.close();
+}
+assert.equal(out.idRoundServerHas, 'an answer that has to reach the server',
+  'the reply was matched, so the write reached the server');
+assert.equal(out.idRoundPutsWhileIdle, 0,
+  'the sync went idle — no unanswered round left the drop timer re-probing');
+
+/* ── 10. the hello can be lost, and the document must not accept that ────
+   The host answers nothing until the SECOND hello, which is what a listener
+   installed after this document already spoke looks like from in here. One hello
+   and no retry means no init ever arrives, the 8s wait gives up, and every tick,
+   answer and comment is discarded for the whole session. */
+STORE = {};
+briefHtml = published;
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html?eathello=1');
+  await page.waitForTimeout(3000);          // well inside the 8s give-up
+  out.lostHelloOpened = await frameEval(page, () => document.body.inert === false);
+  out.lostHelloNoWarning = await frameEval(page, () => !document.getElementById('nopersist'));
+  await page.frameLocator('#f').locator('#ans-Q1').fill('typed after a hello nobody heard');
+  await page.waitForTimeout(2000);
+  out.lostHelloHostHolds = (await deviceBlob(page))?.answers?.Q1 ?? null;
+  out.lostHelloServerHas = serverAnswer('Q1');
+  await ctx.close();
+}
+assert.ok(out.lostHelloOpened, 'the retried hello was answered long before the give-up');
+assert.ok(out.lostHelloNoWarning, 'the reader was never told storage had failed');
+assert.equal(out.lostHelloHostHolds, 'typed after a hello nobody heard', 'the host is holding the answer');
+assert.equal(out.lostHelloServerHas, 'typed after a hello nobody heard', 'and it reached the server');
+
+/* ── 11. a store the host will refuse is not lost silently ───────────────
+   Over the host's cap, `brief-store-set` is dropped on arrival and there is no
+   return channel to say so. The document measures the same cap before it posts,
+   so the framed reader gets the same warning the unframed one gets from a quota
+   throw. */
+STORE = {};
+briefHtml = published;
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html');
+  await page.waitForTimeout(1200);
+  await page.frameLocator('#f').locator('#ans-Q1').fill('x'.repeat(270000));
+  await page.waitForTimeout(1500);
+  out.overCapWarned = await frameEval(page, () => !!document.getElementById('nopersist'));
+  /* The last store the host accepted is still there and still readable — the
+     refusal drops the change, it does not corrupt what was already kept. */
+  out.overCapHeldLength = ((await deviceBlob(page))?.answers?.Q1 ?? '').length;
+  await ctx.close();
+}
+assert.ok(out.overCapWarned, 'the reader is told the over-cap change is not being kept');
+assert.ok(out.overCapHeldLength < 270000, 'the over-cap value was never handed to the host');
+
 await browser.close();
 server.close();
 console.log(JSON.stringify(out, null, 1));
@@ -268,10 +506,16 @@ function serverAnswer(q) {
   return k ? JSON.parse(STORE[k]).answers[q] : undefined;
 }
 function frameEval(page, fn) { return page.frames()[1].evaluate(fn); }
-function frameComments(page) {
-  return frameEval(page, () => JSON.parse(
-    localStorage.getItem(Object.keys(localStorage).find((k) => k.indexOf('brief:') === 0))
-  ).comments.map((c) => c.comment));
+/* What the DEVICE is holding for this brief. The document has no storage of its
+   own once it is framed, so the device's copy is the host page's. */
+function deviceBlob(page) {
+  return page.evaluate(() => {
+    const k = Object.keys(window.__store()).find((x) => x.indexOf('brief:') === 0);
+    return k ? JSON.parse(localStorage.getItem(k)) : null;
+  });
+}
+async function frameComments(page) {
+  return (await deviceBlob(page)).comments.map((c) => c.comment);
 }
 /* Select the block and raise the mouse INSIDE the frame. A page-level
    page.mouse.up() lands outside the iframe and the popover never opens. */
