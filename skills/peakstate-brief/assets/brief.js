@@ -143,7 +143,17 @@
   try { state = Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
   if (!Array.isArray(state.drafts)) state.drafts = [];
   if (!Array.isArray(state.comments)) state.comments = [];
-  function save() { put(KEY, JSON.stringify(state)); renderDirty(); }
+  function persist() { put(KEY, JSON.stringify(state)); renderDirty(); }
+  /* Every save stamps a numeric lastEdit, because that number is what decides a
+     conflict once the brief is published: Publish merges this blob whole, highest
+     lastEdit wins, and a tie resolves to whatever the server already holds. It is
+     clamped forward rather than set to the clock, so a device whose clock runs
+     behind the one it just merged with does not lose every later edit. */
+  function save() {
+    state.lastEdit = Math.max(Date.now(), (state.lastEdit || 0) + 1);
+    persist();
+    syncSoon();
+  }
 
   /* ── unsent work ────────────────────────────────────────────────────────
      The reader has no way of knowing whether what is in this document has been
@@ -1679,6 +1689,214 @@
     ta.value = current();
     paint();
   });
+
+  /* ── syncing a published brief ───────────────────────────────────────────
+     A brief that is published is read on more than one device, so what the
+     reader ticks, answers and comments has to leave the browser that typed it.
+     localStorage stays the source of truth. This whole section is layered OVER
+     the local path and never replaces it: an unpublished brief, a file:// copy
+     and a reader with no network all behave exactly as they did before, and a
+     failed write never blocks or discards a local one. A brief that needs the
+     network to hold a comment has stopped being a document.
+
+     THE DOCUMENT DOES NOT MAKE THE REQUEST. Publish serves it inside a sandboxed
+     frame with no allow-same-origin, so anything issued from here carries a null
+     origin and is not the same-origin call the review endpoint expects. The host
+     page issues the write. This module owns the protocol instead: what to send,
+     which `base` to send it against, and how to fold the reply back in.
+
+     Nothing at all happens unless <body> carries data-publish-slug. That gate is
+     the first thing this section reads, so an unpublished brief posts no message
+     and makes no request of any kind. */
+  var PUB = document.body.dataset.publishSlug || '';
+  var FRAMED = window.parent && window.parent !== window;
+  var host = null;        // the origin the host page spoke from; nothing is sent before it does
+  var base = null;        // the last store Publish returned to THIS browser
+  var seq = 0, inflight = 0, mode = '', needWrite = false;
+  var pending = false, syncTimer = null, dropTimer = null, capWarned = false;
+
+  /* One shape for both sides of a merge, so a blob written by an older runtime
+     (no drafts, no bakedGone) compares equal to one that simply has none. */
+  function shape(o) {
+    o = o || {};
+    return {
+      ticks: o.ticks || {}, answers: o.answers || {}, notes: o.notes || {},
+      edits: o.edits || {}, bakedGone: o.bakedGone || {},
+      comments: Array.isArray(o.comments) ? o.comments : [],
+      drafts: Array.isArray(o.drafts) ? o.drafts : [],
+      lastEdit: o.lastEdit || 0
+    };
+  }
+  function contentSig(o) {
+    var x = shape(o);
+    return JSON.stringify([x.ticks, x.answers, x.notes, x.edits, x.bakedGone, x.comments, x.drafts]);
+  }
+  /* ponytail: a union, so nothing is ever deleted by a merge — a key one device
+     removed comes back from the other. That matches what the server does when it
+     has no base to compare against, and losing a comment is the failure this
+     ticket exists to prevent. Add tombstones if deletion ever has to propagate. */
+  function mergeMaps(win, lose) { return Object.assign({}, lose, win); }
+  function mergeList(win, lose, keyOf) {
+    var out = [], at = {};
+    lose.concat(win).forEach(function (item) {
+      var k = keyOf(item);
+      if (k in at) out[at[k]] = item; else { at[k] = out.length; out.push(item); }
+    });
+    return out;
+  }
+  /* Both devices apply the same rule to the same pair, so both land on the same
+     answer: the newer blob wins every field it and the older one both carry, and
+     everything either of them holds alone survives. A tie goes to the server copy,
+     which is how the server itself breaks a tie. */
+  function mergeBlobs(mineRaw, theirsRaw) {
+    var mine = shape(mineRaw), theirs = shape(theirsRaw);
+    var win = theirs.lastEdit >= mine.lastEdit ? theirs : mine;
+    var lose = win === theirs ? mine : theirs;
+    return {
+      ticks: mergeMaps(win.ticks, lose.ticks),
+      answers: mergeMaps(win.answers, lose.answers),
+      notes: mergeMaps(win.notes, lose.notes),
+      edits: mergeMaps(win.edits, lose.edits),
+      bakedGone: mergeMaps(win.bakedGone, lose.bakedGone),
+      comments: mergeList(win.comments, lose.comments, function (c) { return c.cid; }),
+      drafts: mergeList(win.drafts, lose.drafts, function (d) { return d.key; }),
+      lastEdit: Math.max(mine.lastEdit, theirs.lastEdit)
+    };
+  }
+
+  /* Put what arrived from elsewhere on the page. Only the surfaces that can be
+     refreshed without touching the reader: a box being typed in is left alone,
+     because overwriting it mid-sentence is worse than being a moment behind.
+     ponytail: an edited [data-doc] block is not repainted — it picks the remote
+     version up on the next load. Repaint it here if two people ever edit one
+     document block at the same time and complain. */
+  function applyRemote() {
+    document.querySelectorAll('textarea.answer').forEach(function (ta) {
+      var q = ta.closest('section.q');
+      if (!q || ta === document.activeElement) return;
+      ta.value = state.answers[q.dataset.q] || '';
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('textarea[data-note]'), function (ta) {
+      if (ta === document.activeElement) return;
+      ta.value = state.notes[ta.dataset.note] || '';
+    });
+    sections.forEach(function (sec) {
+      var box = sec.querySelector('.tick input');
+      if (!box) return;
+      box.checked = !!state.ticks[idOf(sec)];
+      sec.classList.toggle('done', box.checked);
+    });
+    renderProgress();
+    reanchor();
+  }
+
+  function adopt(store) {
+    base = store || {};
+    var theirs = null;
+    try { theirs = base[KEY] ? JSON.parse(base[KEY]) : null; } catch (e) { theirs = null; }
+    /* Publish is holding nothing for this brief yet, so there is nothing to fold
+       in — but there is something to send, and only if this browser actually has
+       something. An empty brief does not need a commit to say it is empty. */
+    if (!theirs) { needWrite = contentSig(state) !== contentSig(null); return; }
+    var was = contentSig(state), theirSig = contentSig(theirs);
+    var merged = mergeBlobs(state, theirs);
+    Object.keys(merged).forEach(function (k) { if (k !== 'lastEdit') state[k] = merged[k]; });
+    var now = contentSig(state);
+    /* The merge produced something Publish does not hold. It has to go back with
+       a HIGHER lastEdit than either side, or the next write ties and the server
+       keeps its own copy — silently throwing the merge away. */
+    needWrite = now !== theirSig;
+    if (needWrite) state.lastEdit = merged.lastEdit + 1;
+    else state.lastEdit = merged.lastEdit;
+    persist();
+    if (now !== was) applyRemote();
+  }
+
+  /* ── read before you write ───────────────────────────────────────────────
+     A brief key has no prefix, so the server merges it WHOLE: the higher
+     lastEdit wins the entire blob and the other one is gone. Writing straight
+     out therefore destroys whatever the other device wrote while this one was
+     not looking — which is how a brief loses a comment.
+
+     So every round is a probe and then a write. The probe sends the store back
+     exactly as it was last received, which the server's own tie rule resolves to
+     the copy it already holds: it is a read wearing a write's clothes, it changes
+     no bytes, and the git driver has nothing to commit. What comes back is folded
+     in locally, and only then does the merged result go up — with a lastEdit
+     above both sides, so the write cannot tie and be discarded.
+
+     ponytail: nothing polls. A device hears what the others wrote on its next
+     save or its next load, which is when it is about to overwrite them and the
+     only moment it has to matter. Add an interval or a socket if two people ever
+     sit in one brief together and want to watch each other type. */
+  function post(next, kind) {
+    mode = kind;
+    inflight = ++seq;
+    window.parent.postMessage({ v: 1, type: 'brief-sync-put', id: inflight,
+      briefId: BRIEF, slug: PUB, base: base, next: next }, host);
+    /* A host that never answers must not wedge the sync for the rest of the
+       session, so an unanswered write is treated as a lost one: base is left
+       alone, and the next round re-applies the same intent against it. */
+    clearTimeout(dropTimer);
+    dropTimer = setTimeout(function () {
+      if (!inflight) return;
+      inflight = 0; pending = true; schedule();
+    }, 15000);
+  }
+  function flush() {
+    if (!host || !pending || inflight) return;
+    pending = false;
+    post(Object.assign({}, base), 'probe');
+  }
+  function write() {
+    /* `next` carries every key the store handed back, not just this brief's.
+       Sending ours alone would read as a deletion of all the others. */
+    var next = Object.assign({}, base);
+    next[KEY] = JSON.stringify(state);
+    post(next, 'write');
+  }
+  function schedule() {
+    if (!host) { pending = true; return; }
+    pending = true;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(flush, 1200);
+  }
+  function syncSoon() { if (PUB && FRAMED) schedule(); }
+
+  if (PUB && FRAMED) {
+    window.addEventListener('message', function (e) {
+      var d = e.data;
+      if (!d || d.v !== 1 || e.source !== window.parent) return;
+      if (d.type === 'brief-sync-init') {
+        /* The host names its own origin by speaking first, and everything after
+           this goes to that origin alone. The document never has to be told an
+           address, and never broadcasts the reader's answers to whoever framed it. */
+        if (host) return;
+        host = e.origin;
+        pending = true;
+        flush();
+        return;
+      }
+      if (e.origin !== host || d.type !== 'brief-sync-res' || d.id !== inflight) return;
+      var was = mode;
+      inflight = 0;
+      clearTimeout(dropTimer);
+      if (!d.ok) { pending = true; return; }
+      if (d.overCap && !capWarned) {
+        capWarned = true;
+        toast('This brief has passed its size limit on Publish. The change was still saved.');
+      }
+      adopt(d.store);
+      /* The probe has told us what is up there. Send the merge only if it says
+         something the server does not already hold. */
+      if (was === 'probe' && needWrite) write();
+      else if (needWrite || pending) schedule();
+    });
+    /* Carries no reader data — it only says this document is ready and asks the
+       host to name itself. Answers and comments go to a known origin, never to '*'. */
+    window.parent.postMessage({ v: 1, type: 'brief-sync-hello', briefId: BRIEF, slug: PUB }, '*');
+    window.addEventListener('online', function () { pending = true; flush(); });
+  }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

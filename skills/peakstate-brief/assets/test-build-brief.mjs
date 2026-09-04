@@ -312,7 +312,11 @@ assert.throws(() => render(CROSSREF, { publish: true }),
 /* Front matter the publish render carries, and the ordinary one must not. */
 assert.ok(published.includes('data-publish-slug="publish-fixture"'), 'the publish slug lands on <body>');
 assert.ok(published.includes('data-visibility="unlisted"'), 'visibility lands on <body>');
-assert.ok(!ordinary.includes('data-publish-slug'), 'an unpublished render carries no publish marks');
+/* On the <body> tag, not anywhere in the file: the runtime is inlined into every
+   page and its own comments name the attribute it gates on. What matters is that
+   the ordinary render never STAMPS it. */
+assert.ok(!/<body[^>]*data-publish-slug/.test(ordinary), 'an unpublished render carries no publish marks');
+assert.ok(!/<body[^>]*data-visibility/.test(ordinary), 'an unpublished render carries no visibility mark');
 assert.equal(
   /data-visibility="([^"]*)"/.exec(render(PUB_SRC.replace('visibility: unlisted\n', ''), { publish: true }))[1],
   'private',

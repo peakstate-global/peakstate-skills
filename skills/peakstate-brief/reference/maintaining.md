@@ -32,6 +32,39 @@ All booleans true + `errors: []` = pass. The fixture must keep its `[data-doc]`
 block: the editor half of the suite is skipped when a page has none, and a
 skipped check reads exactly like a passing one.
 
+`assets/test-sync.mjs` covers the publish sync — that an unpublished brief makes
+no request and posts no message, that publishing leaves the copied JSON
+byte-identical, that a comment written offline is held and sent on reconnection,
+and that two devices commenting on one brief both end up with both comments. It
+serves the fixture over HTTP and frames it, because that is the shape the sync
+runs in. **Run it after any change to the sync section of `brief.js`.**
+
+    node test-sync.mjs /tmp/bt      # same setup as the smoke test, same repo trick
+
+## What the host page owes a published brief
+
+The document is served inside a sandboxed frame with no `allow-same-origin`, so
+it cannot call the review endpoint itself. It does not try. The page that frames
+it makes the request; the document owns the protocol. Four messages, all
+`{ v: 1, type }`:
+
+| Direction | Message | Meaning |
+|---|---|---|
+| doc → parent | `brief-sync-hello` `{briefId, slug}` | ready; carries no reader data, sent to `*` |
+| parent → doc | `brief-sync-init` | the host names its origin; everything after goes there alone |
+| doc → parent | `brief-sync-put` `{id, briefId, slug, base, next}` | forward `base`/`next` to `PUT /api/briefs/<briefId>/review` |
+| parent → doc | `brief-sync-res` `{id, ok, store, overCap}` | the 200 body, or `ok: false` on any error |
+
+The host adds `project` and `versionId` — it knows them from its own route, so
+they are not stamped into the document. Nothing is sent until the host answers
+the hello, so a brief framed by a page that does not implement this is a brief
+that behaves exactly as an unpublished one.
+
+Each save is a probe and then a write. The probe re-sends the last store
+unchanged, which the server's tie rule resolves to what it already holds: a read
+that commits nothing. Failing a write is safe — `base` is left alone and the next
+round re-applies the same intent.
+
 ## Updating an existing brief's runtime
 
 `brief.css` / `brief.js` are **inlined into each brief at build time**, so an old
