@@ -815,9 +815,21 @@ export function render(source, opts = {}) {
 
 const invoked = process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).href;
 if (invoked) {
-  const [, , input, output] = process.argv;
-  if (!input) { console.error('usage: build-brief.mjs <source.md> [out.html]'); process.exit(2); }
-  const dest = output || join(dirname(input), basename(input).replace(/\.md$/, '') + '.html');
-  writeFileSync(dest, render(readFileSync(input, 'utf8')));
-  console.log('wrote ' + dest);
+  const args = process.argv.slice(2);
+  const publish = args.includes('--publish');
+  const [input, output] = args.filter((a) => a !== '--publish');
+  if (!input) {
+    console.error('usage: build-brief.mjs <source.md> [out.html] [--publish]');
+    process.exit(2);
+  }
+  /* The publish render defaults to a DIFFERENT filename, and that is the point.
+     Publish mode was reachable only from JavaScript, so anyone following the
+     documented build command got the ordinary render and could ship it as the
+     published one — `private:` sections intact, library URLs unswapped. Making
+     the two land on the same path by default would leave the same trap one
+     keystroke away. */
+  const stem = join(dirname(input), basename(input).replace(/\.md$/, ''));
+  const dest = output || stem + (publish ? '.publish' : '') + '.html';
+  writeFileSync(dest, render(readFileSync(input, 'utf8'), { publish }));
+  console.log('wrote ' + dest + (publish ? ' (publish render)' : ''));
 }

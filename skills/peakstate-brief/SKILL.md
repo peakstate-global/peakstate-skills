@@ -428,9 +428,13 @@ Cite your own library only where it genuinely is the origin — your own note or
 ### 3. `check-publishable.py` reads the published render before it goes
 
 ```
-python3 assets/check-publishable.py <published>.html
-python3 assets/check-publishable.py --json <published>.html    # for a caller
+node assets/build-brief.mjs my-brief.md --publish     # -> my-brief.publish.html
+python3 assets/check-publishable.py my-brief.publish.html
+python3 assets/check-publishable.py --json my-brief.publish.html   # for a caller
 ```
+
+`--publish` writes to a different filename on purpose, so the ordinary render and
+the published one can never be confused for each other.
 
 Four refuse-by-default classes: you and your family, tooling exhaust, secrets and private
 infrastructure, other people's private material. Each finding carries the line, the match,

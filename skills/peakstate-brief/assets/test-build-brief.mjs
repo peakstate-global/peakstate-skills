@@ -7,7 +7,9 @@
    holds one section per block type, so a failure names the block that broke. */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { render } from './build-brief.mjs';
@@ -395,6 +397,35 @@ assert.ok(render(gapped).indexOf('Alpha, C.') < render(gapped).indexOf('Beta, B.
   'and it is still alphabetical across the whole document');
 assert.equal(render(gapped, { publish: true }).match(/<ol class="reflist">/g).length, 1,
   'the publish render collapses it too');
+
+/* ── the command line reaches publish mode ───────────────────────────────
+   Exercised through the CLI, not through render(), because the defect this
+   guards against was the CLI never passing the option: publish mode existed,
+   worked, and was unreachable from the documented build command, so following
+   the docs produced the ordinary render and invited shipping it as published. */
+
+const tmp = mkdtempSync(join(tmpdir(), 'brief-cli-'));
+const cliSrc = join(tmp, 'x.md');
+writeFileSync(cliSrc, [
+  '---', 'title: CLI fixture', '---', '',
+  '# P', '', '## Contents', '', '## Keep', '', 'kept prose.', '',
+  '## Drop', 'private: true', '', 'withheld prose.', '',
+].join('\n'));
+
+const cli = (...args) => execFileSync(process.execPath, [join(HERE, 'build-brief.mjs'), cliSrc, ...args], { encoding: 'utf8' });
+
+cli();
+cli('--publish');
+const plain = readFileSync(join(tmp, 'x.html'), 'utf8');
+const pub = readFileSync(join(tmp, 'x.publish.html'), 'utf8');
+
+assert.ok(plain.includes('withheld prose'), 'the bare command writes the ordinary render');
+assert.ok(!pub.includes('withheld prose'), '--publish drops the private section');
+assert.ok(pub.includes('kept prose'), 'and keeps the rest');
+assert.ok(pub.includes('data-visibility="private"'), 'and carries the publish attributes');
+/* Different filenames by default, so the two can never be confused. */
+assert.notEqual(join(tmp, 'x.html'), join(tmp, 'x.publish.html'));
+rmSync(tmp, { recursive: true, force: true });
 
 /* ── reproducibility ─────────────────────────────────────────────────────── */
 
