@@ -772,6 +772,17 @@ export function render(source, opts = {}) {
         PARTWORDS[named.indexOf(part) + 1] + '</span> ' + inline(part.title, refs) + '</h2>');
       const lede = part.lede.filter((l) => l.trim());
       if (lede.length) {
+        /* A part lede is ONE paragraph: every line is flattened into it and only
+           inline formatting runs. So a block construct here cannot render — it
+           used to be emitted as literal text, which put raw `:::html` and table
+           markup on the page for the reader to find. Block content belongs in an
+           `##` section under the part, and saying so loudly beats shipping it. */
+        const stray = lede.find((l) => BLOCK_IN_LEDE.test(l.trim()));
+        if (stray) {
+          throw new Error('block content in the lede of part "' + part.title + '": ' +
+            stray.trim().slice(0, 60) + '\n  A part lede is a single paragraph — inline markup only.' +
+            '\n  Move this into an `## ` section under the part.');
+        }
         out.push('<p class="partlede">' + inline(lede.map((l) => l.trim()).join(' '), refs) + '</p>');
         /* A part lede that cites sources gets the same collapsed evidence block
            a section gets, listing only the sources IT leans on. Without it the
@@ -822,6 +833,10 @@ export function render(source, opts = {}) {
    the skills repo, so the documented invocation reaches this file by a path that
    never equals import.meta.url. That mismatch made the CLI a silent no-op —
    exit 0, no output, no file — which is the worst possible failure for a build. */
+/* Block-level constructs that cannot survive being flattened into a part lede.
+   Inline tags (span, b, em) are deliberately absent: those work fine mid-sentence. */
+const BLOCK_IN_LEDE = /^(:::|\||>\s|#{1,6}\s|[-*+]\s|\d+\.\s|<(table|thead|tbody|tr|td|th|div|figure|svg|ul|ol|li|p|section|details|blockquote|pre|h[1-6])\b)/i;
+
 const invoked = process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1]);
 if (invoked) {
   const args = process.argv.slice(2);
