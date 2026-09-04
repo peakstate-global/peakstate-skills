@@ -143,14 +143,20 @@
   try { state = Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
   if (!Array.isArray(state.drafts)) state.drafts = [];
   if (!Array.isArray(state.comments)) state.comments = [];
-  function persist() { put(KEY, JSON.stringify(state)); renderDirty(); }
+  /* The signature of what is currently persisted. save() stamps lastEdit only
+     when this changes, because lastEdit is what wins a merge: a load-time
+     migration that stamps it makes merely OPENING the brief beat another
+     device's newer answer and destroy it. contentSig/shape are declarations in
+     this same scope, so they are hoisted and usable here. */
+  var lastSig = contentSig(state);
+  function persist() { lastSig = contentSig(state); put(KEY, JSON.stringify(state)); renderDirty(); }
   /* Every save stamps a numeric lastEdit, because that number is what decides a
      conflict once the brief is published: Publish merges this blob whole, highest
      lastEdit wins, and a tie resolves to whatever the server already holds. It is
      clamped forward rather than set to the clock, so a device whose clock runs
      behind the one it just merged with does not lose every later edit. */
   function save() {
-    state.lastEdit = Math.max(Date.now(), (state.lastEdit || 0) + 1);
+    if (contentSig(state) !== lastSig) state.lastEdit = Math.max(Date.now(), (state.lastEdit || 0) + 1);
     persist();
     syncSoon();
   }
@@ -1714,6 +1720,7 @@
   var base = null;        // the last store Publish returned to THIS browser
   var seq = 0, inflight = 0, mode = '', needWrite = false;
   var pending = false, syncTimer = null, dropTimer = null, capWarned = false;
+  var failures = 0;
 
   /* One shape for both sides of a merge, so a blob written by an older runtime
      (no drafts, no bakedGone) compares equal to one that simply has none. */
@@ -1722,10 +1729,21 @@
     return {
       ticks: o.ticks || {}, answers: o.answers || {}, notes: o.notes || {},
       edits: o.edits || {}, bakedGone: o.bakedGone || {},
-      comments: Array.isArray(o.comments) ? o.comments : [],
+      comments: (Array.isArray(o.comments) ? o.comments : []).map(stripLocal),
       drafts: Array.isArray(o.drafts) ? o.drafts : [],
       lastEdit: o.lastEdit || 0
     };
+  }
+  /* noAnchor records that THIS device could not find a comment's quoted text.
+     It is device-local: another device where the text does exist must still
+     highlight it, and reanchor() recomputes it on every load anyway. Stripping
+     it here keeps it out of the signature, out of a merge, and out of what goes
+     up -- so a miss on one device neither travels nor forces an extra write. */
+  function stripLocal(c) {
+    if (!c || !c.noAnchor) return c;
+    var out = {}, k;
+    for (k in c) if (k !== 'noAnchor') out[k] = c[k];
+    return out;
   }
   function contentSig(o) {
     var x = shape(o);
@@ -1798,6 +1816,13 @@
        in — but there is something to send, and only if this browser actually has
        something. An empty brief does not need a commit to say it is empty. */
     if (!theirs) { needWrite = contentSig(state) !== contentSig(null); return; }
+    /* A device with a skewed clock -- or a reader editing the blob -- can put
+       lastEdit far in the future. Math.max would adopt it, every device would
+       clamp forward to it, and the poisoned value would win every shared field
+       for good. Five minutes is the tolerance: wider than the drift an
+       unsynchronised consumer clock actually shows, and narrow enough that any
+       honest device can write again within five minutes. */
+    theirs.lastEdit = Math.min(theirs.lastEdit || 0, Date.now() + 5 * 60 * 1000);
     var was = contentSig(state), theirSig = contentSig(theirs);
     var merged = mergeBlobs(state, theirs);
     Object.keys(merged).forEach(function (k) { if (k !== 'lastEdit') state[k] = merged[k]; });
@@ -1850,16 +1875,21 @@
   }
   function write() {
     /* `next` carries every key the store handed back, not just this brief's.
-       Sending ours alone would read as a deletion of all the others. */
+       Not because omitting one would delete it -- the server merges the UNION of
+       the client's keys and the stored ones, and a key only it holds is returned
+       unchanged, which is why the opening probe can send an empty `next` and
+       change nothing. It is so a key this device merged is written back with the
+       merged value rather than left at whatever the server still holds. */
     var next = Object.assign({}, base);
-    next[KEY] = JSON.stringify(state);
+    next[KEY] = JSON.stringify(Object.assign({}, state,
+      { comments: state.comments.map(stripLocal) }));
     post(next, 'write');
   }
-  function schedule() {
+  function schedule(delay) {
     if (!host) { pending = true; return; }
     pending = true;
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(flush, 1200);
+    syncTimer = setTimeout(flush, delay || 1200);
   }
   function syncSoon() { if (PUB && FRAMED) schedule(); }
 
@@ -1870,7 +1900,12 @@
       if (d.type === 'brief-sync-init') {
         /* The host names its own origin by speaking first, and everything after
            this goes to that origin alone. The document never has to be told an
-           address, and never broadcasts the reader's answers to whoever framed it. */
+           address, and never broadcasts the reader's answers to whoever framed it.
+           Accepting the FIRST init is only safe because Publish serves the brief
+           with `Content-Security-Policy: ... frame-ancestors 'self'`, so no
+           third-party page can frame it and speak first. That header is a
+           load-bearing dependency of this code, not an incidental one: drop it
+           and any origin could frame the document and harvest the answers. */
         if (host) return;
         host = e.origin;
         pending = true;
@@ -1881,7 +1916,12 @@
       var was = mode;
       inflight = 0;
       clearTimeout(dropTimer);
-      if (!d.ok) { pending = true; return; }
+      /* A refused round is a round that still has to happen. Without this the
+         sync stalls until the reader's next save or an `online` event, with
+         nothing on screen saying so. Backed off to 1.2s, 2.4s ... 60s, so a
+         host that is failing persistently is not hammered. */
+      if (!d.ok) { failures++; schedule(Math.min(1200 * Math.pow(2, failures - 1), 60000)); return; }
+      failures = 0;
       if (d.overCap && !capWarned) {
         capWarned = true;
         toast('This brief has passed its size limit on Publish. The change was still saved.');

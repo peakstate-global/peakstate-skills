@@ -33,7 +33,7 @@ const published = fixture.replace(/<body (data-brief-id="[^"]+")/,
 assert.notEqual(published, fixture, 'the published fixture is stamped');
 
 const HOST_PAGE = (sandbox) => `<!doctype html><meta charset="utf-8"><title>host</title>
-<iframe id="f" sandbox="${sandbox}" src="/brief.html" style="width:900px;height:600px;border:0"></iframe>
+<iframe id="f" sandbox="${sandbox}" src="/brief.html" style="width:900px;height:1900px;border:0"></iframe>
 <script>
   window.__seen = [];
   window.__offline = location.search.indexOf('offline') > -1;
@@ -80,6 +80,14 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const ORIGIN = 'http://127.0.0.1:' + server.address().port;
 
 const browser = await chromium.launch();
+/* The frame is given the whole document's height and the viewport is given the
+   whole frame, so nothing under test ever has to be scrolled to. The runtime's
+   sticky .topbar covers whatever a scroll puts under it, and `scroll-behavior:
+   smooth` leaves the target still moving, so Playwright's scroll-then-click
+   races both. Neither is what these cases assert -- they assert what the
+   document sends -- so the fix removes the scroll rather than forcing a click
+   past a real overlay. */
+const VIEWPORT = { viewport: { width: 1000, height: 2000 } };
 const out = {};
 
 /* ── 1. an unpublished brief makes no request and posts no message ───────
@@ -88,7 +96,7 @@ const out = {};
    sent. Both have to be empty. */
 {
   briefHtml = fixture; sandbox = 'allow-scripts allow-same-origin';
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext(VIEWPORT);
   const page = await ctx.newPage();
   const reqs = [];
   page.on('request', (r) => reqs.push(r.url()));
@@ -113,7 +121,7 @@ assert.deepEqual(Object.keys(STORE), [], 'an unpublished brief writes nothing to
    stored blob can leak into what the reader pastes back into the chat. */
 async function copyAfterAnswer(html) {
   briefHtml = html;
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext(VIEWPORT);
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
   const page = await ctx.newPage();
   await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
@@ -140,7 +148,7 @@ assert.ok(out.copyHasNoLastEdit, 'lastEdit never reaches the clipboard');
 STORE = {};
 briefHtml = published;
 {
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext(VIEWPORT);
   const page = await ctx.newPage();
   await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
   /* Offline from the very first byte: the document flushes once as soon as the
@@ -171,8 +179,8 @@ assert.equal(out.afterReconnect.length, 1, 'the held comment reached the server 
    which is the round the assertions below wait for. */
 STORE = {};
 {
-  const A = await browser.newContext();
-  const B = await browser.newContext();
+  const A = await browser.newContext(VIEWPORT);
+  const B = await browser.newContext(VIEWPORT);
   const pa = await A.newPage(); const pb = await B.newPage();
   for (const p of [pa, pb]) await p.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
   await pa.goto(ORIGIN + '/host.html');
@@ -207,6 +215,45 @@ assert.deepEqual(out.deviceB.sort(), both, 'device B holds both comments');
 assert.deepEqual(out.serverFinal.sort(), both, 'the server holds both comments');
 assert.equal(out.answerOnB, 'A typed this answer', "A's answer reached B");
 
+/* ── 5. reopening a brief must not beat another device's newer answer ──
+   B answers and syncs; A answers later and syncs; then B reopens and touches
+   nothing. Two load-time migrations used to call save() unconditionally, so
+   merely OPENING stamped lastEdit, B's stale answer won the next merge, and A's
+   answer was destroyed on the server and on both devices. B starts here from a
+   store that SHARES a key with A -- case 4 starts B empty, which is why this
+   got through it. */
+STORE = {};
+briefHtml = published;
+{
+  const B = await browser.newContext(VIEWPORT);
+  const pb = await B.newPage();
+  await pb.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await pb.goto(ORIGIN + '/host.html');
+  await pb.frameLocator('#f').locator('#ans-Q1').fill('old answer from B');
+  await pb.waitForTimeout(2000);
+
+  const A = await browser.newContext(VIEWPORT);
+  const pa = await A.newPage();
+  await pa.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await pa.goto(ORIGIN + '/host.html');
+  await pa.waitForTimeout(1500);
+  out.reopenAdoptedOnA = await pa.frameLocator('#f').locator('#ans-Q1').inputValue();
+  await pa.frameLocator('#f').locator('#ans-Q1').fill('new answer from A');
+  await pa.waitForTimeout(2000);
+  out.serverBeforeReopen = serverAnswer('Q1');
+
+  /* B reopens. Nothing is typed, ticked or clicked. */
+  await pb.reload();
+  await pb.waitForTimeout(3000);
+  out.serverAfterReopen = serverAnswer('Q1');
+  out.reopenedShows = await pb.frameLocator('#f').locator('#ans-Q1').inputValue();
+  await A.close(); await B.close();
+}
+assert.equal(out.reopenAdoptedOnA, 'old answer from B', "A started from B's store");
+assert.equal(out.serverBeforeReopen, 'new answer from A', "A's newer answer reached the server");
+assert.equal(out.serverAfterReopen, 'new answer from A', 'reopening B did not overwrite the newer answer');
+assert.equal(out.reopenedShows, 'new answer from A', 'the reopened device shows the newer answer');
+
 await browser.close();
 server.close();
 console.log(JSON.stringify(out, null, 1));
@@ -215,6 +262,10 @@ console.log(JSON.stringify(out, null, 1));
 function serverComments() {
   const k = Object.keys(STORE).find((x) => x.indexOf('brief:') === 0);
   return k ? JSON.parse(STORE[k]).comments.map((c) => c.comment) : [];
+}
+function serverAnswer(q) {
+  const k = Object.keys(STORE).find((x) => x.indexOf('brief:') === 0);
+  return k ? JSON.parse(STORE[k]).answers[q] : undefined;
 }
 function frameEval(page, fn) { return page.frames()[1].evaluate(fn); }
 function frameComments(page) {
