@@ -62,7 +62,10 @@ def _leakrc(prefix=None):
             raw += "\n" + "\n".join(l.split(":", 1)[1] for l in lines
                                      if l.strip().startswith(prefix))
         else:
-            raw += "\n" + "\n".join(l for l in lines if not l.strip().startswith(prefix or "names:"))
+            # Any `group: value` line belongs to another reader of this file
+            # (check-publishable.py reads commands:, repos:, libraries:, infra:).
+            # A domain never contains a colon, so this is the whole test.
+            raw += "\n" + "\n".join(l for l in lines if ":" not in l.split("#")[0])
     return sorted({v.strip() for line in raw.replace(",", "\n").splitlines()
                    for v in [line.split("#")[0]] if v.strip()})
 

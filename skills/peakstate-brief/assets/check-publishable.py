@@ -113,10 +113,57 @@ def _redact_path(m):
     return None
 
 
+# ── the private list this file must not contain ─────────────────────────────
+#
+# This repo is public. A scanner that spells out the hosts, the library, the
+# repos and the slash commands it looks for publishes the very inventory it
+# exists to keep private — the failure it is meant to prevent, committed by the
+# scanner itself. So the literals live in `.leakrc` at the repo root, which is
+# gitignored, one entry per line with a group prefix:
+#
+#     example.com                 a private domain (no prefix)
+#     commands: daily-report      a private slash command
+#     repos: my-repo              a private repo or skill name
+#     libraries: LIBRARY          a private knowledge base
+#     infra: SOMEHOST             a private piece of infrastructure
+#
+# or the same values in LEAK_PRIVATE_DOMAINS / LEAK_COMMANDS / LEAK_REPOS /
+# LEAK_LIBRARIES / LEAK_INFRA, comma separated. A group with nothing in it means
+# its rule does not run, which is the right behaviour for anyone who cloned this
+# and has no such list.
+def _private(prefix=None):
+    import os
+    env = {None: "LEAK_PRIVATE_DOMAINS", "commands:": "LEAK_COMMANDS",
+           "repos:": "LEAK_REPOS", "libraries:": "LEAK_LIBRARIES",
+           "infra:": "LEAK_INFRA"}[prefix]
+    raw = os.environ.get(env, "")
+    rc = Path(__file__).resolve()
+    for parent in rc.parents:
+        if (parent / ".leakrc").is_file():
+            lines = (parent / ".leakrc").read_text(errors="ignore").splitlines()
+            if prefix:
+                raw += "\n" + "\n".join(l.split(":", 1)[1] for l in lines
+                                         if l.strip().startswith(prefix))
+            else:
+                raw += "\n" + "\n".join(l for l in lines if ":" not in l)
+            break
+    return sorted({v.strip() for line in raw.replace(",", "\n").splitlines()
+                   for v in [line.split("#")[0]] if v.strip()})
+
+
+_DOMAINS = _private()
+_COMMANDS = _private("commands:")
+_REPOS = _private("repos:")
+_LIBRARIES = _private("libraries:")
+_INFRA = _private("infra:")
+_alt = lambda vs: "|".join(re.escape(v) for v in vs)
+
 # A URL on one of the author's own hosts. Nobody outside can open it, so citing
 # one credits nothing and proves nothing. Named rather than inlined because the
-# reference check below has to agree with the rule exactly.
-LOGIN_WALLED_URL = r"https?://[A-Za-z0-9.-]*\b(?:peakstate\.global|irama\.org)\b[^\s\"'<>)\]]*"
+# reference check below has to agree with the rule exactly. Empty when no
+# domains are configured, and then the rule that uses it is dropped.
+LOGIN_WALLED_URL = (r"https?://[A-Za-z0-9.-]*\b(?:" + _alt(_DOMAINS) + r")\b[^\s\"'<>)\]]*"
+                    if _DOMAINS else None)
 
 # The author's own metrics. Gated: these words are ordinary research vocabulary,
 # and only become private when the sentence attaches them to a person.
@@ -177,7 +224,8 @@ RULES = [
     Rule("personal", r"\bAndrew\b|\bRamsden\b", "the author named", flags=0),
 
     # ---- 2. tooling exhaust --------------------------------------------------
-    Rule("tooling", r"\bPRIMA\b", "the author's private library named", flags=0, disclosable=True),
+    *([Rule("tooling", r"\b(?:" + _alt(_LIBRARIES) + r")\b", "the author's private library named",
+            flags=0, disclosable=True)] if _LIBRARIES else []),
     Rule("tooling", r"\bcorpus\b",
          "a search of the author's private library described as method", disclosable=True),
     Rule("tooling", r"\b(?:searched|search(?:ing)?|queried)\s+(?:the\s+)?(?:library|corpus|artefacts?)\b",
@@ -186,10 +234,11 @@ RULES = [
          "the size of the author's private library", disclosable=True),
     Rule("tooling", r"/(?:Users|home)/[A-Za-z0-9._-]+(?:/[^\s\"'<>)\]]+)*",
          "an absolute path from the author's machine", suggest=_redact_path),
-    Rule("tooling", r"(?<![\w/])/(?:nav-pull|nav-push|driver|to-driver|flush|prima|to-prima|sourced|impeccable|handoff|commit|merge|push|prune|options|voice|wizard|prototype|to-spec|to-tickets|implement|share-brief|brief-comments|publish-brief|localhost)\b",
-         "a named skill or slash command, which is workflow narration", disclosable=True),
-    Rule("tooling", r"\bpeakstate-(?:brief|deck|skills)\b|\birama-skills\b|\bXCOACH\b",
-         "a private repo or skill name", flags=0, disclosable=True),
+    *([Rule("tooling", r"(?<![\w/])/(?:" + _alt(_COMMANDS) + r")\b",
+            "a named skill or slash command, which is workflow narration", disclosable=True)]
+      if _COMMANDS else []),
+    *([Rule("tooling", r"\b(?:" + _alt(_REPOS) + r")\b", "a private repo or skill name",
+            flags=0, disclosable=True)] if _REPOS else []),
     Rule("tooling", r"\badversarial (?:pass|review|reviewer)\b|\bsub-?agent\b|\bfresh thread\b|\bcross-model pass\b",
          "agent mechanics behind the brief", disclosable=True),
     Rule("tooling", r"\bClaude Code\b|\bcodex\b|\bOpus 5\b|\bclaude-opus\b",
@@ -204,14 +253,14 @@ RULES = [
     Rule("secret", r"\b[A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|CLIENT_ID|PASSWORD)\b\s*[:=]\s*\S+",
          "an assigned credential", flags=0),
     Rule("secret", r"\b[a-z]{20}\.supabase\.co\b", "a Supabase project ref"),
-    Rule("secret", LOGIN_WALLED_URL, "a login-walled internal URL"),
-    Rule("secret", r"\b(?:nav|prima|publish|status|zero|wealth|book|books)\.(?:peakstate\.global|irama\.org)\b",
-         "an internal hostname"),
-    Rule("secret", r"\bMARIPOSA\b|\bOry Hydra\b|\bFAS\b|\bFleet Agent Surface\b",
-         "private infrastructure", flags=0),
+    *([Rule("secret", LOGIN_WALLED_URL, "a login-walled internal URL"),
+       Rule("secret", r"\b[a-z0-9-]+\.(?:" + _alt(_DOMAINS) + r")\b", "an internal hostname")]
+      if _DOMAINS else []),
+    *([Rule("secret", r"\b(?:" + _alt(_INFRA) + r")\b", "private infrastructure", flags=0)]
+      if _INFRA else []),
 
     # ---- 4. other people's private material ----------------------------------
-    Rule("others", r"\bObsidian\b|\bPRIMA \(iCloud\)\b", "the author's private vault", flags=0),
+    Rule("others", r"\bObsidian\b", "the author's private vault", flags=0),
     Rule("others", r"\btestimonials?\b", "a client testimonial"),
     Rule("others", r"\bcover letters?\b|\bjob applications?\b|\bthe CV\b|\bmy CV\b",
          "job-application material"),
@@ -221,7 +270,7 @@ RULES = [
 
 FOOTNOTE_DEF = re.compile(r"^\s*\[\^(\d+)\]:")
 ORIGIN_LINE = re.compile(r"^\s*origin:\s*\S", re.I)
-_LOGIN_WALLED = re.compile(LOGIN_WALLED_URL, re.I)
+_LOGIN_WALLED = re.compile(LOGIN_WALLED_URL, re.I) if LOGIN_WALLED_URL else None
 
 
 def check_references(text):
@@ -270,7 +319,7 @@ def check_references(text):
             continue
         if ORIGIN_LINE.match(line):
             origin = True
-        hit = _LOGIN_WALLED.search(line)
+        hit = _LOGIN_WALLED.search(line) if _LOGIN_WALLED else None
         if hit and not walled:
             walled = hit.group(0)
     close()
@@ -446,15 +495,16 @@ baseline sits around 4/10 on ordinary days.
 # Fixtures that trip the guard on every commit get deleted, so they are built
 # instead, and the guard stays honest.
 _HOME = "/" + "Users" + "/someone"
-_HOST = "nav" + "." + "peakstate" + ".global"
+_HOST = ("nav." + _DOMAINS[0]) if _DOMAINS else None
 
-CASE_TOOLING = f"""I searched the corpus and PRIMA held nothing on this.
-The source is at {_HOME}/LOCAL-DEV/notes/docs/research/x.md and I ran
-/nav-pull first. Adversarial pass: same-model fresh thread.
+CASE_TOOLING = f"""I searched the corpus and {_LIBRARIES[0] if _LIBRARIES else "the library"}
+held nothing on this. The source is at {_HOME}/LOCAL-DEV/notes/docs/research/x.md
+and I ran /{_COMMANDS[0] if _COMMANDS else "run"} first.
+Adversarial pass: same-model fresh thread.
 """
 
-CASE_SECRET = f"""Set NAV_TOKEN=ory_at_abcdefghijklmnop1234 and point it at
-https://{_HOST}/api/v1/bundle before you start.
+CASE_SECRET = f"""Set API_TOKEN=ory_at_abcdefghijklmnop1234 and point it at
+https://{_HOST or "example.invalid"}/api/v1/bundle before you start.
 """
 
 
@@ -479,8 +529,11 @@ def self_check():
     check("near miss (sleep as topic)", CASE_NEAR_MISS, [], want_empty=True)
     # 3. the three positives
     check("personal", CASE_PERSONAL, ["personal"])
-    check("tooling", CASE_TOOLING, ["tooling"])
-    check("secret", CASE_SECRET, ["secret"])
+    # Both cases assert a rule that only exists where the private list does.
+    if _LIBRARIES or _COMMANDS:
+        check("tooling", CASE_TOOLING, ["tooling"])
+    if _DOMAINS:
+        check("secret", CASE_SECRET, ["secret"])
 
     # the personal case must name all three of its private things
     got = " ".join(f["matched_text"].lower() for f in scan_text(CASE_PERSONAL, rules))
@@ -489,14 +542,14 @@ def self_check():
             failures.append(f"personal case: did not catch {want!r}")
 
     # Attribution names the toolchain on purpose; everything else in the block does not
-    prov = """## Provenance statement
+    prov = f"""## Provenance statement
 
 Attribution
-: Claude Opus 5, in Claude Code. Built with the peakstate-brief skill and
+: Claude Opus 5, in Claude Code. Built with the {_REPOS[0] if _REPOS else "example"} skill and
   audited under the SOURCED standard. Adversarial pass: same-model fresh thread.
 
 Accountable
-: A named person. Built with the peakstate-brief skill.
+: A named person. Built with the {_REPOS[0] if _REPOS else "example"} skill.
 
 Limitations
 : Your fulfilment baseline is not a source.
@@ -504,27 +557,27 @@ Limitations
     got = scan_text(prov, rules)
     if any(f["class"] == "tooling" and f["line_no"] in (3, 4, 5) for f in got):
         failures.append(f"the Attribution entry still fires on tooling: {[f for f in got if f['class']=='tooling']}")
-    if not any(f["class"] == "tooling" and f["line_no"] == 8 for f in got):
+    if _REPOS and not any(f["class"] == "tooling" and f["line_no"] == 8 for f in got):
         failures.append("the exemption leaked past Attribution into Accountable")
     if not any(f["class"] == "personal" for f in got):
         failures.append("Limitations was exempted, and must not be")
 
     # the rendered form: a definition list with no blank lines in it
-    prov_html = """<dl class="prov">
+    prov_html = f"""<dl class="prov">
   <dt>Attribution</dt>
-  <dd>Claude Opus 5, in Claude Code, with the peakstate-brief skill.</dd>
+  <dd>Claude Opus 5, in Claude Code, with the {_REPOS[0] if _REPOS else "example"} skill.</dd>
   <dt>Accountable</dt>
-  <dd>A named person, using the peakstate-brief skill.</dd>
+  <dd>A named person, using the {_REPOS[0] if _REPOS else "example"} skill.</dd>
 </dl>
 """
     got = scan_text(prov_html, rules)
     if any(f["line_no"] == 3 for f in got):
         failures.append(f"the rendered Attribution entry still fires: {got}")
-    if not any(f["class"] == "tooling" and f["line_no"] == 5 for f in got):
+    if _REPOS and not any(f["class"] == "tooling" and f["line_no"] == 5 for f in got):
         failures.append("the exemption swallowed the whole rendered definition list")
 
     # the exemption is tooling-only: a secret in Attribution still fires
-    leaky = prov.replace("Claude Opus 5, in Claude Code.", "Token NAV_TOKEN=ory_at_abcdefghijklmnop1234.")
+    leaky = prov.replace("Claude Opus 5, in Claude Code.", "Token API_TOKEN=ory_at_abcdefghijklmnop1234.")
     if not any(f["class"] == "secret" for f in scan_text(leaky, rules)):
         failures.append("a credential inside Attribution was exempted")
 
@@ -545,7 +598,7 @@ var hrv = 'your HRV baseline sits at 35';
 
     # the Attribution exemption covers what Attribution states, not everything tooling
     att = f"""Attribution
-: Built with the peakstate-brief skill, from {_HOME}/LOCAL-DEV/x/y.md.
+: Built with the {_REPOS[0] if _REPOS else "example"} skill, from {_HOME}/LOCAL-DEV/x/y.md.
 """
     got = scan_text(att, rules)
     if any("peakstate-brief" in f["matched_text"] for f in got):
@@ -554,16 +607,16 @@ var hrv = 'your HRV baseline sits at 35';
         failures.append("an absolute home path was exempted inside Attribution")
 
     # a reference citing the private library with no origin: names the reference
-    _LIB = "https://" + "prima" + ".irama" + ".org/artefact/a-video"
+    _LIB = f"https://lib.{_DOMAINS[0] if _DOMAINS else 'example.invalid'}/artefact/a-video"
     no_origin = f"""Prose citing it[^1].
 
 [^1]: Someone (2024). A video. {_LIB}
 > a quoted sentence -- 04:11
 """
     got = [f for f in scan_text(no_origin, rules) if f["matched_text"] == "[^1]"]
-    if not got:
+    if not got and _DOMAINS:
         failures.append("a library reference with no origin: produced no finding naming it")
-    elif not got[0]["suggestion"]:
+    elif got and not got[0]["suggestion"]:
         failures.append("the origin-less reference finding offers no suggestion")
 
     with_origin = no_origin.replace("> a quoted", "origin: Someone (2024). The talk. https://example.com/t\n> a quoted")
