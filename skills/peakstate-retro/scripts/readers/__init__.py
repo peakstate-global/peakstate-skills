@@ -22,6 +22,11 @@ A reader supplies one generator and one listing:
                            and an empty store reported before any work starts. Return an
                            empty list when the agent is simply not installed; do not raise.
 
+    project_of(path) -> str    the project label for a session file, read as cheaply as the
+                           format allows, so the list of projects can be shown without
+                           parsing every event. Must agree with the `project` on the events
+                           that file yields.
+
 Order matters and is the reader's job: events of one session must arrive together and in
 sequence, or the pairing logic downstream cannot tell which reply answered which turn.
 """
@@ -52,6 +57,30 @@ def resolve(name):
         return name
     hits = [h for h in have if h.startswith(name)] if name else []
     return hits[0] if len(hits) == 1 else name
+
+
+def matches(project, patterns):
+    """Does this project label match any of the patterns the user typed?
+
+    Case-insensitive SUBSTRING, deliberately. Agents label projects differently — Claude
+    Code uses a slug of the full path (`-Users-someone-LOCAL-DEV-my-app`), Codex and pi use
+    the working directory's basename (`my-app`) — and reversing a slug to a repo name is
+    ambiguous, because the encoding loses the difference between a dot and a slash. A
+    substring test needs no reversing and works the same across all three: `my-app` finds
+    both. No patterns means everything.
+    """
+    if not patterns:
+        return True
+    p = (project or "").lower()
+    return any(pat.lower() in p for pat in patterns if pat)
+
+
+def split_patterns(values):
+    """`--project a,b --project c` and `--project a --project b` mean the same thing."""
+    out = []
+    for v in values or []:
+        out.extend(x.strip() for x in str(v).split(",") if x.strip())
+    return out
 
 
 def load(name=None):

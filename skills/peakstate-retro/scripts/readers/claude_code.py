@@ -72,6 +72,11 @@ def files():
     return out
 
 
+def project_of(path):
+    """Free: Claude Code names the project directory after the working directory."""
+    return os.path.basename(os.path.dirname(path))
+
+
 def iter_events():
     """Yield normalised events in file order. Contract: see readers/__init__.py."""
     paths = files()

@@ -49,6 +49,22 @@ def active_branch(entries):
     return list(reversed(chain))
 
 
+def project_of(path):
+    """One line: the session header carries cwd verbatim.
+
+    The directory name looks like a cheaper source, but pi encodes it by replacing `/` with
+    `-`, which is not reversible: `zero-peakstate-global` could be one directory or three.
+    Guessing there would disagree with what iter_events() reports for the same file, and a
+    filter that matches the listing but not the data is worse than no filter.
+    """
+    try:
+        with open(path, errors="replace") as fh:
+            d = json.loads(fh.readline() or "{}")
+    except (OSError, ValueError):
+        return os.path.basename(path)
+    return os.path.basename(d.get("cwd") or "") or os.path.basename(path)
+
+
 def read_session(path):
     """(cwd, session_id, entries-on-the-active-branch) for one session file."""
     cwd = session_id = None

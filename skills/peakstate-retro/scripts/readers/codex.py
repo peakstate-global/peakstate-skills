@@ -60,6 +60,17 @@ def files():
     return sorted(out)
 
 
+def project_of(path):
+    """One line: Codex records cwd in the session_meta header, the file's first line."""
+    try:
+        with open(path, errors="replace") as fh:
+            d = json.loads(fh.readline() or "{}")
+    except (OSError, ValueError):
+        return os.path.basename(path)
+    p = d.get("payload") or {}
+    return os.path.basename(p.get("cwd") or "") or p.get("id") or os.path.basename(path)
+
+
 def iter_events():
     """Yield normalised events in file order. Contract: see readers/__init__.py."""
     paths = files()

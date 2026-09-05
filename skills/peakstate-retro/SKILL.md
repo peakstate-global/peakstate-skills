@@ -1,6 +1,6 @@
 ---
 name: peakstate-retro
-description: Analyze the user's own coding-agent session history (Claude Code, Codex or pi) to find how they actually work: repeated requests, correction loops, skill/hook candidates, and built-but-unused tooling. Use when the user says "claude retro", "analyze how I work", "audit my usage", "what do I repeat", or invokes /peakstate-retro (also answers to "claude retro"). Args in any order: an agent name (claude, codex, pi, or all) and a number of days (default 30); bare invocation asks which to include.
+description: Analyze the user's own coding-agent session history (Claude Code, Codex or pi) to find how they actually work: repeated requests, correction loops, skill/hook candidates, and built-but-unused tooling. Use when the user says "claude retro", "analyze how I work", "audit my usage", "what do I repeat", or invokes /peakstate-retro (also answers to "claude retro"). Args in any order: an agent name (claude, codex, pi, or all), a number of days (default 30), and/or a project substring; bare invocation asks which to include.
 disable-model-invocation: true
 ---
 
@@ -39,6 +39,8 @@ may arrive in either order, and either may be omitted.
 | `/peakstate-retro codex` | Codex, last 30 days. |
 | `/peakstate-retro codex 14` | Codex, last 14 days. Order does not matter. |
 | `/peakstate-retro all` | Every reader that has sessions in the window, reported side by side. Skip the empty ones and say which were skipped. |
+| `/peakstate-retro my-app 14` | Only sessions whose project matches `my-app`, last 14 days. |
+| `/peakstate-retro codex my-app,other-app` | Codex, projects matching either. |
 
 - **A token that parses as an integer is the window.** Anything else is an agent name, matched
   against `scripts/readers/`. Default window **30** days; default agent **claude_code**.
@@ -48,6 +50,20 @@ may arrive in either order, and either may be omitted.
   that exist — and stop.
 - **Never run `all` without surveying first.** Codex holds thousands of sessions with almost
   nothing pairable; including it silently turns a cheap run into a long one that finds little.
+
+**A token that is neither a number nor a reader name is a project filter.** Pass it through as
+`--project`; it matches on case-insensitive substring, so one word works across agents that
+label the same repo differently — Claude Code stores a slug of the whole path
+(`-Users-someone-LOCAL-DEV-my-app`) where Codex and pi store the directory's
+basename (`my-app`), and `my-app` finds both.
+
+- **Comma-separate for several**, or repeat the flag. Any match wins.
+- **Filtering drops whole SESSIONS, not events** — a human turn paired with an assistant turn
+  from a different conversation would be a fabricated exchange.
+- **Show the projects before filtering blind:**
+  `python3 <skill-dir>/scripts/survey-sources.py <DAYS> --projects [--reader NAME]`.
+- **A filter that matches nothing is not an empty retro** — say the filter matched no
+  sessions, show the project list, and stop.
 
 ## Constraints (this environment)
 

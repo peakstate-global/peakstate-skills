@@ -6,8 +6,10 @@ human said back, how much work sat between them, and whether any of it was check
 counts as a turn is the reader's problem (scripts/readers/); the pairing, the check
 detection and the record shape are agent-agnostic and live here.
 
-Usage: extract-turns.py <out.jsonl> [days] [--reader NAME]
-       RETRO_READER=<name> also selects a reader.
+Usage: extract-turns.py <out.jsonl> [days] [--reader NAME] [--project PAT[,PAT...]]
+       RETRO_READER=<name> also selects a reader. --project may be repeated; a project
+       matches on case-insensitive substring, so `--project my-app` finds it under every
+       agent's labelling.
 """
 import json
 import os
@@ -32,7 +34,7 @@ def parse_ts(ts):
         return None
 
 
-def pair(events, cutoff=None):
+def pair(events, cutoff=None, projects=None):
     """Yield one record per human turn that replied to something the assistant said.
 
     The first human turn of a session is skipped on purpose: it opens the conversation
@@ -41,6 +43,11 @@ def pair(events, cutoff=None):
     session = None
     said, tools, bash, human_i = [], [], [], 0
     for ev in events:
+        # Filter here rather than at the reader: dropping a whole session keeps the pairing
+        # intact, whereas dropping individual events would leave a human turn paired with an
+        # assistant turn from a different conversation.
+        if not readers.matches(ev.get("project"), projects):
+            continue
         if ev.get("session") != session:
             session, said, tools, bash, human_i = ev.get("session"), [], [], [], 0
         if ev["kind"] == "human":
@@ -63,22 +70,40 @@ def pair(events, cutoff=None):
             bash.extend(ev.get("bash") or [])
 
 
+def parse_argv(argv):
+    """Positional out-path and days, plus repeatable --reader/--project flags."""
+    name, projects, positional, i = None, [], [], 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--reader" and i + 1 < len(argv):
+            name = argv[i + 1]
+            i += 2
+        elif a == "--project" and i + 1 < len(argv):
+            projects.append(argv[i + 1])
+            i += 2
+        elif a.startswith("--"):
+            i += 1
+        else:
+            positional.append(a)
+            i += 1
+    return positional, name, readers.split_patterns(projects)
+
+
 def main():
-    args = [a for a in sys.argv[1:] if a != "--reader"]
-    name = None
-    if "--reader" in sys.argv:
-        name = sys.argv[sys.argv.index("--reader") + 1]
-        args = [a for a in args if a != name]
-    out_path = args[0]
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=int(args[1]))) if len(args) > 1 else None
+    positional, name, projects = parse_argv(sys.argv[1:])
+    out_path = positional[0]
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=int(positional[1]))) \
+        if len(positional) > 1 else None
 
     reader = readers.load(name)
     n = 0
     with open(out_path, "w") as out:
-        for rec in pair(reader.iter_events(), cutoff):
+        for rec in pair(reader.iter_events(), cutoff, projects):
             out.write(json.dumps(rec, ensure_ascii=False) + "\n")
             n += 1
-    print(f"human turns {n} (reader: {reader.__name__.rsplit('.', 1)[-1]})", file=sys.stderr)
+    scope = f", projects: {'|'.join(projects)}" if projects else ""
+    print(f"human turns {n} (reader: {reader.__name__.rsplit('.', 1)[-1]}{scope})",
+          file=sys.stderr)
 
 
 def selftest():
@@ -109,6 +134,24 @@ def selftest():
     assert readers.resolve("codex") == "codex"
     assert readers.resolve("c") == "c", "an ambiguous prefix stays unresolved and is reported"
     assert readers.resolve("nope") == "nope"
+
+    # A project filter drops whole sessions, never individual events — pairing a human turn
+    # with an assistant turn from another conversation would be worse than filtering nothing.
+    mixed = ev + [
+        {"kind": "human", "session": "s3", "project": "other", "ts": None, "text": "open"},
+        {"kind": "assistant", "session": "s3", "project": "other", "ts": None,
+         "text": "hi", "tools": [], "bash": []},
+        {"kind": "human", "session": "s3", "project": "other", "ts": None, "text": "no"},
+    ]
+    assert len(list(pair(mixed))) == 3
+    assert [r["project"] for r in pair(mixed, projects=["other"])] == ["other"]
+    assert list(pair(mixed, projects=["nothing-matches"])) == []
+    assert len(list(pair(mixed, projects=[]))) == 3, "no patterns means everything"
+
+    assert readers.matches("-Users-x-LOCAL-DEV-my-app", ["my-app"])
+    assert readers.matches("my-app", ["MY-APP"]), "matching is case-insensitive"
+    assert not readers.matches("other-app", ["my-app"])
+    assert readers.split_patterns(["a,b", "c"]) == ["a", "b", "c"]
     print("selftest ok")
 
 
