@@ -101,6 +101,14 @@ def selftest():
     assert got[1]["id"].startswith("s2:"), "a session boundary resets the counter"
     # The opening turn of each session answers nothing and must not be paired.
     assert all("open" not in r["human_replied"] for r in got)
+
+    # An agent name typed by a person must reach its module, and an ambiguous one must not
+    # be guessed at — "c" matches both claude_code and codex.
+    assert readers.resolve("claude") == "claude_code"
+    assert readers.resolve("claude-code") == "claude_code"
+    assert readers.resolve("codex") == "codex"
+    assert readers.resolve("c") == "c", "an ambiguous prefix stays unresolved and is reported"
+    assert readers.resolve("nope") == "nope"
     print("selftest ok")
 
 

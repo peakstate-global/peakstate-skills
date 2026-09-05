@@ -70,23 +70,28 @@ def read_session(path):
     return cwd, session_id, active_branch(entries)
 
 
-def iter_events():
-    """Yield normalised events in conversation order. Contract: see readers/__init__.py."""
+def files():
+    """Every session file this reader would read. Contract: see readers/__init__.py."""
     if not os.path.isdir(SESSIONS):
-        raise SystemExit(
-            f"no pi sessions at {SESSIONS}. "
-            "Set PI_SESSION_DIR, or RETRO_READER to another agent's reader."
-        )
-    files = []
+        return []
+    out = []
     for proj in sorted(os.listdir(SESSIONS)):
         d = os.path.join(SESSIONS, proj)
         if os.path.isdir(d):
-            files.extend(sorted(os.path.join(d, f) for f in os.listdir(d)
-                                if f.endswith(".jsonl")))
-    if not files:
-        raise SystemExit(f"{SESSIONS} holds no session files yet — nothing to analyse.")
+            out.extend(sorted(os.path.join(d, f) for f in os.listdir(d)
+                              if f.endswith(".jsonl")))
+    return out
 
-    for path in files:
+
+def iter_events():
+    """Yield normalised events in conversation order. Contract: see readers/__init__.py."""
+    paths = files()
+    if not paths:
+        raise SystemExit(
+            f"no pi sessions at {SESSIONS} — run pi once, or set PI_SESSION_DIR / "
+            "RETRO_READER to another agent's reader."
+        )
+    for path in paths:
         cwd, session_id, entries = read_session(path)
         project = os.path.basename(cwd or "") or os.path.basename(path)
         session = session_id or os.path.basename(path)[:-6]
@@ -124,10 +129,10 @@ def selftest():
     import tempfile
     global SESSIONS
     with tempfile.TemporaryDirectory() as d:
-        proj = os.path.join(d, "--Users-someone-repo--")
+        proj = os.path.join(d, "--w-repo--")
         os.makedirs(proj)
         rows = [
-            {"type": "session", "version": 3, "id": "s1", "cwd": "/Users/someone/repo"},
+            {"type": "session", "version": 3, "id": "s1", "cwd": "/w/repo"},
             {"type": "message", "id": "a1", "parentId": None, "timestamp": "2026-09-05T00:00:00Z",
              "message": {"role": "user", "content": "build the thing"}},
             {"type": "message", "id": "b1", "parentId": "a1", "timestamp": "2026-09-05T00:00:01Z",

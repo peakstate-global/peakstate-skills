@@ -52,16 +52,22 @@ def _text(payload):
     )
 
 
+def files():
+    """Every rollout file this reader would read. Contract: see readers/__init__.py."""
+    out = []
+    for root in roots():
+        out.extend(glob.glob(os.path.join(root, "sessions", "*", "*", "*", "*.jsonl")))
+    return sorted(out)
+
+
 def iter_events():
     """Yield normalised events in file order. Contract: see readers/__init__.py."""
-    files = []
-    for root in roots():
-        files.extend(glob.glob(os.path.join(root, "sessions", "*", "*", "*", "*.jsonl")))
-    if not files:
+    paths = files()
+    if not paths:
         raise SystemExit(
             "no Codex rollout files found. Set CODEX_HOME, or RETRO_READER to another reader."
         )
-    for path in sorted(files):
+    for path in paths:
         project, session, originator = None, os.path.basename(path)[:-6], None
         pending_tools, pending_bash = [], []
         try:

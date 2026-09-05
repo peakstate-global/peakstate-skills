@@ -60,18 +60,28 @@ def is_human(ev):
     return True
 
 
+def files():
+    """Every session file this reader would read. Contract: see readers/__init__.py."""
+    if not os.path.isdir(ROOT):
+        return []
+    out = []
+    for pdir in sorted(os.listdir(ROOT)):
+        full = os.path.join(ROOT, pdir)
+        if os.path.isdir(full):
+            out.extend(sorted(glob.glob(os.path.join(full, "*.jsonl"))))
+    return out
+
+
 def iter_events():
     """Yield normalised events in file order. Contract: see readers/__init__.py."""
-    if not os.path.isdir(ROOT):
+    paths = files()
+    if not paths:
         raise SystemExit(
             f"no Claude Code transcripts at {ROOT}. "
             "Set CLAUDE_CONFIG_DIR, or RETRO_READER to another agent's reader."
         )
-    for pdir in sorted(os.listdir(ROOT)):
-        full = os.path.join(ROOT, pdir)
-        if not os.path.isdir(full):
-            continue
-        for f in sorted(glob.glob(os.path.join(full, "*.jsonl"))):
+    for f in paths:
+            pdir = os.path.basename(os.path.dirname(f))
             events = []
             try:
                 with open(f, errors="replace") as fh:

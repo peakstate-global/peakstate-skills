@@ -7,7 +7,7 @@ the two, so supporting another agent means writing one more reader, not editing 
 
 Select with RETRO_READER; the default is Claude Code, which is where this started.
 
-A reader supplies one generator:
+A reader supplies one generator and one listing:
 
     iter_events() -> yields dicts, in file order, one per turn:
         kind      'human' | 'assistant'   (required)
@@ -18,6 +18,10 @@ A reader supplies one generator:
         tools     list[str]  tool names this assistant turn invoked  ('assistant' only)
         bash      list[str]  shell commands it ran, truncated        ('assistant' only)
 
+    files() -> list[str]   every session file it would read, so the run can be sized
+                           and an empty store reported before any work starts. Return an
+                           empty list when the agent is simply not installed; do not raise.
+
 Order matters and is the reader's job: events of one session must arrive together and in
 sequence, or the pairing logic downstream cannot tell which reply answered which turn.
 """
@@ -27,21 +31,40 @@ import os
 DEFAULT = "claude_code"
 
 
+def names():
+    """Every reader that exists, by name."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    return sorted(f[:-3] for f in os.listdir(here)
+                  if f.endswith(".py") and not f.startswith("_"))
+
+
+def resolve(name):
+    """The reader module name for what a person typed.
+
+    Hyphens and underscores are interchangeable, and a unique prefix is enough, so `claude`
+    reaches `claude_code`. The thing being named is the agent; the module name is an
+    implementation detail nobody should have to remember. An ambiguous prefix resolves to
+    nothing and is reported rather than guessed.
+    """
+    name = (name or "").replace("-", "_")
+    have = names()
+    if name in have:
+        return name
+    hits = [h for h in have if h.startswith(name)] if name else []
+    return hits[0] if len(hits) == 1 else name
+
+
 def load(name=None):
     """Import the named reader, or say plainly which ones exist."""
-    name = (name or os.environ.get("RETRO_READER") or DEFAULT).replace("-", "_")
+    name = resolve(name or os.environ.get("RETRO_READER") or DEFAULT)
     try:
         return importlib.import_module(f"{__name__}.{name}")
     except ModuleNotFoundError as exc:
         if name not in str(exc):
             raise
         here = os.path.dirname(os.path.abspath(__file__))
-        have = sorted(
-            f[:-3] for f in os.listdir(here)
-            if f.endswith(".py") and not f.startswith("_")
-        )
         raise SystemExit(
-            f"unknown reader {name!r}. RETRO_READER must be one of: {', '.join(have)}.\n"
-            f"To add an agent, write {name}.py in {here} supplying iter_events(); "
-            f"see this package's docstring for the contract."
+            f"unknown reader {name!r}. RETRO_READER must be one of: {', '.join(names())}.\n"
+            f"To add an agent, write {name}.py in {here} supplying iter_events() and "
+            f"files(); see this package's docstring for the contract."
         )

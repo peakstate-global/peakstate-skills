@@ -1,6 +1,6 @@
 ---
 name: peakstate-retro
-description: Analyze the user's own Claude Code session history to find how they actually work — repeated requests, correction loops, skill/hook candidates, and built-but-unused tooling. Use when the user says "claude retro", "analyze how I work", "audit my usage", "what do I repeat", or invokes /peakstate-retro (also answers to "claude retro"). Optional arg = number of days to look back (default 30).
+description: Analyze the user's own coding-agent session history (Claude Code, Codex or pi) to find how they actually work: repeated requests, correction loops, skill/hook candidates, and built-but-unused tooling. Use when the user says "claude retro", "analyze how I work", "audit my usage", "what do I repeat", or invokes /peakstate-retro (also answers to "claude retro"). Args in any order: an agent name (claude, codex, pi, or all) and a number of days (default 30); bare invocation asks which to include.
 disable-model-invocation: true
 ---
 
@@ -27,9 +27,27 @@ Read the user's Claude Code session history and report how they actually work ov
 
 **Deliverable is a plan/report, not code changes.** Do not build the skills you propose unless the user then asks.
 
-## Parameters
+## Parameters — read the invocation before doing anything
 
-- Lookback window in days from the invocation arg (e.g. `/peakstate-retro 14`). Default **30**.
+Two things can be chosen: **which agents' history** to read, and **how far back**. Arguments
+may arrive in either order, and either may be omitted.
+
+| Invocation | Means |
+|---|---|
+| `/peakstate-retro` | **Ask first.** Run `python3 <skill-dir>/scripts/survey-sources.py 30`, show the table, and ask which agents to include and over what window. Do not start a run. |
+| `/peakstate-retro 14` | Claude Code, last 14 days. A bare number never asks — this is the common case and a question here costs a round trip for nothing. |
+| `/peakstate-retro codex` | Codex, last 30 days. |
+| `/peakstate-retro codex 14` | Codex, last 14 days. Order does not matter. |
+| `/peakstate-retro all` | Every reader that has sessions in the window, reported side by side. Skip the empty ones and say which were skipped. |
+
+- **A token that parses as an integer is the window.** Anything else is an agent name, matched
+  against `scripts/readers/`. Default window **30** days; default agent **claude_code**.
+- **`claude` is accepted for `claude_code`** — hyphens and underscores are interchangeable and
+  the `_code` suffix is optional, because the thing being named is the agent, not the module.
+- **An unknown name is not a guess.** Print what `readers.load()` says — it lists the readers
+  that exist — and stop.
+- **Never run `all` without surveying first.** Codex holds thousands of sessions with almost
+  nothing pairable; including it silently turns a cheap run into a long one that finds little.
 
 ## Constraints (this environment)
 
@@ -39,13 +57,10 @@ Read the user's Claude Code session history and report how they actually work ov
 ## Method
 
 ### 1. Survey volume
-How much history is in scope, so the cost of the run is known before it starts.
-**Claude Code seam** — for another agent, report whatever "how much is there" means for it.
+How much history is in scope, so the cost of the run is known before it starts. Works for
+every reader, and is the same command the bare invocation uses to ask its question.
 ```
-CC="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-find "$CC"/projects -name "*.jsonl" -mtime -<DAYS> | wc -l
-find "$CC"/projects -name "*.jsonl" -mtime -<DAYS> -exec du -ch {} + | tail -1
-wc -l "$CC"/history.jsonl
+python3 <skill-dir>/scripts/survey-sources.py <DAYS>
 ```
 
 ### 2. Extract genuine user prompts to a scratch JSONL
