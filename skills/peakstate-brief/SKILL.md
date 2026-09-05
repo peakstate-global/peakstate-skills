@@ -61,88 +61,6 @@ with their locators, each linking to its exact passage in the references.
 - **Nothing about it is authored.** It is built from the footnote markers already
   in the section's prose, so it cannot drift from what the section actually cites.
 
-## Show it — a brief is an HTML page, so use the page
-
-**Reach for a visual before a paragraph, every time one would land faster.** The
-brief is rendered HTML in a browser, not a text file: it can draw the thing being
-decided. A reader scans a brief before they read it, so anything that survives a
-scan — a table, a diagram, a rendered mockup, a colour-coded comparison — is
-worth more than the same content in prose.
-
-- **A UI decision gets a mockup, not a description.** If the question is what a
-  screen, component, state or layout should be, build a small static rendering of
-  it inline with `<style>` and markup, and put the options side by side. Asking
-  someone to picture two layouts from a paragraph each is asking them to do the
-  work the file exists to do. Label it plainly as a static illustration — it is a
-  picture of the thing, not the working thing.
-- **Enumerable options render as a visual comparison**, not as a list of
-  sentences. A row per option and a column per property scans in seconds; three
-  paragraphs do not.
-- **A process, a flow or a topology gets a diagram.** Inline SVG or CSS boxes and
-  arrows, no image files and no external assets, so the brief stays one portable
-  file.
-- **Data that has a shape gets a chart, not just a table.** A trend over time, a
-  distribution, a share of a whole, a before/after gap, a ranking — these are read
-  in one glance from a chart and reconstructed line by line from a table. Give the
-  chart when the shape *is* the point, and keep the table when the reader needs the
-  exact figures; a chart above its own table is often the right answer.
-  - **Hand-roll it in inline SVG.** No Chart.js, no D3, no CDN — a brief is one
-    self-contained file and a chart that needs the network is a blank rectangle in
-    the environments this skill exists to work in. Bar, column, line, dot plot,
-    stacked proportion and small multiples are all a few `<rect>`, `<line>`,
-    `<polyline>` and `<text>` elements. A `viewBox` with no fixed width scales to
-    the column.
-  - **Colour through the CSS variables**, never hardcoded hex: `var(--accent)`,
-    `var(--muted)`, `var(--line)`, or `currentColor`, so the chart reads in light,
-    dark and system. A dark-only chart in a light brief is worse than no chart.
-  - **Leave `<text>` unstyled and let it inherit — the build enforces this.** SVG
-    text defaults to black and does *not* inherit the page colour, so a diagram
-    that looks right in light mode is invisible in dark. `brief.css` fixes it
-    globally (`main svg text { fill: currentColor }`), and `build-brief.mjs`
-    **refuses to render** a brief whose SVG text carries a fixed colour, or whose
-    own `<style>` re-declares `.diag`, `.cap` or `main svg text`. Only
-    `var(--…)`, `currentColor`, `none` and `inherit` pass. You cannot forget this
-    one; you can only be stopped by it.
-  - **Still look at it in dark mode before delivering.** Click the theme toggle in
-    the top bar. The gate catches fixed colours, not a chart whose contrast is
-    merely poor, and this failure is invisible to an author working in light mode
-    and total for a reader who is not.
-  - **Label the marks directly** rather than through a legend the eye has to hop
-    to, put the units in the axis title, and start a bar axis at zero — a truncated
-    axis makes a small difference look decisive, which is the one thing a brief
-    must never do to its own evidence.
-  - **State what the chart cannot show.** A tiny sample, a missing period, an
-    estimate among measurements — say it in a caption under the chart, not only in
-    the prose beside it.
-  - **Give every chart a text equivalent**, either the table it came from or one
-    sentence naming the takeaway, so the point survives print, a screen reader and a
-    reader who does not trust pictures.
-- **Before and after belong next to each other**, in one table or one pair of
-  panels, with the changed cells highlighted using `hl-focus` / `hl-warn` /
-  `hl-info` and a `.legend` naming what each colour means here.
-- **Numbers go in a table with the units in the header**, never scattered through
-  a sentence. **A table's left edge aligns exactly with the prose above it** — an
-  inset table reads as a nested thing rather than as the evidence for the paragraph
-  it follows.
-- **In a legend, a swatch sits closer to its own label than to the next pair.**
-  Proximity is what says which label belongs to which colour, so a flat row with one
-  even gap makes the reader guess. The runtime wraps each pair, so this holds without
-  being authored.
-- **Structure the prose too.** Bold the load-bearing clause, break a wall of text
-  into short paragraphs with meaningful subheadings, and let `<details>` hold the
-  evidence a reader only sometimes wants.
-
-**Stay inside the house style while doing it.** Theme extras with brief.css's CSS
-variables (`--bg --fg --card --line --accent --muted …`) so light, dark and system
-all work; keep prose serif and UI chrome sans; never put a border, background or
-radius back around a `section`. Boxes are for things the reader acts on or reads
-as data. Never load a font, an image or a script from the network — a brief is one
-self-contained file, and a mockup that needs the internet is not a mockup.
-
-**The test:** could the reader answer the question from the visuals alone, and
-read the prose only to check? If not, the visual is decoration and the prose is
-still doing all the work.
-
 ## Hard requirements — every brief MUST render all of these (verify before delivering)
 
 1. **Numbered questions** — each question is `<section class="q" data-q="Qn">`
@@ -160,7 +78,7 @@ still doing all the work.
    sources outside itself (documents, videos, transcripts, papers, web pages, other
    repo files). See the next section; it is not optional and not a nice-to-have.
 
-6. **One H1, H2 parts, H3 sections** — see "Heading structure" below. A brief
+6. **One H1, H2 parts, H3 sections** — see `reference/structure.md`. A brief
    whose only headings are section titles has no skimmable shape.
 7. **A Contents section**, on any brief with more than about four sections. Write
    `## Contents` wherever it suits the source; the renderer lifts it **above the
@@ -188,277 +106,26 @@ report or a delivered plan may ask nothing. Do not invent questions to fill the
 section — the runtime prints **"0 questions for you"** in the top bar, which tells the
 reader this document is to be read, not filled in.
 
-## Indentation stops at the H3 section
+## Writing the brief — the rules, and where the detail went
 
-**The H3 section is the deepest indentation level in a brief. Nothing nests
-further without a stated reason.** The staircase (title → part → section → body)
-is what makes the page scannable; a fourth step is noise, and it usually arrives
-by accident from a browser default rather than by a decision. A `<figure>` is the
-worst offender — the browser's own stylesheet gives it 40px of left AND right
-margin, which pushed charts and their captions in past the prose that introduced
-them.
+These five bind every brief. Open the file beside one only when you are doing that thing;
+the rule alone is enough to write a correct brief without opening anything.
 
-**Where the extra indent was saying "these two things are one thing", say it with
-a box instead.** `figure` now draws the existing card treatment — `var(--card)`
-on a `var(--line)` hairline with a 10px radius, the same vocabulary as
-`.summary-page` and `.provblock` — around the chart and its `figcaption`
-together, at the section's own left edge. Do not invent a second box style, and
-do not add margin or padding to push content further right.
-
-## Heading structure — H1 once, H2 parts, H3 sections
-
-**Three levels, always in this order.** A brief is a document, not a list of cards, and
-the heading levels are what let a reader skim it, print it, or hear it read aloud in
-the right order.
-
-- **`<h1>`, exactly once**, inside `<header class="brief-title">` at the top of `<main>`,
-  with an `.eyebrow` kicker above it and a `.sub` standfirst below. The kicker carries
-  the document type and date; the standfirst says in one sentence what the brief is about.
-- **`<h2 class="part">` opens each major part.** Use one per subject the brief covers —
-  if a brief answers two questions, that is two parts. Give it a `<span class="pnum">`
-  ("Part one") and follow it with a `<p class="partlede">`. Optional on a single-subject
-  brief; **required the moment there is more than one subject**.
-- **`<h3>` is every tickable section's heading**, inside `.sec-head` or `.q-head`.
-
-**Never put the part name in the section heading too.** A section called "Part 2 — the
-four setups" sitting under an H2 called "Part two" gives the reader two competing claims
-to the same label, and the real H2 stops registering as structure. The section heading
-names the section only.
-
-**Do not add a `max-width` to anything in the title block.** `main` already holds the
-measure; a second, narrower cap makes the standfirst look accidentally indented against
-the body text beneath it.
-
-## Every claim in the title and standfirst is paid off at every level below
-
-**The heading and the standfirst are a promise, and each claim in them must be answered in the
-opening line of the part that owns it, in the section under that part, and in the detail under
-that section.** A reader stops at whichever level satisfies them, so a claim that only resolves
-three screens down has been made to three readers and kept for one.
-
-- **Name the claims before you write the body.** List the assertions in the title and standfirst.
-  Each one gets an owning part; that part's `partlede` answers it in a sentence; the section
-  under it answers it with the evidence.
-- **The words must repeat.** If the standfirst says "four levers", the section says "four
-  levers" — not "the practical read". A reader scanning for the phrase they were promised will
-  not translate your synonym.
-- **A claim you cannot pay off is cut from the standfirst**, not softened. A hedge in a promise
-  reads as a promise.
-- **The test:** read only the standfirst, then only the part ledes, then only the section
-  headings. Each pass alone must answer the title. Three passes that each need the next one are
-  a document with no summary, however good the prose is.
-
-Measured on the endogenous-DMT brief, 2026-09-04: a standfirst claiming the measured findings
-were "more useful than the DMT story" named the derived levers but never said what had been
-measured. It took two rounds of reader comments to surface, because each round fixed the
-sentence rather than the level below it.
-
-## The summary block restates the question before answering it
-
-**By the time the summary is on screen the title has scrolled away, so the block
-has to carry the question as well as the answer.** The first part of a brief is
-rendered as a boxed summary page, and a reader arrives at it with the contents
-above and the H1 gone. A confident "No, and nobody has ever checked" with nothing
-naming what was asked is an answer to a question the reader can no longer see.
-
-- **The first sentence of the part lede restates the question in its own words**,
-  then answers it. Not the title verbatim — the question as a person would ask it.
-- **This is a sibling of the payoff rule above, not a repeat of it.** That rule
-  says every claim in the standfirst gets answered further down. This one says the
-  summary must be readable cold, with nothing above it in view.
-- **The test:** delete everything above the summary box and read what is left. If
-  you cannot tell what was asked, the block is not finished.
-
-Measured 2026-09-04: a brief whose summary opened "No, and nobody has ever
-checked" was screenshotted mid-page with the question nowhere on screen.
-
-## Contents — a brief over about four sections gets one
-
-First thing in `<main>` after the title block, `data-sec="toc"`, so it ticks off and
-collapses like anything else. **Its position is the renderer's call, not yours** — a
-`## Contents` written inside part one is hoisted out of the summary page and rendered
-above it, so the box holds the verdict and nothing else. Nest an `<ol>` per part inside `<nav class="toc">`, one
-`<li>` per section, each with a `<span class="tnote">` saying in a few words what is in
-it — a bare list of section names tells the reader nothing they cannot see by scrolling.
-
-Link to `#part-n` for parts and `#s-<slug>` for sections, which means **every section
-needs an `id`** as well as its `data-sec`. Check every anchor resolves before sending;
-a dead ToC link is worse than no ToC.
-
-## References and footnotes — every sourced claim is traceable
-
-A brief that asserts things the reader can't verify is an opinion piece. If the
-brief draws on ANY source outside itself, it carries a References section and
-numbered footnotes. Non-negotiable parts:
-
-- **APA 7 entry, with the URL.** Hanging indent is handled by `.apa`. Formats:
-  - Video: `Author, A. [Channel Name]. (2026, July 25). *Title of video* [Video]. YouTube. https://…`
-  - Web page: `Author, A. (2026, July 25). *Title of page*. Site Name. https://…`
-  - No date → `(n.d.)` plus `Retrieved July 25, 2026, from https://…` — never invent
-    a publication date to make the entry look complete.
-  - Internal/unpublished source (a repo file, a DB row, a transcript with no public
-    URL) → cite it as such: `Internal corpus. (2026, July 25). *videos.transcript*
-    [Database record]. Row id …` and say so in an `.apa-note`.
-- **Quoted passages that prove the claim**, inside the reference entry. Verbatim,
-  in `<blockquote class="pull">`, each with its own `id` so a footnote can point at
-  the exact quote rather than the whole source. Attribute with a `<span class="qref">`
-  carrying the timestamp / page / cell / line. If you cannot quote a passage that
-  supports a claim, the claim is your inference — label it as such in the body
-  rather than footnoting it.
-- **Numbered footnote markers in the body**, at the end of the sentence or table
-  cell they support: `…half of Fable 5<sup class="fn"><a href="#ref1-q1">1</a></sup>`.
-  Number references `1…n` in first-citation order. A footnote may be cited many
-  times; point repeated citations at the most relevant quote in that reference.
-- **The runtime handles the jump**: it reveals collapsed `<details>` and ticked-off
-  sections before scrolling, highlights the target, and adds a `↩` back-link on each
-  reference to its first citation. Don't hand-roll any of that.
-
-Markup:
-
-    <p>Opus 5 is priced at half of Fable 5<sup class="fn"><a href="#ref1-q1">1</a></sup>.</p>
-
-    <section class="brief-section" data-sec="references">
-      <div class="sec-head">
-        <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
-        <h2>References</h2>
-      </div>
-      <div class="sec-body">
-        <ol class="reflist">
-          <li id="ref1">
-            <span class="apa">Simmons, P. (n.d.). <i>Opus 5: No-hype full review &amp; testing</i>
-              [Video]. YouTube. Retrieved July 25, 2026, from
-              <a href="https://www.youtube.com/watch?v=…">https://www.youtube.com/watch?v=…</a></span>
-            <blockquote class="pull" id="ref1-q1">"$5 per million input and $25 per million output.
-              Whereas Fable 5 is $10 per million input and $50 per million output."
-              <span class="qref">Transcript, benchmark walkthrough</span></blockquote>
-          </li>
-        </ol>
-      </div>
-    </section>
-
-**Say how many sources the brief rests on, and where the gaps are.** If the user
-expected five sources and you found three, state that in the brief — a silently
-incomplete evidence base is worse than a stated one.
-
-### The house reference format — a plain alphabetical bibliography
-
-**You still author quotes under each source. They no longer render at the back.** The
-markdown is unchanged: one footnote definition per source, its APA entry, then every
-passage it supports as a `> ` line with `-- locator`. What changed is where they come
-out. Each quote is now shown in the **evidence block of the section that leans on it**,
-in context, next to the argument it supports — instead of being stacked at the end where
-the reader has to hold the claim in their head while they go and find it.
-
-**So the References section is a bibliography and looks like one:**
-
-- **Alphabetical by first element**, and numbered in that order. **The number a reader
-  sees is a position in the list, not the `[^n]` key you authored with** — the renderer
-  computes the mapping once so the markers and the list cannot disagree. Keep writing
-  `[^1]`, `[^2]` in whatever order suits you.
-- **Every footnote marker lands on the entry**, not on a per-quote anchor, because the
-  quote itself is already on screen in the section the reader is standing in.
-- **APA hanging indent, no rail, no quotes.** The rail said "quoted aside"; a
-  bibliography is not one.
-- **`qN` in a marker is still validated.** `[^2q6]` against a source carrying four
-  quotes is a build error, so a marker cannot claim evidence that does not exist.
-
-**Nothing about checkability is given up, and that is the test this had to pass.** The
-verbatim passage, its locator and its link to the source are all still there, one screen
-closer to the claim. If you cannot find a passage to sit under an entry, the claim was
-an inference and must be relabelled in the body — unchanged.
-
-Where a source could not be retrieved, or was retrieved but its body could not be read,
-say so in a `note:` line on that entry rather than quietly omitting the quote. Same for a
-community forum thread or any non-authoritative source: the note says what it is, so a
-reader knows not to lean on it.
-
-## Publishing a brief to a reader who is not you
-
-A brief is written for one reader who already knows everything about you. Publishing it
-sends it to a stranger. Three things make that safe, and they are the only three ways a
-published brief may differ from the local one. Divergence for any other reason is a
-defect: no rewriting for a stranger's benefit, no separate published edition, no
-improved opening.
-
-### 1. `private: true` drops a section
-
-Put `private: true` on its own line anywhere in an H3 section. The section renders
-normally in the ordinary build and is absent from the published one. The directive
-itself never prints in either.
-
-```
-## What this means for your own week
-private: true
-
-Prose that only makes sense to the person who commissioned this.
-```
-
-Numbering is left alone. A reference cited only from a dropped section keeps its number
-and stays in the list, uncited — renumbering would make the two documents differ for a
-reason that is not privacy, and would break a citation someone had already written down.
-A whole part left empty is dropped, which does shift part numbers; the alternative is a
-part heading with nothing under it, announcing the removal it was meant to make quiet.
-
-**Two things still fail the build, in both renders.** A footnote marker with no target,
-which is what happens if you make the section holding a definition private. And an
-internal link with no target, which is what happens if prose elsewhere cross-references
-a section you dropped. Both are loud on purpose.
-
-### 2. `origin:` cites the source, not your copy of it
-
-An entry in your own library is usually a copy of somebody else's work. Citing the copy
-credits the wrong party and sends the reader to a page they cannot open. Add an
-`origin:` line to the reference, in the same place a `note:` goes:
-
-```
-[^7]: Library, T. (2024). A copy of a talk. https://library.example/artefact/a-talk
-origin: Speaker, S. (2023). The talk itself. https://origin.example/talk
-note: Read through the library copy, not the recording.
-> the quoted sentence -- 04:11
-```
-
-The published render shows the origin entry and no library URL. The note goes with the
-copy, because it describes reaching a document the published version no longer cites.
-The quotes stay: they are verbatim from the same material.
-
-Cite your own library only where it genuinely is the origin — your own note or synthesis
-— and then as your own corpus, with no login-walled URL. **A library reference with no
-`origin:` is refused by the scanner rather than quietly published.**
-
-### 3. `check-publishable.py` reads the published render before it goes
-
-```
-node assets/build-brief.mjs my-brief.md --publish     # -> my-brief.publish.html
-python3 assets/check-publishable.py my-brief.publish.html
-python3 assets/check-publishable.py --json my-brief.publish.html   # for a caller
-```
-
-`--publish` writes to a different filename on purpose, so the ordinary render and
-the published one can never be confused for each other.
-
-Four refuse-by-default classes: you and your family, tooling exhaust, secrets and private
-infrastructure, other people's private material. Each finding carries the line, the match,
-why, and a concrete replacement where one is derivable — `null` where the only honest
-answer is to cut the sentence.
-
-**The exit code is not the interface.** The findings are, because each one needs a choice:
-sanitise, block, or publish anyway. Only the first two are ever recommended; publish-anyway
-is the author's call alone.
-
-Real names cannot live in a public repo, so put them one per line in
-`~/.claude/brief-private-terms.txt` (or pass `--terms <file>`). Without that file the
-scanner cannot catch your family, which is the first thing it is for.
-
-### Front matter
-
-```
-publish-slug: where-briefs-live      # stable id on the server; written back after the first publish
-visibility: private                  # private (default) | unlisted
-```
-
-Both land on `<body>` in the published render only, so a brief that was never published
-cannot be mistaken for one that was. Private is the default, exactly as it is for decks:
-publishing means storing, not sharing.
+- **Reach for a visual before a paragraph whenever one would land faster.** A brief is
+  rendered HTML in a browser, so it can draw the thing being decided — a UI question gets a
+  mockup, not a description. → `reference/showing.md`
+- **H1 once, H2 parts, H3 sections, and indentation stops at the H3.** Every claim in the
+  title and standfirst is paid off at every level below it. → `reference/structure.md`
+- **Any claim from a source outside the brief carries a numbered footnote and a full APA 7
+  entry with its URL.** A brief asserting things the reader cannot verify is an opinion
+  piece. → `reference/references.md`
+- **A published brief may differ from the local one in exactly three ways**, all mechanical:
+  `private: true` drops a section, `origin:` cites the source rather than your copy, and
+  `check-publishable.py` reads the published render before it goes. Any other divergence is
+  a defect. → `reference/publishing.md`
+- **The source is markdown: front matter, then parts, then sections.** The structural layer
+  is deliberately small — only the parts the runtime keys off have a syntax of their own.
+  → `reference/markdown-format.md`
 
 ## How to build one — author markdown, render the HTML
 
@@ -511,92 +178,6 @@ it will differ from a hand-written one, which is the point.
 
 Deliver the result per the global rule: full `file:///…` URL in a fenced code
 block.
-
-## The markdown source format
-
-**Front matter, then parts, then sections.** Everything else is ordinary
-markdown. The structural layer is deliberately small, because the only parts a
-brief needs that markdown has no word for are the parts the runtime keys off.
-
-    ---
-    title: Where briefs live
-    head-title: Where briefs live — PRIMA as the library, nav as the pointer
-    brief-id: prima-nav-docs-2026-08
-    eyebrow: Design proposal · 18 August 2026
-    sub: The standfirst, one sentence on what the brief is about.
-    addressed: first forty chars of a comment||another one
-    ---
-
-`title` is the `<h1>`; `head-title` is the browser tab and defaults to `title`.
-`brief-id` is the localStorage key, so **keep it identical across
-regenerations**. `consumed:` is a token you change on every regeneration that acts on
-the reader's answers — it is the only thing that clears the unsent-work marker.
-`highlights:` is a JSON array of highlights the document now carries itself. `addressed` becomes `data-addressed` on `<body>` (see "Closing a
-comment the reader made").
-
-| Source | Renders as |
-| --- | --- |
-| `# The verdict` | `<h2 class="part" id="part-1"><span class="pnum">Part one</span> …` |
-| the paragraph straight after a `#` | `<p class="partlede">` |
-| the FIRST `#` part and its sections | wrapped in `<div class="summary-page">` — the boxed summary. A brief with no named parts gets no wrapper. |
-| `## Recommendation` | `<section class="brief-section" id="s-recommendation" data-sec="recommendation">` |
-| `## Contents` with an empty body | the generated `<nav class="toc">` |
-| `## Q1 Should a brief be a new type?` | `<section class="q" id="s-q1" data-q="Q1">` with its `<span class="qid">` |
-| `## Title {#s-f1}` | the same section with an explicit id |
-| `## Title :: what is in it` | adds the `<span class="tnote">` in the contents |
-| `## Q1 … :: short label \| what is in it` | shortens the contents link as well |
-| `My assumption: …` then `If wrong: …` | `<p class="assume">` with both labels bold |
-| `a) …` and `b) …` lines | `<ul class="options">` with `<b>a)</b>` |
-| `[^3]` and `[^3q2]` | `<sup class="fn"><a href="#ref3-q1">3</a></sup>` and `#ref3-q2` |
-| `[^3]` where source 3 has no quote | `#ref3`, the entry itself. A marker pointing at a quote that does not exist is a build error. |
-| `:::verdict` … `:::` | `<div class="verdict">` with markdown rendered inside |
-| `:::html` … `:::` | passed through verbatim |
-| a block starting with `<` | passed through verbatim |
-| inline `<span class="hl-warn">…</span>` | passed through, in prose, a list item or a table cell. Allowlist: `span b i em strong s del ins sub sup kbd abbr mark small wbr br`, carrying at most a `class`. Anything else escapes to visible text |
-
-**The contents list is generated, never authored.** Every section gets an `id`
-automatically, entries are numbered continuously across parts, and a renamed
-section cannot leave a dead anchor behind. Put `## Contents` anywhere and leave its
-body empty; it always renders above the summary page.
-
-**Two sections are placed by the renderer rather than by the source order.** The
-contents go above the summary page, and a section whose id is `s-definitions` is
-moved *into* it — the words a brief turns on are read before the verdict that uses
-them. Author them wherever they read best in the markdown.
-
-**A part lede that cites a source gets its own evidence block**, the same collapsed
-quotes block a section gets, listing only the sources that lede leans on. Without it
-the summary page — usually a lede and nothing else — would be the one place in a
-brief where a footnote marker has no quote under it, and it is the part most likely
-to be copied out on its own.
-
-**References are footnote definitions**, and the renderer builds the house format
-from them — one `<li>` per source, the APA entry first, every quote stacked
-beneath it with its own anchor. A `--` on a quote line carries the locator; a
-`note:` line becomes the `.apa-note`.
-
-    ## References
-
-    [^1]: Simmons, P. (n.d.). *Opus 5: No-hype full review* [Video]. YouTube.
-        Retrieved July 25, 2026, from https://www.youtube.com/watch?v=…
-        > "$5 per million input and $25 per million output." -- Transcript, 04:12
-        > "Fable 5 is $10 per million input." -- Transcript, 04:31
-    [^2]: Internal corpus. (2026, July 25). *videos.transcript* [Database record]. Row 118.
-        note: Retrieved from the working database; no public URL.
-
-**A footnote marker with no matching quote fails the build.** That is the whole
-reason footnotes are structural rather than prose: a dead reference link is found
-by the renderer, not by the reader.
-
-**A definition list becomes the provenance block.** A term line followed by a
-`: definition` line renders as `<dl>`, and inside the section whose id is
-`s-provenance` it renders as `<dl class="provblock">` — the SOURCED four-label
-shape, with no markup to write by hand.
-
-**Anything with no markdown equivalent goes in a `:::html` block.** A styled
-table with `hl-focus` rows, an inline SVG diagram, a `<details class="example">`,
-a classed paragraph. This is the escape hatch, and using it is not a defeat: the
-markdown still carries the document, and the bespoke markup stays verbatim.
 
 ## End-of-phase brief — required section order
 
@@ -689,9 +270,9 @@ the reader re-send the same points, which is the round-trip this feature exists 
 
 ## Companion files
 
-Open one when its line is true of the work in front of you; never preload them. The
-five together are 26KB the brief-writing task does not need, and this file is read in
-full every time the skill fires.
+Open one when its line is true of the work in front of you; never preload them. Together
+they are 55KB the brief-writing task does not need, and this file is read in full every
+time the skill fires — which is why it is 21KB rather than the 46KB it once was.
 
 | File | Read this when |
 |---|---|
@@ -700,9 +281,15 @@ full every time the skill fires.
 | `reference/editable-documents.md` | The reader is meant to REWRITE a draft in place, not just comment on it |
 | `reference/inlining.md` | You are asked why a brief is 240KB, or need to retrofit one that still links its runtime |
 | `reference/maintaining.md` | You edited `build-brief.mjs`, `brief.css` or `brief.js` and need the checks that must pass |
+| `reference/showing.md` | You are deciding whether something should be a diagram, table or mockup rather than prose |
+| `reference/structure.md` | You are laying out parts and sections, or writing the standfirst, summary or contents |
+| `reference/references.md` | The brief cites anything outside itself |
+| `reference/markdown-format.md` | You are writing the source file and need the front matter and section syntax |
+| `reference/publishing.md` | The brief is going to a reader who is not the person who commissioned it |
 
-**The three rules from those files that bind every brief**, so they are never missed by
-not opening one:
+**The rules from those files that bind every brief**, so they are never missed by not
+opening one. The five above are stated in full under "Writing the brief"; these three
+come from the runtime files:
 
 - **Never reimplement what the runtime provides** — tick-off, answer boxes, the comments
   drawer, the copy and download buttons, per-item notes, code-block copy, theme and width
