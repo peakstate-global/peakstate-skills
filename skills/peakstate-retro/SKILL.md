@@ -9,17 +9,19 @@ disable-model-invocation: true
 > never auto-invoked on a stray "audit my usage" — it answers to `/peakstate-retro` and to an
 > explicit ask.
 
-> **Claude Code only, despite the name.** The method here is agent-agnostic — pull the user's
-> turns, count what repeats, count what gets corrected, find tooling built and never used. The
-> READER is not: every extraction below assumes Claude Code's on-disk transcript format
-> (`~/.claude/projects/**/*.jsonl`, `.type=="user"`, `.message.content`, `.isMeta`, `agent-*`
-> subagent files, `<command-name>` tags) and step 7 writes to Claude Code's per-project memory
-> directory. Porting it to another agent means replacing the extraction in steps 1-2 and the
-> memory write in step 7; the analysis in between carries over unchanged.
+> **Which agent's history.** The analysis is agent-agnostic; reading transcripts is not, because
+> every agent stores them somewhere else in some other shape. That difference is isolated in
+> `scripts/readers/`, which is the ONLY place an agent's format appears. Claude Code is the
+> default. Select another with `RETRO_READER=<name>`, and add one by writing
+> `scripts/readers/<name>.py` supplying `iter_events()` — the contract is in that package's
+> docstring. Nothing in the method below changes.
+>
+> Two seams remain Claude-Code-shaped and are marked where they occur: the volume survey in
+> step 1, and the memory write in step 7.
 
-> **Config dir.** Every command below reads Claude Code's own data directory via
-> `CC="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"` — set it once at the start of the run. The
-> fallback is the default location, so this behaves identically when the variable is unset.
+> **Config dir.** The Claude Code reader takes its data directory from `CLAUDE_CONFIG_DIR`,
+> falling back to `~/.claude`, so it behaves identically when the variable is unset. Shell
+> commands below that touch it use `CC="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"`.
 
 Read the user's Claude Code session history and report how they actually work over a lookback window: what they ask for repeatedly, where turns burn on corrections, which manual workflows deserve a skill/hook, and what they built but never use.
 
@@ -27,7 +29,7 @@ Read the user's Claude Code session history and report how they actually work ov
 
 ## Parameters
 
-- Lookback window in days from the invocation arg (e.g. `/claude-retro 14`). Default **30**.
+- Lookback window in days from the invocation arg (e.g. `/peakstate-retro 14`). Default **30**.
 
 ## Constraints (this environment)
 
@@ -37,6 +39,8 @@ Read the user's Claude Code session history and report how they actually work ov
 ## Method
 
 ### 1. Survey volume
+How much history is in scope, so the cost of the run is known before it starts.
+**Claude Code seam** — for another agent, report whatever "how much is there" means for it.
 ```
 CC="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 find "$CC"/projects -name "*.jsonl" -mtime -<DAYS> | wc -l
@@ -45,16 +49,14 @@ wc -l "$CC"/history.jsonl
 ```
 
 ### 2. Extract genuine user prompts to a scratch JSONL
-Skip tool results, hooks, meta, and agent-* subagent transcripts. Capture both string-content and array-content user text. Write `{p:project, m:prompt[:600]}` per line to the scratchpad:
+One `{p:project, m:prompt[:600]}` per line. The script drops tool results, hooks, meta events
+and subagent transcripts — filters that exist because a reader agent found the contamination,
+not because anyone predicted it.
 ```
 SCRATCH=<scratchpad>/retro; mkdir -p $SCRATCH
-find "$CC"/projects -name "*.jsonl" -mtime -<DAYS> -not -name "agent-*" | while read f; do
-  proj=$(basename $(dirname "$f"))
-  jq -rc --arg p "$proj" 'select(.type=="user" and (.message.content|type)=="string") | select(.isMeta!=true) | {p:$p, m:(.message.content[:600])}' "$f" 2>/dev/null
-  jq -rc --arg p "$proj" 'select(.type=="user" and (.message.content|type)=="array") | select(.isMeta!=true) | .message.content[] | select(.type=="text") | {p:$p, m:(.text[:600])}' "$f" 2>/dev/null
-done > $SCRATCH/user_prompts.jsonl
-wc -l $SCRATCH/user_prompts.jsonl
+python3 <skill-dir>/scripts/read-prompts.py $SCRATCH/user_prompts.jsonl <DAYS>
 ```
+Add `--reader <name>` (or set `RETRO_READER`) to analyse another agent's history.
 
 ### 3. Quantitative first pass (cheap, in-context)
 - Per-project volume: `jq -r .p $SCRATCH/user_prompts.jsonl | sort | uniq -c | sort -rn | head`.
@@ -104,7 +106,7 @@ plainly rather than filling it.
 
 The report evaporates otherwise — the whole point is that the next session starts knowing this.
 After the user has seen the report, write the **proved** findings that would change how future
-work gets handled into Claude Code's per-project memory at
+work gets handled into the agent's durable memory. **Claude Code seam** — its per-project memory is at
 `~/.claude/projects/<project-slug>/memory/` (the slug is derived from the project's working
 directory; `MEMORY.md` in that folder is the index loaded every session).
 
@@ -118,7 +120,7 @@ directory; `MEMORY.md` in that folder is the index loaded every session).
   silently disappear, and let the next run's counts settle them.
 - A finding purely about this window's content, with no bearing on method, is not durable. Drop it.
 
-## Optional: the collaboration-move census (`/claude-retro census`)
+## Optional: the collaboration-move census (`/peakstate-retro census`)
 
 A second, heavier mode. The main method above finds *what the user asks for repeatedly*. This
 finds *what kind of move each turn is*, so the mix can be tracked over time and the automatable
@@ -129,8 +131,10 @@ whether a change to their instructions actually reduced a category.
 
 ### Method
 
-1. **Extract.** `python3 scripts/extract-turns.py $SCRATCH/turns.jsonl [days]`. This applies the
-   contamination filters — see the warning below, it is the single biggest trap.
+1. **Extract.** `python3 <skill-dir>/scripts/extract-turns.py $SCRATCH/turns.jsonl [days]`.
+   Reads through `scripts/readers/` like step 2 does, so `--reader`/`RETRO_READER` applies here
+   too. The contamination filters live in the reader — see the warning below, it is the single
+   biggest trap.
 2. **Sample.** Round-robin across projects so no single repo dominates; cap per project. 500
    turns is enough for the ordering; fewer than 300 is not.
 3. **Code it twice.** Split into ~20 batches, fan out one agent per batch against
@@ -153,7 +157,7 @@ as user turns. Measured 2026-08-30 before filtering: 41.8% of all apparent user 
 **84% of the long ones**, because they are long and full of the exact vocabulary a
 framework-shaped filter looks for. Selecting on message length without filtering measures the
 machinery. Three separate kinds were found by reader agents rather than by the filter, so treat
-the filter list in `extract-turns.py` as incomplete and have coders flag records with no human
+the filter list in `scripts/readers/claude_code.py` as incomplete and have coders flag records with no human
 message in them.
 
 ### Tracking across runs
