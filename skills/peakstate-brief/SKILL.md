@@ -123,6 +123,9 @@ the rule alone is enough to write a correct brief without opening anything.
   `private: true` drops a section, `origin:` cites the source rather than your copy, and
   `check-publishable.py` reads the published render before it goes. Any other divergence is
   a defect. → `reference/publishing.md`
+- **Every reference resolves inline, and the verdict is one sentence carrying the answer.**
+  A section number, ticket or filename is a pointer, never the content: the reader cannot do
+  the lookup. State the mechanism, not just the outcome. → `reference/prose.md`
 - **The source is markdown: front matter, then parts, then sections.** The structural layer
   is deliberately small — only the parts the runtime keys off have a syntax of their own.
   → `reference/markdown-format.md`
@@ -185,8 +188,9 @@ A brief closing a work phase (see global CLAUDE.md § How I work) uses these
 sections, in this order. Keep it scannable — the user is assessing, not reading
 a paper.
 
-1. **Verdict** — one paragraph, plain language, honest answer first. "Partially"
-   and "no" are acceptable answers.
+1. **Verdict** — a `:::verdict` fence holding ONE bold sentence: the answer and the
+   recommendation, in plain language. Then labelled bullets carrying the evidence.
+   "Partially" and "no" are acceptable answers. → `reference/prose.md`
 2. **Delivered** — what was built, where it lives, what it does. Link
    everything; embed players/previews so it can be assessed without leaving the
    page.

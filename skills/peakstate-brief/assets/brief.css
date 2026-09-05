@@ -185,6 +185,17 @@
   code { background: var(--code); border-radius: 4px; padding: .05rem .3rem;
     font-family: var(--font-mono); font-size: .82em; }
 
+  /* ── The verdict line ────────────────────────────────
+     The answer, not the first paragraph of an argument. `:::verdict` in the
+     markdown emits this class, and until 2026-09-05 the stylesheet ignored it,
+     so the one sentence that carries the answer looked like body copy. */
+  .verdict { font-size: 1.05em; line-height: 1.55; margin: 0 0 1.4rem;
+    padding: .85rem 1rem; border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+    border-radius: 0 8px 8px 0; }
+  .verdict > :first-child { margin-top: 0; }
+  .verdict > :last-child { margin-bottom: 0; }
+
   /* ── Answers ─────────────────────────────────────────── */
   .answerwrap { margin-top: .8rem; }
   .answerwrap label { font-size: .8rem; color: var(--muted); display: block; margin-bottom: .25rem; }
