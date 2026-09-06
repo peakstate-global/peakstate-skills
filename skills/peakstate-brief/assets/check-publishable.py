@@ -89,13 +89,18 @@ class Rule:
     """
 
     def __init__(self, cls, pattern, why, suggest=None, gate=None, flags=re.I,
-                 disclosable=False):
+                 disclosable=False, attributable=False):
         self.cls = cls
         # `disclosable` means this is a thing the provenance block's Attribution
         # entry exists to state. Those rules, and only those, are exempt inside
         # that entry. An absolute home path is tooling too, and is never
         # something Attribution needs to say.
         self.disclosable = disclosable
+        # `attributable` is the same idea one entry wider. Attribution names who
+        # wrote it and Accountable names who carries it, so the author's own name
+        # is the content of both, not a leak from either. It buys no exemption
+        # anywhere else in the document.
+        self.attributable = attributable
         self.pattern = re.compile(pattern, flags)
         self.why = why
         self.suggest = suggest
@@ -221,7 +226,8 @@ RULES = [
     # employer-internal
     Rule("personal", r"\b(?:CBA|Commonwealth Bank|Aware Super|QSuper|Office of the CIO)\b",
          "a named employer and employer-internal detail", flags=0),
-    Rule("personal", r"\bAndrew\b|\bRamsden\b", "the author named", flags=0),
+    Rule("personal", r"\bAndrew\b|\bRamsden\b", "the author named", flags=0,
+         attributable=True),
 
     # ---- 2. tooling exhaust --------------------------------------------------
     *([Rule("tooling", r"\b(?:" + _alt(_LIBRARIES) + r")\b", "the author's private library named",
@@ -364,6 +370,8 @@ def content_lines(text, keep_blank=False):
 
 ATTRIBUTION_TERM = re.compile(
     r"^\s*(?:<dt>|\*\*)?\s*Attribution\s*(?:</dt>|\*\*)?\s*:?\s*$", re.I)
+ACCOUNTABLE_TERM = re.compile(
+    r"^\s*(?:<dt>|\*\*)?\s*Accountable\s*(?:</dt>|\*\*)?\s*:?\s*$", re.I)
 # What ends the entry. A blank line ends it in markdown; the next term ends it in
 # the rendered HTML, where the definition list has no blank lines at all. The
 # rendered page is what the scanner reads before a publish, so it is the case
@@ -389,11 +397,20 @@ def attribution_lines(text):
     The entry runs from the term line to the next blank line, which is how a
     definition list is written and how the block is authored.
     """
+    return entry_lines(text, ATTRIBUTION_TERM)
+
+
+def entry_lines(text, term):
+    """Line numbers of one named entry of a provenance block.
+
+    The entry runs from its term line to the next blank line or the next term,
+    which is how a definition list is written and how the block renders.
+    """
     lines = list(content_lines(text, keep_blank=True))
     out = set()
     inside = False
     for line_no, line in lines:
-        if ATTRIBUTION_TERM.match(line):
+        if term.match(line):
             inside = True
             out.add(line_no)
             continue
@@ -403,6 +420,17 @@ def attribution_lines(text):
                 continue
             out.add(line_no)
     return out
+
+
+def author_exempt_lines(text):
+    """Where the author's own name is the content rather than a leak.
+
+    Attribution says who wrote it and Accountable says who carries it. A gate
+    that flags the author's name in either is asking the provenance block not to
+    do the one job it exists for. Everywhere else in the document, the name
+    fires exactly as before.
+    """
+    return entry_lines(text, ATTRIBUTION_TERM) | entry_lines(text, ACCOUNTABLE_TERM)
 
 
 def scan_text(text, rules):
@@ -416,6 +444,7 @@ def scan_text(text, rules):
     """
     findings = []
     exempt = attribution_lines(text)
+    author_ok = author_exempt_lines(text)
     lines = list(content_lines(text))
     for idx, (line_no, line) in enumerate(lines):
         # join only to the physically next line: a blank line ends a paragraph,
@@ -432,6 +461,8 @@ def scan_text(text, rules):
                     continue
                 if rule.disclosable and line_no in exempt:
                     continue
+                if rule.attributable and line_no in author_ok:
+                    continue
                 matched = " ".join(m.group(0).split())
                 if len(matched) > 120:
                     matched = matched[:117] + "..."
@@ -443,7 +474,71 @@ def scan_text(text, rules):
                     "suggestion": rule.suggest(m) if rule.suggest else None,
                 })
     findings += check_references(text)
+    findings += check_accountable_review(text)
     findings.sort(key=lambda f: (f["line_no"], f["matched_text"]))
+    return findings
+
+
+# What an Accountable entry must say about review, and what it may never imply.
+# A person is accountable for a process without reading every output of it: that
+# is how governance and quality control work in any large organisation. So naming
+# the accountable person is correct and says nothing about who read what. The
+# failure is the SILENCE around it, because a reader takes an unqualified name as
+# an endorsement of the specific words in front of them.
+REVIEW_STATUS = re.compile(
+    r"\((?:not reviewed|unreviewed|reviewed[^)]*)\)", re.I)
+REVIEW_CLAIM = re.compile(
+    r"\b(?:reviewed by|has reviewed|personally reviewed|expert-reviewed"
+    r"|signed off(?: on)?|verified by|checked (?:every|each))\b", re.I)
+REVIEW_DISCLAIMER = re.compile(
+    r"\b(?:no|not|nobody|none|never|has not|have not|hasn't|haven't)\b", re.I)
+
+
+def check_accountable_review(text):
+    """Findings for an Accountable entry that is silent, or loud, about review.
+
+    Two failures, opposite directions, same cause.
+
+    An entry naming a person with no review status reads as a signature. The fix
+    is safe and mechanical, so this one carries a suggestion: add `(Not reviewed)`
+    after the name. That is the honest default, because the accountable person
+    signs for the process rather than for the sentence.
+
+    An entry asserting that a person reviewed it cannot be checked by any tool,
+    so it always fires and always needs a human override. Only the person named
+    can say they signed off on THIS version, and the scanner must never assume it
+    from the presence of their name.
+    """
+    findings = []
+    lines = dict(content_lines(text, keep_blank=True))
+    entry = sorted(entry_lines(text, ACCOUNTABLE_TERM))
+    if not entry:
+        return findings
+    body = " ".join(lines[n] for n in entry)
+    named = any(r.pattern.search(body) for r in RULES if r.cls == "personal")
+
+    for n in entry:
+        line = lines[n]
+        m = REVIEW_CLAIM.search(line)
+        if m and not REVIEW_DISCLAIMER.search(line[:m.start()]):
+            findings.append({
+                "line_no": n,
+                "matched_text": " ".join(m.group(0).split()),
+                "class": "overclaim",
+                "why": "Accountable asserts a person reviewed this. Only that person "
+                       "can confirm they signed off on THIS version",
+                "suggestion": None,
+            })
+
+    if named and not REVIEW_STATUS.search(body):
+        findings.append({
+            "line_no": entry[0],
+            "matched_text": "Accountable names a person with no review status",
+            "class": "overclaim",
+            "why": "an unqualified name reads as a signature on the content, and "
+                   "accountability for a process is not review of its output",
+            "suggestion": "add (Not reviewed) after the name, or the version they signed off on",
+        })
     return findings
 
 
@@ -580,6 +675,38 @@ Limitations
         failures.append(f"the rendered Attribution entry still fires: {got}")
     if _REPOS and not any(f["class"] == "tooling" and f["line_no"] == 5 for f in got):
         failures.append("the exemption swallowed the whole rendered definition list")
+    # --- Accountable: named without a review status, and claiming review ------
+    # A person is accountable for a process without reading every output of it.
+    # So the name is fine and the SILENCE is not, because a bare name reads as a
+    # signature on the sentence in front of the reader.
+    silent = "Accountable\n: Andrew Ramsden. The decision needs a person.\n\n"
+    got = check_accountable_review(silent)
+    if not any(f["class"] == "overclaim" and f["suggestion"] for f in got):
+        failures.append("an Accountable entry with no review status did not fire")
+
+    stated = "Accountable\n: Andrew Ramsden (Not reviewed). The decision needs a person.\n\n"
+    if check_accountable_review(stated):
+        failures.append(f"(Not reviewed) should be clean: {check_accountable_review(stated)}")
+
+    claimed = "Accountable\n: Andrew Ramsden, who has reviewed this version.\n\n"
+    if not any(f["class"] == "overclaim" and f["suggestion"] is None
+               for f in check_accountable_review(claimed)):
+        failures.append("a claim of personal review did not fire")
+
+    honest = ("Accountable\n: Andrew Ramsden (Not reviewed). No person has "
+              "reviewed the claims against their evidence.\n\n")
+    if check_accountable_review(honest):
+        failures.append(f"an honest negative should be clean: {check_accountable_review(honest)}")
+
+    # --- the author's name is the content of Attribution and Accountable ------
+    prov_name = ("Attribution\n: Written by Andrew Ramsden.\n\nAccountable\n"
+                 ": Andrew Ramsden (Not reviewed).\n\n")
+    if any(f["class"] == "personal" for f in scan_text(prov_name, rules)):
+        failures.append("the author's name still fires inside the provenance block")
+    if not any(f["class"] == "personal"
+               for f in scan_text("Andrew Ramsden thinks the market is wrong.\n", rules)):
+        failures.append("the author's name stopped firing in body prose")
+
 
     # the exemption is tooling-only: a secret in Attribution still fires
     leaky = prov.replace("Claude Opus 5, in Claude Code.", "Token API_TOKEN=ory_at_abcdefghijklmnop1234.")
