@@ -92,10 +92,17 @@ with their locators, each linking to its exact passage in the references.
    (a question on its own line, then `: ` and the answer on the next). It is a
    digest of answers, not a list of sections and not a restatement of the verdict.
    A brief that makes the reader find its answers inside the sections has not done
-   its job. **The one exception:** a brief that genuinely answers no questions,
-   such as a pure findings report, may omit it. Lead with the findings in the same
-   shape instead, one finding per line with its consequence beside it, so the top
-   of the page still carries the substance.
+   its job.
+
+   **The questions are the ones the brief ANSWERS, never the ones it asks the
+   reader.** A findings report with no `section.q` in it still answers questions,
+   usually more of them than a decision brief does, and it still gets the block. A
+   brief reporting eight verdicts and printing "0 questions for you" in the top bar
+   is the case this sentence exists for: those are eight answers and they belong at
+   the top. **The one exception** is a brief with nothing to answer at all, such as
+   a bare status update or a delivery receipt. Lead with the findings in the same
+   shape instead, one finding per line with its consequence beside it, so the top of
+   the page still carries the substance.
 9. **One label scheme per question** — a question's answer options are `a) b) c)`
    and **nothing else inside that question may carry a letter or number the reader
    could reply with**. Mockups, treatments, variants, columns and tables in a
@@ -106,7 +113,8 @@ with their locators, each linking to its exact passage in the references.
    building: search the question's rendered text for a bare letter or digit outside
    the `<ul class="options">`; a hit is a defect, not a style note.
 
-Self-check before sending: open the file, confirm you can see the H1 title block,
+Self-check before sending: run `python3 assets/brief-lint.py <file>.html`, which checks the
+mechanical half of this list, then open the file and confirm you can see the H1 title block,
 the answers block under the standfirst with one line per question, the Contents
 below it, numbered questions with a "Your answer" box under each, the comments /
 width / theme / copy+download icons top-right, and — if the brief cites anything —
@@ -289,6 +297,17 @@ the reader re-send the same points, which is the round-trip this feature exists 
 Open one when its line is true of the work in front of you; never preload them. Together
 they are 55KB the brief-writing task does not need, and this file is read in full every
 time the skill fires — which is why it is 21KB rather than the 46KB it once was.
+
+**Read every row whose condition is true BEFORE writing, not after a review finds the gap.**
+The table is a routing table, not a further-reading list. Measured 2026-09-07: a brief was
+written from `SKILL.md` and `markdown-format.md` alone, with five conditions true and four
+files unopened. It shipped with no answers block, a prose Definitions section instead of the
+`defs-in` markup, one part lede across four parts, and a contents list with no `tnote` on any
+of its fourteen entries. Every one of those is stated plainly in a file that was never opened,
+and each was found by the reader rather than by the author.
+
+**The cheapest check is the last thing before you render:** list the rows whose condition is
+true, and confirm you opened each one.
 
 | File | Read this when |
 |---|---|

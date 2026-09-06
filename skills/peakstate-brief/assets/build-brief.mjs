@@ -536,7 +536,9 @@ function outline(body) {
 function tocEntry(s) {
   const label = s.toc.length > 1 && s.toc[0] ? s.toc[0] : s.title;
   const note = s.toc.length > 1 ? s.toc[1] : s.toc[0];
-  return '    <li><a href="#' + s.id + '">' + inline(s.q ? s.q + ' — ' + label : label) + '</a>' +
+  // Colon here for the same reason as the part label above: chrome the renderer
+  // writes is still copy the reader reads, and the house rule has no exemption.
+  return '    <li><a href="#' + s.id + '">' + inline(s.q ? s.q + ': ' + label : label) + '</a>' +
     (note ? ' <span class="tnote">' + inline(note) + '</span>' : '') + '</li>';
 }
 
@@ -569,7 +571,10 @@ function renderToc(parts) {
       const secs = listed(p);
       if (!p.title) { if (!secs.length) continue; } else {
         const i = named.indexOf(p) + 1;
-        out.push('  <p><b><a href="#' + p.id + '">Part ' + PARTWORDS[i] + ' — ' + inline(p.title) + '</a></b></p>');
+        // Colon, not an em dash: this is UI copy the reader sees, and the house
+        // rule bans the em dash in every artefact including chrome the renderer
+        // writes itself. Caught by brief-lint.py on a real brief, 2026-09-07.
+        out.push('  <p><b><a href="#' + p.id + '">Part ' + PARTWORDS[i] + ': ' + inline(p.title) + '</a></b></p>');
       }
       if (!secs.length) continue;
       out.push('  <ol' + (n ? ' start="' + (n + 1) + '"' : '') + '>');
