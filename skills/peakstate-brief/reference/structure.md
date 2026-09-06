@@ -87,9 +87,22 @@ naming what was asked is an answer to a question the reader can no longer see.
 Measured 2026-09-04: a brief whose summary opened "No, and nobody has ever
 checked" was screenshotted mid-page with the question nowhere on screen.
 
+## The answers block, first thing under the standfirst
+
+**Order at the top of `<main>`: title block, answers block, contents, summary page.**
+The answers block is `## Answers` in the source and `data-sec="answers"` in the page,
+holding a definition list: one line per question the brief answers, with the answer
+beside it. Its position is the renderer's call, not yours, and it is kept out of the
+contents list, since the contents sit below it.
+
+It is a digest of answers. It is not a list of the sections, and it is not the verdict
+restated. A reader who reads only this block has every answer the brief was written to
+give. A brief that genuinely answers no questions, such as a pure findings report, may
+omit it and lead with its findings in the same shape.
+
 ## Contents — a brief over about four sections gets one
 
-First thing in `<main>` after the title block, `data-sec="toc"`, so it ticks off and
+First thing in `<main>` after the title block and the answers block, `data-sec="toc"`, so it ticks off and
 collapses like anything else. **Its position is the renderer's call, not yours** — a
 `## Contents` written inside part one is hoisted out of the summary page and rendered
 above it, so the box holds the verdict and nothing else. Nest an `<ol>` per part inside `<nav class="toc">`, one

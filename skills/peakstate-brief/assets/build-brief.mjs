@@ -427,7 +427,8 @@ function renderBlock(lines, ctx) {
   }
 
   /* Definition list. Inside the provenance section it is the SOURCED four-label
-     block, so it carries the class the stylesheet keys off. */
+     block, and inside the answers section it is the digest of answers at the top
+     of the brief. Both carry the class their stylesheet rule keys off. */
   if (lines.length > 1 && lines.some((l) => /^:\s/.test(l.trim()))) {
     const rows = [];
     for (const l of lines) {
@@ -438,7 +439,8 @@ function renderBlock(lines, ctx) {
     }
     /* "Provenance", "Provenance statement" and "Provenance and limitations" are
        all the same block, so match the prefix rather than one exact heading. */
-    const cls = /^provenance/.test(ctx.sec || '') ? ' class="provblock"' : '';
+    const cls = /^provenance/.test(ctx.sec || '') ? ' class="provblock"'
+      : ctx.sec === 'answers' ? ' class="answers"' : '';
     return '<dl' + cls + '>\n' + rows.map((r) =>
       '  <dt>' + inline(r.dt, refs) + '</dt>\n  <dd>' + inline(r.dd.join(' '), refs) + '</dd>').join('\n') + '\n</dl>';
   }
@@ -552,7 +554,10 @@ function hoist(parts, id) {
    leave a dead anchor behind — the commonest defect in a hand-built brief. */
 function renderToc(parts) {
   const named = parts.filter((p) => p.title);
-  const listed = (p) => p.sections.filter((s) => s.id !== 's-toc');
+  /* The contents and the answers block both render ABOVE the contents list, so
+     neither may appear in it: a list that points at something above itself
+     sends the reader backwards. */
+  const listed = (p) => p.sections.filter((s) => s.id !== 's-toc' && s.id !== 's-answers');
   const out = ['<nav class="toc">'];
   let n = 0;
   if (!named.length) {
@@ -760,6 +765,11 @@ export function render(source, opts = {}) {
      the verdict, which it never is. */
   const defsSec = summaryPart ? hoist(parts, 's-definitions') : null;
   if (defsSec) summaryPart.sections.push(defsSec);
+  /* The answers block is the first thing under the standfirst, above the
+     contents. A reader who reads nothing else still leaves with every answer,
+     so it cannot sit below a list of the sections it summarises. */
+  const ansSec = hoist(parts, 's-answers');
+  if (ansSec) out.push(renderSection(ansSec, ctx));
   const tocSec = hoist(parts, 's-toc');
   if (tocSec) {
     if (!tocSec.lines.some((l) => l.trim())) tocSec.lines = renderToc(parts).split('\n');

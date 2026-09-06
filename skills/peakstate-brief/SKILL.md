@@ -85,7 +85,18 @@ with their locators, each linking to its exact passage in the references.
    summary page**, because a list of sections inside a boxed verdict reads as part
    of the verdict.
 
-8. **One label scheme per question** — a question's answer options are `a) b) c)`
+8. **An answers block**, directly under the standfirst and **above the contents**.
+   Write it as `## Answers` wherever it suits the source; the renderer lifts it
+   into place and keeps it out of the contents list. It names each question the
+   brief answers and gives the answer in one line, as a markdown definition list
+   (a question on its own line, then `: ` and the answer on the next). It is a
+   digest of answers, not a list of sections and not a restatement of the verdict.
+   A brief that makes the reader find its answers inside the sections has not done
+   its job. **The one exception:** a brief that genuinely answers no questions,
+   such as a pure findings report, may omit it. Lead with the findings in the same
+   shape instead, one finding per line with its consequence beside it, so the top
+   of the page still carries the substance.
+9. **One label scheme per question** — a question's answer options are `a) b) c)`
    and **nothing else inside that question may carry a letter or number the reader
    could reply with**. Mockups, treatments, variants, columns and tables in a
    question get named — "the quiet block", "the surfaced block" — never lettered
@@ -96,7 +107,8 @@ with their locators, each linking to its exact passage in the references.
    the `<ul class="options">`; a hit is a defect, not a style note.
 
 Self-check before sending: open the file, confirm you can see the H1 title block,
-the Contents, numbered questions with a "Your answer" box under each, the comments /
+the answers block under the standfirst with one line per question, the Contents
+below it, numbered questions with a "Your answer" box under each, the comments /
 width / theme / copy+download icons top-right, and — if the brief cites anything —
 footnote markers that jump to a References section carrying the quoted passages.
 If any is missing, you didn't build it as a brief — fix it.

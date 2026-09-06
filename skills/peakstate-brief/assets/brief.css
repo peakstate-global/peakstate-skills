@@ -723,6 +723,18 @@ nav.toc ol ol a { text-decoration: none; color: var(--fg); }
 nav.toc ol ol a:hover { color: var(--accent); text-decoration: underline; }
 nav.toc .tnote { color: var(--muted); font-size: .9rem; }
 
+/* ── answers block ──
+   The digest of answers under the standfirst. The question reads in the body
+   face at normal weight and the answer follows it in the muted secondary at a
+   smaller size, the same treatment a contents note gets. dt and dd run inline
+   so a short pair shares one line and a long one wraps underneath, which needs
+   no media query to stay in step with the measure. Both colours come from the
+   theme tokens, so the block follows the theme and prints. */
+dl.answers { margin: 0 0 1.2rem; }
+dl.answers dt { display: inline; font: inherit; font-weight: 400; color: var(--fg); }
+dl.answers dd { display: inline; margin: 0 0 0 .4rem; color: var(--muted); font-size: .9rem; }
+dl.answers dd::after { content: ""; display: block; margin-bottom: .5rem; }
+
 /* ── provenance block (SOURCED) ── */
 .provblock dt { font: 600 11px/1.4 var(--font-ui); letter-spacing: .1em; text-transform: uppercase;
                 color: var(--accent); margin: 1.1rem 0 .3rem; }
@@ -1139,6 +1151,7 @@ body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap { max-wid
   details.example { margin-left: 0; }
   details.example, details.example[open] { box-shadow: none; }
   .summary-page, .provblock { box-shadow: none; break-inside: avoid; }
+  dl.answers { break-inside: avoid; }
   h2.part { break-after: avoid; }
   .brief-title { break-after: avoid; }
 }

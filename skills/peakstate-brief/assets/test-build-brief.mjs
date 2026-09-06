@@ -61,7 +61,26 @@ has('<p class="assume"><strong>My assumption:</strong>', 'assumption block');
 has('<strong>If wrong:</strong>', 'the if-wrong half stays in the same paragraph');
 has('<ul class="options">\n  <li><b>a)</b> ', 'options list');
 has('<dl class="provblock">', 'provenance renders as one four-label block');
-assert.equal((main.match(/<dl/g) || []).length, 1, 'the provenance terms are one list, not four');
+assert.equal((main.match(/<dl class="provblock">/g) || []).length, 1,
+  'the provenance terms are one list, not four');
+
+/* ── the answers block ───────────────────────────────────────────────────
+   The digest a reader who reads nothing else still leaves with. It renders
+   under the standfirst and ABOVE the contents, so it is hoisted out of
+   whatever part the author wrote it in and kept out of the contents list. */
+
+has('<section class="brief-section" id="s-answers" data-sec="answers">',
+  'the answers block is a tickable section');
+has('<dl class="answers">', 'the answers block renders as its own definition list');
+assert.ok(main.indexOf('id="s-answers"') < main.indexOf('class="toc"'),
+  'the answers block renders above the contents');
+assert.ok(main.indexOf('id="s-answers"') < main.indexOf('summary-page'),
+  'and above the summary page it was authored inside');
+assert.ok(!/<nav class="toc">[\s\S]*?<\/nav>/.exec(main)[0].includes('#s-answers'),
+  'the contents does not list the block that sits above it');
+assert.ok(render('---\ntitle: No answers\n---\n\n## Contents\n\n## Only section\n\nBody.\n')
+  .includes('id="s-only-section"'),
+  'a brief with no answers block still builds');
 
 /* ── blocks the ticket names ─────────────────────────────────────────────── */
 

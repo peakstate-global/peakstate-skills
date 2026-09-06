@@ -12,6 +12,14 @@ sub: Every block type `build-brief.mjs` knows about, in one file, so a regressio
 
 Each section below holds one block type, so a failure names the block that broke.
 
+## Answers
+
+Authored inside part one, rendered above the contents.
+: The renderer hoists it, so source order cannot bury it.
+
+Does every question get one line?
+: Yes, and the line is the answer, not a pointer to the section that holds it.
+
 ## Prose and inline marks {#s-prose} :: bold, italics, code, links, footnotes
 
 A paragraph with **bold**, *italics*, `inline code`, a

@@ -27,6 +27,7 @@ comment the reader made").
 | the FIRST `#` part and its sections | wrapped in `<div class="summary-page">` — the boxed summary. A brief with no named parts gets no wrapper. |
 | `## Recommendation` | `<section class="brief-section" id="s-recommendation" data-sec="recommendation">` |
 | `## Contents` with an empty body | the generated `<nav class="toc">` |
+| `## Answers` holding a definition list | `<dl class="answers">`, lifted to sit under the standfirst and above the contents |
 | `## Q1 Should a brief be a new type?` | `<section class="q" id="s-q1" data-q="Q1">` with its `<span class="qid">` |
 | `## Title {#s-f1}` | the same section with an explicit id |
 | `## Title :: what is in it` | adds the `<span class="tnote">` in the contents |
@@ -45,10 +46,14 @@ automatically, entries are numbered continuously across parts, and a renamed
 section cannot leave a dead anchor behind. Put `## Contents` anywhere and leave its
 body empty; it always renders above the summary page.
 
-**Two sections are placed by the renderer rather than by the source order.** The
+**Three sections are placed by the renderer rather than by the source order.** The
 contents go above the summary page, and a section whose id is `s-definitions` is
 moved *into* it — the words a brief turns on are read before the verdict that uses
-them. Author them wherever they read best in the markdown.
+them. The third is the answers block, a section whose id is `s-answers`, which is
+lifted higher still: under the standfirst and above the contents, so a reader who
+reads nothing else leaves with every answer. Like the contents, it is kept out of
+the contents list, because a list that points at something above itself sends the
+reader backwards. Author all three wherever they read best in the markdown.
 
 **A part lede that cites a source gets its own evidence block**, the same collapsed
 quotes block a section gets, listing only the sources that lede leans on. Without it
