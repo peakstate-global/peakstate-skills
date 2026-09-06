@@ -241,8 +241,13 @@ RULES = [
             flags=0, disclosable=True)] if _REPOS else []),
     Rule("tooling", r"\badversarial (?:pass|review|reviewer)\b|\bsub-?agent\b|\bfresh thread\b|\bcross-model pass\b",
          "agent mechanics behind the brief", disclosable=True),
-    Rule("tooling", r"\bClaude Code\b|\bcodex\b|\bOpus 5\b|\bclaude-opus\b",
-         "the tooling the brief was written with", flags=0, disclosable=True),
+    # No rule fires on the NAME of a model or coding harness. SOURCED's D rule
+    # requires the artefact to say which model produced it, so a gate that flags
+    # that name is fighting the standard the brief is written to. It also cannot
+    # tell a brief's tooling from its subject: a brief ABOUT model knowledge
+    # cutoffs quotes model names as evidence, and on 6 September 2026 one fired
+    # seven times, every hit a quoted vendor date rather than a disclosure.
+    # The mechanics of HOW a model was used still fire, one rule above this.
     Rule("tooling", r"\blocalStorage\b|\blocalhost:\d+\b",
          "local runtime detail"),
 
