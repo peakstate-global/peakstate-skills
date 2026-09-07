@@ -36,6 +36,13 @@ brief into a stack of tiles and buries the reading order. Do not add a border,
 background or radius back onto a section in a custom `<style>` block. Prose is
 serif, UI chrome is sans; keep that split in any extras you add.
 
+**Full width widens the paper, not the prose, and only tables and diagrams take the extra room.**
+The reader's width toggle releases the page cap so the background, the rules and the summary box
+run to the window, while the reading column stays centred at a slightly wider measure. A `.tblwrap`,
+a `table`, a `pre`, a `figure` or a `.diag` that is a **direct child** of a section body then bleeds
+symmetrically out of that column into the room the window has. Nest a wide table inside a `<div>` and
+it loses that, so keep it at the top level of the section.
+
 **A box means "read this as one unit".** That is the whole rule, and it is the
 only reason any of these are boxed: `details.example`, tables and `pre` (things
 read as data), the answer textarea (a thing acted on), the **summary page**, the

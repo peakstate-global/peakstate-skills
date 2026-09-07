@@ -1112,8 +1112,19 @@ body.fullwidth main {
    visible before a single wide table asks for it. The cap carries the step
    gutter with it, so the tick boxes stay in the margin they were designed for. */
 body.fullwidth main > * { max-width: calc(var(--measure) + 2 * var(--step)); margin-inline: auto; }
+/* The part heading and its lede carry higher-specificity rules of their own
+   (`h2.part + p.partlede` beats `main > *`), so the cap and the centring have to
+   be restated at that weight or the lede alone stays pinned to the left wall
+   while the heading above it centres. */
+body.fullwidth main > h2.part,
+body.fullwidth main > h2.part + p.partlede,
+body.fullwidth main > dl.answers {
+  max-width: calc(var(--measure) + 2 * var(--step)); margin-inline: auto;
+}
+body.fullwidth main > h2.part + p.partlede { margin-block: .5rem 1.5rem; }
 body.fullwidth main > .brief-title,
 body.fullwidth main > nav.toc { max-width: var(--measure); }
+body.fullwidth .brief-title .sub { max-width: none; }
 /* The exceptions, and the only reason full width exists: a table, a diagram or a
    code block spills symmetrically out of the centred column into the room the
    window has. `--bleed` is half the surplus, floored at zero so a narrow window
