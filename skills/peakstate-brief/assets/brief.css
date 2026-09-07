@@ -1101,11 +1101,35 @@ nav.toc .tnote { font-size: .84rem; }
    a 2000px line. Tables, pre blocks and .tblwrap take the whole width.     */
 body.fullwidth main {
   max-width: none; --measure: 53rem;
-  padding-left: clamp(1.25rem, 6vw, 6rem);
-  padding-right: clamp(1.25rem, 6vw, 6rem);
+  --pad-x: clamp(1.25rem, 6vw, 6rem);
+  padding-left: var(--pad-x);
+  padding-right: var(--pad-x);
 }
-body.fullwidth .tblwrap, body.fullwidth pre,
-body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap { max-width: none; }
+/* The paper widens to the window; the column of reading does not, and it stays
+   in the MIDDLE of the paper rather than pinned to its left wall. Capping each
+   top-level block instead of `main` is what keeps the two apart: the background,
+   the rules and the summary box still run the full width, so the extra room is
+   visible before a single wide table asks for it. The cap carries the step
+   gutter with it, so the tick boxes stay in the margin they were designed for. */
+body.fullwidth main > * { max-width: calc(var(--measure) + 2 * var(--step)); margin-inline: auto; }
+body.fullwidth main > .brief-title,
+body.fullwidth main > nav.toc { max-width: var(--measure); }
+/* The exceptions, and the only reason full width exists: a table, a diagram or a
+   code block spills symmetrically out of the centred column into the room the
+   window has. `--bleed` is half the surplus, floored at zero so a narrow window
+   is a no-op, with 1.25rem held back for the scrollbar 100vw includes. */
+body.fullwidth .sec-body, body.fullwidth .q-body {
+  --bleed: max(0px, (100vw - 2 * var(--pad-x) - 2 * var(--step) - var(--measure) - 1.25rem) / 2);
+}
+body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap,
+body.fullwidth .sec-body > pre, body.fullwidth .q-body > pre,
+body.fullwidth .sec-body > figure, body.fullwidth .q-body > figure,
+body.fullwidth .sec-body > table, body.fullwidth .q-body > table,
+body.fullwidth .sec-body > .diag, body.fullwidth .q-body > .diag {
+  max-width: none;
+  margin-inline: calc(-1 * var(--bleed));
+}
+body.fullwidth .tblwrap, body.fullwidth pre { max-width: none; }
 
 /* ── narrow screens ────────────────────────────────────────────
    One tick model at every width: the step shrinks, the tick stays absolute
