@@ -1149,6 +1149,20 @@ body.fullwidth .sec-body > .diag, body.fullwidth .q-body > .diag {
 }
 body.fullwidth .tblwrap, body.fullwidth pre { max-width: none; }
 
+/* The bleed only works if something does not clip it 4px past the column.
+   `.sec-body` carries `overflow: clip` so ticking a section folds it away, and
+   that clips BOTH axes, so every bled table and diagram was cut off at the
+   reading column's edges in full-width mode while looking correct at the
+   default measure. Clip the block axis only: the fold needs vertical clipping,
+   nothing needs horizontal. `visible` paired with `clip` is legal and does not
+   coerce to `auto`, unlike `visible` paired with `hidden`, so the fold keeps
+   working. Measured 2026-09-08 at 3456px: tables and the diagram were cut at
+   both edges before this, full width after. */
+body.fullwidth .sec-body, body.fullwidth .q-body {
+  overflow-x: visible;
+  overflow-y: clip;
+}
+
 /* ── narrow screens ────────────────────────────────────────────
    One tick model at every width: the step shrinks, the tick stays absolute
    inside it. This replaces the v1 rule that made the tick static and padded
