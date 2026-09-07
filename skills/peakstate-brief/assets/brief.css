@@ -1138,6 +1138,13 @@ body.fullwidth .sec-body > figure, body.fullwidth .q-body > figure,
 body.fullwidth .sec-body > table, body.fullwidth .q-body > table,
 body.fullwidth .sec-body > .diag, body.fullwidth .q-body > .diag {
   max-width: none;
+  /* `width: auto` is load-bearing, not tidying. `.diag` carries `width: 100%`
+     from its base rule, and a percentage width is resolved against the
+     containing block, so a negative margin cannot widen it: the box keeps its
+     old width and simply slides left by --bleed, hanging off the reading
+     column while every sibling table expands both ways. Measured 2026-09-08 at
+     a 2560px window: tables ran 133 to 2427, the diagram sat at 133 to 981. */
+  width: auto;
   margin-inline: calc(-1 * var(--bleed));
 }
 body.fullwidth .tblwrap, body.fullwidth pre { max-width: none; }
