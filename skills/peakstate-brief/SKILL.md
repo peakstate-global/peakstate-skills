@@ -343,6 +343,15 @@ come from the runtime files:
 
 ## Receiving answers back
 
+**A brief's answered state lives in the reader's browser, so nothing else can see
+it — file the payload beside the brief and it becomes a fact on disk.** Run
+`assets/file-answers.py` after the reader downloads their responses: it reads the
+brief id out of each `*-responses-*.json`, finds the brief carrying that
+`data-brief-id`, and writes `<brief>.html.answers.json` next to it. From then on
+"has this been answered" is a file test rather than a guess, and any tool that
+lists briefs can say so. Pass `--dry-run` to see what it would file, `--keep` to
+leave the download in place, `--root` to widen the search.
+
 The user pastes the JSON into chat. Each answer carries `resolved` (answered OR
 ticked — matches the on-screen counter), `ticked` (the checkbox alone), and
 `answer`. Treat `ticked: true` with an empty `answer` as "assumption confirmed as
