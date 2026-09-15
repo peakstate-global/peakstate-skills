@@ -825,6 +825,11 @@ export function render(source, opts = {}) {
 
   const template = inlineRuntime(opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8'), opts);
   const addressed = meta.addressed ? ' data-addressed="' + escAttr(meta.addressed) + '"' : '';
+  /* What the author has already replied to, and what they said. A JSON array of
+     {match, reply}: `match` is the first forty characters of the reader's own
+     comment, because the comment text is the only identifier the file can hold.
+     `addressed:` still works and is the same thing with no words. */
+  const replies = meta.replies ? ' data-replies="' + escAttr(meta.replies) + '"' : '';
   /* Two things the FILE tells the runtime, which the reader cannot set:
      what work Claude has already taken (so the unsent-work marker clears), and
      which highlights are now part of the document rather than of one browser. */
@@ -840,7 +845,7 @@ export function render(source, opts = {}) {
   return template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + consumed + baked + pub + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + pub + '>')
     .replace(/<main>[\s\S]*<\/main>/, '<main>\n\n' + out.join('\n\n') + '\n\n</main>');
 }
 

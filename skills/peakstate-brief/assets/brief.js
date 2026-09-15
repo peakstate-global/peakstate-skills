@@ -232,7 +232,7 @@
      recomputes the same answer and a single keystroke changes it. */
   function sig() {
     return JSON.stringify([state.ticks, state.answers, state.notes, state.edits,
-      state.comments.map(function (c) { return [c.cid, c.comment, c.hl, c.unhl, c.resolved]; }),
+      state.comments.map(function (c) { return [c.cid, c.comment, c.hl, c.unhl, (c.thread || []).length]; }),
       state.drafts.map(function (d) { return [d.key, d.comment]; })]);
   }
   function hasWork() {
@@ -306,24 +306,28 @@
   }
 
 
-  /* ── comments the author has already addressed ──
-     A regenerated brief can declare which comments it has acted on, so the
-     reader is not asked to carry them back a second time. Put on <body>:
+  /* ── comments the author has replied to ──
+     A regenerated brief can declare which comments it has acted on AND what it
+     said back, so the reader reads the answer in place instead of carrying the
+     same point over twice. Put on <body>:
 
+         data-replies='[{"match":"first 40 chars of a comment","reply":"what the author said"}]'
          data-addressed="first 40 chars of a comment||another one"
 
      Matching is on a normalised prefix of the comment text, because the comment
      itself is the only stable identifier: it lives in the reader's
      localStorage, not in the file, so the file cannot carry an id it never saw.
-     A resolved comment stays visible and readable, greyed, and is dropped from
-     the exported JSON. Nothing is deleted: the reader can untick it. */
+     `data-addressed` is the older form and is the same thing with no words.
+     A replied comment keeps its colour, gains a reply marker, and opens as a
+     thread the reader can carry on. Nothing is struck out and nothing is
+     deleted. */
   function addrKey(x) { return (x || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40); }
   /* Highlights the file itself carries. A reader's marks live in localStorage,
      which does not follow them to another machine and does not survive being
      sent to somebody else — so once Claude has seen them they are written into
      the document and arrive already painted. The file is the record: deleting a
      baked highlight in the browser holds until the next regeneration, exactly
-     as an addressed comment behaves. */
+     as a replied comment behaves. */
   function tombKey(h) {
     return (document.body.dataset.consumed || '') + '\u0000' + h.text + '\u0000' + (h.nth || 0);
   }
@@ -360,8 +364,21 @@
   }
   adoptBaked();
 
-  var ADDRESSED = (document.body.dataset.addressed || '')
-    .split('||').map(addrKey).filter(Boolean);
+  /* Both sources land in one list of {key, reply}. `addressed` carries no
+     words, so it becomes a reply with an empty string. */
+  var REPLIES = (document.body.dataset.addressed || '')
+    .split('||').map(addrKey).filter(Boolean)
+    .map(function (k) { return { key: k, reply: '' }; });
+  (function () {
+    var raw = document.body.dataset.replies, list;
+    if (!raw) return;
+    try { list = JSON.parse(raw); } catch { return; }
+    if (!Array.isArray(list)) return;
+    list.forEach(function (r) {
+      var k = addrKey(r && r.match);
+      if (k) REPLIES.push({ key: k, reply: String(r.reply == null ? '' : r.reply) });
+    });
+  }());
   /* Highlighter colours. The reader assigns the meaning — "this bit is for the
      client" is not a meaning a tool can name — so the chips are named by colour
      and nothing else. Yellow is first and is what every pre-existing comment
@@ -369,32 +386,64 @@
   var HLS = ['yellow', 'green', 'blue', 'pink', 'purple'];
   var hlOf = function (c) { return HLS.indexOf(c && c.hl) > -1 ? c.hl : 'yellow'; };
 
-  function isAddressed(c) {
+  /* The reply the file holds for this comment, or null if it names none. */
+  function replyFor(c) {
     var n = addrKey(c.comment);
-    /* An empty key is a prefix of every addressed entry, so a highlight with no
-       words matched all of them: it came back struck through and was dropped
-       from the exported responses without ever having been addressed. A mark
-       with nothing written on it cannot have been replied to. */
-    if (!n) return false;
-    return ADDRESSED.some(function (a) { return n.indexOf(a) === 0 || a.indexOf(n) === 0; });
+    /* An empty key is a prefix of every entry, so a highlight with no words
+       matched all of them and came back marked as answered without anybody
+       having answered it. A mark with nothing written on it cannot have been
+       replied to. */
+    if (!n) return null;
+    var hits = REPLIES.filter(function (a) {
+      return n.indexOf(a.key) === 0 || a.key.indexOf(n) === 0;
+    });
+    if (!hits.length) return null;
+    /* A comment can match a legacy `addressed` entry AND a `replies` entry at
+       once, and the wordless one is first in the list. The written answer is the
+       one the reader has to see, so an entry that carries words always wins. */
+    /* Prefer the most specific key: an exact match, then the longest prefix, so a
+       legacy `fix header` entry cannot inherit the written reply meant for
+       `fix header and footer`. Words only beat silence at the same key. */
+    hits.sort(function (a, b) {
+      var ea = a.key === n ? 1 : 0, eb = b.key === n ? 1 : 0;
+      if (ea !== eb) return eb - ea;
+      if (a.key.length !== b.key.length) return b.key.length - a.key.length;
+      return (b.reply ? 1 : 0) - (a.reply ? 1 : 0);
+    });
+    return hits[0].reply;
   }
-  state.comments.forEach(function (c) {
-    if (c.resolved === undefined && isAddressed(c)) c.resolved = true;
-  });
-  save();
-
-  /* Paint the strike-through once the marks exist. Runs after init rather than
-     inside it, because a mark is created when its text is found in the DOM and
-     that happens later in this file. */
-  function paintResolved() {
+  function hasReply(c) { return typeof c.reply === 'string'; }
+  /* The file is the record, so a regenerated brief updates the reply it holds.
+     A `resolved` flag from an older runtime is a reply with no words. Runs at
+     load AND after every remote merge: a comment made on another device arrives
+     later than this, and an unmatched one would be shown and exported as though
+     the author had never answered it. */
+  function applyReplies() {
     state.comments.forEach(function (c) {
-      if (!c.resolved) return;
-      Array.prototype.forEach.call(
-        document.querySelectorAll('mark.cmt[data-cid="' + c.cid + '"]'),
-        function (m) { m.classList.add('resolved'); m.setAttribute('data-tip', 'Addressed — not sent again'); });
+      var r = replyFor(c);
+      if (r !== null) c.reply = r;
+      else if (c.resolved && c.reply === undefined) c.reply = '';
     });
   }
-  setTimeout(paintResolved, 0);
+  applyReplies();
+  save();
+
+  /* Mark the replied comments once the marks exist. Runs after init rather than
+     inside it, because a mark is created when its text is found in the DOM and
+     that happens later in this file. The glyph goes on the LAST mark of a cid:
+     a selection that crosses an element boundary becomes several marks, and one
+     glyph per fragment reads as several replies. */
+  function paintReplied() {
+    state.comments.forEach(function (c) {
+      if (!hasReply(c)) return;
+      var marks = document.querySelectorAll('mark.cmt[data-cid="' + c.cid + '"]');
+      Array.prototype.forEach.call(marks, function (m, i) {
+        m.classList.toggle('replied', i === marks.length - 1);
+        m.setAttribute('data-tip', 'Replied — click to read');
+      });
+    });
+  }
+  setTimeout(paintReplied, 0);
 
   /* ── free-standing note fields ──
      Any <textarea data-note="key"> persists under state.notes[key] and is
@@ -471,9 +520,14 @@
         ' questions resolved. Jump to ' + next.dataset.q + ', the next unresolved question.');
       el.classList.remove('all-done');
     } else {
-      el.removeAttribute('href');
-      el.removeAttribute('data-tip');
-      el.setAttribute('aria-label', 'All ' + qs.length + ' questions resolved');
+      /* Everything answered still jumps somewhere: to the first question, so the
+         reader can re-read their answers from the top instead of scrolling for
+         them. A counter that stops being a link the moment it reads full was
+         the one state in which it was most often clicked (2026-09-15). */
+      var first = qs[0];
+      el.setAttribute('href', '#' + (first.id || (first.id = 'q-' + first.dataset.q)));
+      el.setAttribute('data-tip', 'All resolved. Jump to ' + first.dataset.q + ', the first question');
+      el.setAttribute('aria-label', 'All ' + qs.length + ' questions resolved. Jump to ' + first.dataset.q + ', the first question.');
       el.classList.add('all-done');
     }
   }
@@ -569,12 +623,16 @@
                        original: docSource(doc), edited: edited });
     });
     state.comments.forEach(function (c) {
-      if (c.resolved) return;   // the author has already acted on it; do not round-trip it
-      out.comments.push({
-        selected_text: c.text, near_question: c.near || null, comment: c.comment,
-        highlight: c.unhl ? null : hlOf(c),
-        anchored: !!document.querySelector('mark.cmt[data-cid="' + c.cid + '"]')
-      });
+      var follow = (c.thread || []).map(function (m) { return m.text; });
+      /* A comment the author has answered only travels again if the reader has
+         carried the conversation on. Without a follow-up it is settled, and
+         round-tripping it makes the author read their own answer back. */
+      if (hasReply(c) && !follow.length) return;
+      var o = { selected_text: c.text, near_question: c.near || null, comment: c.comment };
+      if (hasReply(c)) { o.reply = c.reply; o.follow_up = follow; }
+      o.highlight = c.unhl ? null : hlOf(c);
+      o.anchored = !!document.querySelector('mark.cmt[data-cid="' + c.cid + '"]');
+      out.comments.push(o);
     });
     /* Drafts are comments the reader typed but never saved. They ship in the
        payload rather than being dropped: losing a typed thought to a stray
@@ -777,8 +835,89 @@
   /* ── the popup ── */
   function closePop() { if (pop) { pop.remove(); pop = null; editing = null; popDraftKey = null; } }
 
-  function openPop(x, y, quote, existing, prefill) {
+  /* A comment the author has answered opens as a conversation, not as an edit
+     box: the reader reads the answer where they asked the question, and can
+     carry it on without starting a second comment about the same passage. */
+  function openThread(x, y, quote, c) {
+    var key = draftKey(c, quote);
+    popDraftKey = key;
+    var draft = draftFor(key);
+    pop = document.createElement('div');
+    pop.id = 'cpop'; pop.className = 'thread';
+    pop.innerHTML =
+      '<div class="quote">“' + esc(String(quote)).slice(0, 180) + '”</div>' +
+      threadHTML(c) +
+      '<label class="ctlabel" for="ctreply">Continue the conversation</label>' +
+      '<textarea id="ctreply" placeholder="Reply to this response"></textarea>' +
+      '<div class="row">' +
+      '<button class="btn small" data-act="editorig" type="button">Edit original</button>' +
+      '<button class="btn small" data-act="cancel" type="button">Cancel</button>' +
+      '<button class="btn small primary" data-act="save" type="button">Save</button></div>' +
+      '<p class="pophint">' + MOD + 'Enter saves \u00b7 Esc closes and keeps a draft</p>';
+    document.body.appendChild(pop);
+    var vw = document.documentElement.clientWidth;
+    var w = pop.offsetWidth;
+    pop.style.left = Math.max(8, Math.min(x - w / 2, vw - w - 8)) + 'px';
+    pop.style.top = (y + 8) + 'px';
+
+    var ta = pop.querySelector('textarea');
+    ta.value = draft ? draft.comment : '';
+    setTimeout(function () { ta.focus(); }, 10);
+    ta.addEventListener('input', function () { putDraft(key, quote, ta.value, c.near || null, c.cid); });
+
+    function commit() {
+      var val = ta.value.trim();
+      if (!val) { dropDraft(key); closePop(); return; }
+      if (!c.thread) c.thread = [];
+      c.thread.push({ by: 'reader', text: val, at: new Date().toISOString() });
+      dropDraft(key); save(); renderDrawer();
+      /* Stay open and repaint: the reader sees their follow-up land in the
+         thread, which is the whole reason for showing the conversation. */
+      var box = document.createElement('div');
+      box.innerHTML = threadHTML(c);
+      pop.replaceChild(box.firstChild, pop.querySelector('.cthread'));
+      ta.value = ''; ta.focus();
+      toast('Reply added');
+    }
+
+    pop.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(); return; }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.stopPropagation(); commit(); }
+    }, true);
+    pop.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+    pop.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('button');
+      var act = btn && btn.dataset.act;
+      if (!act) return;
+      if (act === 'cancel') { dropDraft(key); closePop(); return; }
+      if (act === 'editorig') { dropDraft(key); editing = c; openPop(x, y, quote, c, null, true); return; }
+      if (act === 'save') commit();
+    });
+  }
+
+  /* The conversation on one comment: what the reader wrote, what the author
+     said back, then every follow-up in the order they were written. Line breaks
+     survive through CSS (white-space: pre-wrap), so the text itself is escaped
+     and never parsed. */
+  function threadHTML(c) {
+    var h = '<div class="cthread">' +
+      '<div class="ctmsg"><span class="ctwho">You</span>' +
+      '<div class="cttext">' + esc(c.comment) + '</div></div>' +
+      '<div class="ctmsg ctreply"><span class="ctwho">Response</span><div class="cttext">' +
+      (c.reply ? esc(c.reply) : '<em class="ctnone">Marked as addressed, with no written response.</em>') +
+      '</div></div>';
+    (c.thread || []).forEach(function (m) {
+      h += '<div class="ctmsg"><span class="ctwho">You</span>' +
+        '<div class="cttext">' + esc(m && m.text) + '</div></div>';
+    });
+    return h + '</div>';
+  }
+
+  /* `plain` forces the ordinary editor onto a comment that HAS a reply, which is
+     what the "Edit original" link in the thread does. */
+  function openPop(x, y, quote, existing, prefill, plain) {
     closePop();
+    if (existing && hasReply(existing) && !plain) return openThread(x, y, quote, existing);
     var key = draftKey(existing, quote);
     popDraftKey = key;
     var draft = draftFor(key);
@@ -962,7 +1101,7 @@
       var r = findRange(main(), c.text, c.nth || 0);
       if (r) wrapRange(r, c.cid, hlOf(c)); else c.noAnchor = true;
     });
-    paintResolved();
+    paintReplied();
     renderDrawer();
   }
 
@@ -1008,9 +1147,9 @@
       html += '<p class="dlabel">Saved</p>';
       state.comments.forEach(function (c) {
         var anchored = isAnchored(c.cid);
-        html += '<div class="drow' + (c.resolved ? ' resolved' : '') + '" data-cid="' + esc(c.cid) + '">' +
+        html += '<div class="drow" data-cid="' + esc(c.cid) + '">' +
           '<div class="dq"><span class="ddot"' + (c.unhl ? '' : ' data-hl="' + hlOf(c) + '"') + '></span>“' + esc(c.text).slice(0, 160) + '”' +
-          (c.resolved ? '<span class="dbadge done">addressed</span>' : '') +
+          (hasReply(c) ? '<span class="dbadge done">replied</span>' : '') +
           (anchored ? '' : '<span class="dbadge">not highlighted</span>') + '</div>' +
           '<div class="db">' + esc(c.comment) + '</div>' +
           '<div class="dacts">' +
@@ -1840,6 +1979,33 @@
     });
     return out;
   }
+  /* Two devices can each carry the same comment on, so neither thread is a
+     prefix of the other and taking the longer array silently drops one side's
+     follow-ups. Merge by identity instead: the same (at, text) is the same
+     message, and the order is the order they were written in. */
+  function mergeThreads(a, b) {
+    var seen = {}, out = [];
+    (a || []).concat(b || []).forEach(function (m) {
+      if (!m) return;
+      var k = (m.at || '') + '\u0000' + (m.text || '');
+      if (k in seen) return;
+      seen[k] = 1; out.push(m);
+    });
+    return out.sort(function (x, y) {
+      return String(x.at || '') < String(y.at || '') ? -1 : String(x.at || '') > String(y.at || '') ? 1 : 0;
+    });
+  }
+  function mergeComments(win, lose) {
+    var threads = {};
+    win.concat(lose).forEach(function (c) {
+      threads[c.cid] = mergeThreads(threads[c.cid], c.thread);
+    });
+    return mergeList(win, lose, function (c) { return c.cid; }).map(function (c) {
+      var t = threads[c.cid];
+      if (t && t.length) c.thread = t;
+      return c;
+    });
+  }
   /* Both devices apply the same rule to the same pair, so both land on the same
      answer: the newer blob wins every field it and the older one both carry, and
      everything either of them holds alone survives. A tie goes to the server copy,
@@ -1854,7 +2020,7 @@
       notes: mergeMaps(win.notes, lose.notes),
       edits: mergeMaps(win.edits, lose.edits),
       bakedGone: mergeMaps(win.bakedGone, lose.bakedGone),
-      comments: mergeList(win.comments, lose.comments, function (c) { return c.cid; }),
+      comments: mergeComments(win.comments, lose.comments),
       drafts: mergeList(win.drafts, lose.drafts, function (d) { return d.key; }),
       lastEdit: Math.max(mine.lastEdit, theirs.lastEdit)
     };
@@ -1883,6 +2049,7 @@
       sec.classList.toggle('done', box.checked);
     });
     renderProgress();
+    applyReplies();
     reanchor();
   }
 

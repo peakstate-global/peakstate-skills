@@ -235,18 +235,32 @@ a paper.
    answer box.
 9. **Next phase readiness** — what's unblocked, what's still waiting.
 
-## Closing a comment the reader made
+## Replying to a comment the reader made
 
-**A regenerated brief declares what it has already acted on, so nothing is carried back twice.**
-Put the first forty characters of each addressed comment on `<body>`, separated by `||`:
+**A regenerated brief carries your answer back to the comment that asked for it, so the reader
+reads the reply where they wrote the question.** Put a `replies:` line in the front matter, a JSON
+array of `{"match", "reply"}`, where `match` is the first forty characters of the reader's own
+comment:
 
-    <body data-brief-id="my-brief" data-addressed="the umbrella term is not non-pre||overloaded">
+    replies: [{"match": "the umbrella term is not non-pre", "reply": "Renamed to X throughout."}]
 
-Matching is on a normalised prefix of the comment text, because the comment is the only stable
-identifier there is: it lives in the reader's browser, not in the file, so the file cannot carry an
-id it never saw. A matched comment renders struck through and greyed, stays readable, and is
-**dropped from the exported JSON**. Nothing is deleted, and the reader can still see what they
-said.
+The renderer writes it to `<body data-replies="…">`. Matching is on a normalised prefix of the
+comment text, because the comment is the only stable identifier there is: it lives in the reader's
+browser, not in the file, so the file cannot carry an id it never saw.
+
+A replied comment keeps its highlight colour and its words. Nothing is struck out and nothing is
+deleted. The mark gains a small ↩ glyph, the drawer badges the row **replied**, and clicking either
+one opens the thread: the quoted passage, the reader's own comment under a **You** label, your
+answer under a **Response** label, then a box headed **Continue the conversation**. Follow-ups
+stack in the order they were written. An **Edit original** link is there if the reader wants to
+change what they first said.
+
+A replied comment leaves the exported JSON **only if the reader has followed it up**. When it does
+travel it carries `reply` and `follow_up: [texts]` beside the original comment, so you read the
+whole exchange. Unreplied comments export exactly as before.
+
+`addressed:` still works for older files: it is the same mechanism with no words, and it renders as
+a reply that says the comment was addressed.
 
 **Do this every time you regenerate a brief in response to comments.** Leaving them unmarked makes
 the reader re-send the same points, which is the round-trip this feature exists to remove.

@@ -10,15 +10,19 @@ brief needs that markdown has no word for are the parts the runtime keys off.
     brief-id: prima-nav-docs-2026-08
     eyebrow: Design proposal · 18 August 2026
     sub: The standfirst, one sentence on what the brief is about.
-    addressed: first forty chars of a comment||another one
+    replies: [{"match": "first forty chars of a comment", "reply": "what you said back"}]
     ---
 
 `title` is the `<h1>`; `head-title` is the browser tab and defaults to `title`.
 `brief-id` is the localStorage key, so **keep it identical across
 regenerations**. `consumed:` is a token you change on every regeneration that acts on
 the reader's answers — it is the only thing that clears the unsent-work marker.
-`highlights:` is a JSON array of highlights the document now carries itself. `addressed` becomes `data-addressed` on `<body>` (see "Closing a
-comment the reader made").
+`highlights:` is a JSON array of highlights the document now carries itself.
+`replies:` is a JSON array of `{match, reply}` and becomes `data-replies` on
+`<body>`: `match` is the first forty characters of a comment the reader made and
+`reply` is your answer to it, which the runtime shows in a thread on that comment
+(see "Replying to a comment the reader made"). `addressed:` is the older form,
+still accepted, and becomes `data-addressed`: the same matching with no words.
 
 | Source | Renders as |
 | --- | --- |

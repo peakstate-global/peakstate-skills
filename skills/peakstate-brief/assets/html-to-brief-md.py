@@ -18,6 +18,7 @@ classed paragraph) is emitted inside a :::html block, so it survives verbatim.
 """
 import re
 import sys
+from html import unescape
 from html.parser import HTMLParser
 
 VOID = {"br", "hr", "img", "input", "meta", "link", "source"}
@@ -242,7 +243,10 @@ def convert(path):
     }
     addressed = re.search(r'<body[^>]*\sdata-addressed="([^"]*)"', html)
     if addressed:
-        meta["addressed"] = addressed.group(1).replace("&quot;", '"').replace("&amp;", "&")
+        meta["addressed"] = unescape(addressed.group(1))
+    replies = re.search(r'<body[^>]*\sdata-replies="([^"]*)"', html)
+    if replies:
+        meta["replies"] = unescape(replies.group(1))
     page = re.search(r"<title>([^<]*)</title>", html).group(1)
     if page != meta["title"]:
         meta["head-title"] = page
