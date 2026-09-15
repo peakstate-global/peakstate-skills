@@ -167,14 +167,25 @@
   /* No side padding: a table's left edge must line up exactly with the prose
      above it. The bottom padding stays — it is room for the scrollbar. */
   .tblwrap { overflow: auto; max-height: 65vh; padding: 0 0 .5rem; }
-  table { border-collapse: collapse; font-size: .78rem; min-width: 100%; }
+  /* A table paints its own background. A wide table can run past the prose
+     column, and a transparent one lets the page's column rules and anything
+     behind it show through the rows (2026-09-15: a six-column projections
+     table read as if lines had been drawn through it). Opaque, and stacked
+     above the page decoration. */
+  table { border-collapse: collapse; font-size: .78rem; min-width: 100%; background: var(--bg); position: relative; z-index: 1; }
+  .tblwrap { background: var(--bg); position: relative; z-index: 1; }
   /* Cells WRAP by default and never truncate — an ellipsised cell hides content
      the reader cannot recover. Verbatim data tables (inside .tblwrap) keep single
      lines but stay fully readable via the wrapper's horizontal scroll. */
-  th, td { border: 1px solid var(--line); padding: .25rem .45rem; text-align: left; vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
+  /* break-word, not anywhere: 'anywhere' lets the layout shrink a column to one
+     character per line (a six-column table crushed its first column to three
+     letters while the last column sat half empty, 2026-09-15). break-word keeps
+     the longest word as the floor, and a table that then outgrows the column
+     scrolls inside .tblwrap instead of crushing. */
+  th, td { border: 1px solid var(--line); padding: .25rem .45rem; text-align: left; vertical-align: top; white-space: normal; overflow-wrap: break-word; }
   th { background: var(--code); position: sticky; top: 0; z-index: 2; }
   .tblwrap th, .tblwrap td { white-space: nowrap; overflow-wrap: normal; }
-  .tblwrap th.wrap, .tblwrap td.wrap { white-space: normal; overflow-wrap: anywhere; }
+  .tblwrap th.wrap, .tblwrap td.wrap { white-space: normal; overflow-wrap: break-word; }
   td.nowrap, th.nowrap { white-space: nowrap; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .cellref { font-family: var(--font-mono); font-size: .72rem; color: var(--muted); }
