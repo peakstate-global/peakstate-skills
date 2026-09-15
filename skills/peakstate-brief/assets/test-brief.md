@@ -2,6 +2,7 @@
 title: Renderer fixture brief
 brief-id: renderer-fixture
 addressed: a comment with a "quoted" phrase in it||another one
+replies: [{"match":"the umbrella term is not non-pre","reply":"Renamed it, and the \"umbrella\" wording is gone."}]
 eyebrow: Fixture · 3 September 2026 · exercises every block
 sub: Every block type `build-brief.mjs` knows about, in one file, so a regression shows up as a failing assertion rather than a broken brief.
 ---

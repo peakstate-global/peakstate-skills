@@ -93,9 +93,25 @@
   back, write them into the front matter as `highlights:` — a JSON array of
   `{text, hl, nth, comment, near}` — and the regenerated brief arrives already
   painted. **The file is the record**: deleting a baked highlight in the browser holds
-  until the next regeneration, exactly as an addressed comment behaves. A baked
+  until the next regeneration, exactly as a replied comment behaves. A baked
   highlight the reader already has is not duplicated; matching is on the text plus its
   occurrence index.
+- **The author can reply to a comment, and the reader can carry it on.** Front
+  matter `replies:` is a JSON array of `{match, reply}`, matched on the first
+  forty characters of the reader's comment and written to `data-replies` on
+  `<body>`. A replied comment keeps its colour and its words: nothing is struck
+  out. The mark gains a ↩ glyph tipped "Replied — click to read", the drawer
+  badges the row "replied" and leaves it undimmed, and clicking either opens the
+  popover as a thread — the quoted passage, the comment under a **You** label,
+  the reply under a **Response** label, then a box headed "Continue the
+  conversation" with Save and Cancel. Each follow-up is appended to the comment's
+  `thread` array as `{by: "reader", text, at}` and appears above the box, in
+  order. **Edit original** switches back to the ordinary edit box.
+- **A replied comment exports only once the reader has followed it up**, and then
+  carries `{selected_text, near_question, comment, reply, follow_up: [texts],
+  highlight, anchored}`. With no follow-up it is settled and stays out of the
+  payload. `addressed:` is the older form of the same thing, a reply with no
+  words, and a legacy stored `resolved: true` reads the same way.
 - **A sixth control ends the row: a circle with an X, which removes the highlight.**
   On a mark with no words it deletes the record; on a commented mark it keeps the
   comment and drops the colour. On a fresh selection it just closes.

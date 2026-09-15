@@ -180,6 +180,50 @@ await cbtn.click(); await page.waitForTimeout(80);
 const drawerClosesInOneClick = await page.locator('#cdrawer').isHidden();
 console.log(JSON.stringify({ drawerOpensInOneClick, drawerClosesInOneClick, jsErrors: errors }, null, 1));
 
+// ── a comment the author replied to: marker, thread, follow-up ───────────
+/* The fixture's data-replies names "a test comment", the comment saved further
+   up. The reply only attaches on a load AFTER the comment exists, which is what
+   a regenerated brief is. */
+await page.reload();
+await page.waitForSelector('mark.cmt.replied', { timeout: 3000 });
+const repliedMarks = await page.locator('mark.cmt.replied').count();
+const noLineThrough = await page.locator('mark.cmt.replied').first()
+  .evaluate(el => getComputedStyle(el).textDecorationLine === 'none');
+const repliedTip = await page.locator('mark.cmt.replied').first().getAttribute('data-tip');
+// the drawer badges it and does not dim or strike the row
+await page.click('#cmtBtn');
+await page.waitForSelector('#cdrawer .drow', { timeout: 3000 });
+const repliedBadge = await page.locator('#cdrawer .dbadge.done').first().textContent();
+const dimmedRows = await page.locator('#cdrawer .drow.resolved').count();
+const rowNotStruck = await page.locator('#cdrawer .drow .db').first()
+  .evaluate(el => getComputedStyle(el).textDecorationLine === 'none');
+await page.click('#cdrawer [data-d="close"]');
+// clicking the mark opens the thread, not the edit box
+await page.locator('mark.cmt.replied').first().click();
+await page.waitForSelector('#cpop.thread', { timeout: 3000 });
+const threadWho = await page.locator('#cpop .ctwho').first().textContent();
+const threadOriginal = await page.locator('#cpop .ctmsg .cttext').first().textContent();
+const threadReply = await page.locator('#cpop .ctreply .cttext').textContent();
+const threadShowsReply = threadReply.includes('fixed in this revision')
+  && threadReply.includes('A second line');
+// a follow-up saves, stacks in the thread, and the box empties for the next one
+await page.fill('#cpop textarea', 'a follow up from the reader');
+await page.click('#cpop [data-act="save"]');
+await page.waitForTimeout(200);
+const threadMsgs = await page.locator('#cpop .ctmsg').count();
+const threadBoxCleared = (await page.inputValue('#cpop textarea')) === '';
+await page.keyboard.press('Escape');
+await page.click('#copyBtn');
+const json3 = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+const repliedOut = (json3.comments || []).filter(c => c.comment === 'a test comment')[0];
+const followUpInJSON = !!repliedOut && repliedOut.follow_up[0] === 'a follow up from the reader'
+  && typeof repliedOut.reply === 'string' && repliedOut.reply.length > 0;
+const unrepliedUntouched = (json3.comments || [])
+  .some(c => c.comment === 'crosses an element boundary' && !('reply' in c));
+console.log(JSON.stringify({ repliedMarks, noLineThrough, repliedTip, repliedBadge, dimmedRows,
+  rowNotStruck, threadWho, threadOriginal, threadShowsReply, threadMsgs, threadBoxCleared,
+  followUpInJSON, unrepliedUntouched, jsErrors: errors }, null, 1));
+
 // ── summary page: placement, and "Copy summary as markdown" ─────────────
 /* The copy path only exists on a page carrying a .summary-page, so the fixture
    losing one would skip this whole block — and a skipped check reads exactly

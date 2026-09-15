@@ -148,6 +148,11 @@ assert.throws(() => render(REF_FIXTURE_BAD_QUOTE),
 assert.ok(html.includes('data-addressed="a comment with a &quot;quoted&quot; phrase in it||another one"'),
   'a double quote in data-addressed is escaped, not left to truncate the value');
 
+assert.ok(html.includes('data-replies="[{&quot;match&quot;:&quot;the umbrella term is not non-pre&quot;,'),
+  'replies: becomes data-replies on the body');
+assert.ok(html.includes('the \\&quot;umbrella\\&quot; wording is gone.'),
+  'a stray quote inside a reply is escaped, not left to truncate the attribute');
+
 const ids = new Set([...main.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
 const dead = [...main.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]).filter((h) => !ids.has(h));
 assert.deepEqual(dead, [], 'every internal anchor resolves');

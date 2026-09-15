@@ -243,6 +243,9 @@ def convert(path):
     addressed = re.search(r'<body[^>]*\sdata-addressed="([^"]*)"', html)
     if addressed:
         meta["addressed"] = addressed.group(1).replace("&quot;", '"').replace("&amp;", "&")
+    replies = re.search(r'<body[^>]*\sdata-replies="([^"]*)"', html)
+    if replies:
+        meta["replies"] = replies.group(1).replace("&quot;", '"').replace("&amp;", "&")
     page = re.search(r"<title>([^<]*)</title>", html).group(1)
     if page != meta["title"]:
         meta["head-title"] = page

@@ -545,18 +545,30 @@
 
 @media print { .defs-in { grid-template-columns: 1fr 1fr; } }
 
-/* a comment the author has already acted on: still readable, visibly done */
-mark.cmt.resolved { opacity: .45; text-decoration-line: line-through;
-                    text-decoration-color: var(--muted); text-decoration-thickness: 1px; }
+/* A comment the author has answered keeps its colour and its words: nothing is
+   struck out. The glyph at the end says there is something to read. */
+mark.cmt.replied::after { content: "\21A9"; font-size: .72em; vertical-align: super;
+                          margin-left: .12em; color: var(--muted); }
 
 /* Definitions block, cards treatment: badge on a preferred term in the set-aside strip */
 .defs-out .term .badge { font-size: .62rem; letter-spacing: .07em; text-transform: uppercase;
                          color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
                          padding: .02rem .35rem; margin-left: .25rem; }
 
-#cdrawer .drow.resolved { opacity: .5; }
-#cdrawer .drow.resolved .db { text-decoration: line-through; text-decoration-color: var(--muted); }
 #cdrawer .dbadge.done { border-color: #1a7f37; color: #1a7f37; }
+
+/* ── the reply thread in the popover ── */
+#cpop .cthread { margin: .1rem 0 .55rem; max-height: 14rem; overflow-y: auto;
+                 border-left: 2px solid var(--line); padding-left: .55rem; }
+#cpop .ctmsg { margin-bottom: .45rem; }
+#cpop .ctmsg:last-child { margin-bottom: 0; }
+#cpop .ctwho { display: block; font: 600 .6rem/1 var(--font-ui); letter-spacing: .06em;
+               text-transform: uppercase; color: var(--muted); margin-bottom: .15rem; }
+#cpop .ctreply .ctwho { color: var(--accent); }
+#cpop .cttext { font-size: .82rem; line-height: 1.45; white-space: pre-wrap; }
+#cpop .ctnone { color: var(--muted); }
+#cpop .ctlabel { display: block; font: 600 .6rem/1 var(--font-ui); letter-spacing: .06em;
+                 text-transform: uppercase; color: var(--muted); margin-bottom: .25rem; }
 
 /* ── editable documents ──────────────────────────────────────────────────
    A [data-doc] block is a document the reader may rewrite. The reading view
