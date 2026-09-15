@@ -25,6 +25,8 @@ await page.locator('section[data-q="Q1"] .q-body')
   }));
 const collapsed = await page.locator('section[data-q="Q1"] .q-body').isHidden();
 const okProgress2 = (await page.locator('#progress').textContent()) === '1/1 questions resolved';
+// all resolved: the counter still links, to the first question
+const okProgressLink = (await page.locator('#progress').getAttribute('href')) === '#' + (await page.locator('section[data-q="Q1"]').getAttribute('id'));
 // selection comment
 await page.locator('section[data-sec="overview"] .sec-body p').first().selectText();
 await page.mouse.up();
@@ -87,7 +89,7 @@ const json2 = JSON.parse(await page.evaluate(() => navigator.clipboard.readText(
 const draftInJSON = (json2.drafts || []).some(d => d.comment === 'an abandoned draft');
 console.log(JSON.stringify({ crossMarks, popGone, crossReanchored, drawerRows, draftRows,
   draftText, tipText, noTitleAttrs, draftInJSON }, null, 1));
-console.log(JSON.stringify({ okTopbar, okProgress, collapsed, okProgress2, markCount, selectionSurvives,
+console.log(JSON.stringify({ okTopbar, okProgress, collapsed, okProgress2, okProgressLink, markCount, selectionSurvives,
   jsonAnswer: json.answers[0], jsonComment: json.comments[0], okDownload, dlName,
   persistTick, persistAns, reanchored, errors }, null, 1));
 

@@ -501,9 +501,14 @@
         ' questions resolved. Jump to ' + next.dataset.q + ', the next unresolved question.');
       el.classList.remove('all-done');
     } else {
-      el.removeAttribute('href');
-      el.removeAttribute('data-tip');
-      el.setAttribute('aria-label', 'All ' + qs.length + ' questions resolved');
+      /* Everything answered still jumps somewhere: to the first question, so the
+         reader can re-read their answers from the top instead of scrolling for
+         them. A counter that stops being a link the moment it reads full was
+         the one state in which it was most often clicked (2026-09-15). */
+      var first = qs[0];
+      el.setAttribute('href', '#' + (first.id || (first.id = 'q-' + first.dataset.q)));
+      el.setAttribute('data-tip', 'All resolved. Jump to ' + first.dataset.q + ', the first question');
+      el.setAttribute('aria-label', 'All ' + qs.length + ' questions resolved. Jump to ' + first.dataset.q + ', the first question.');
       el.classList.add('all-done');
     }
   }

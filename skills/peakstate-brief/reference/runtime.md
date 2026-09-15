@@ -151,8 +151,9 @@
 - Top-bar icon toggles: theme switcher (system → light → dark, default system)
   and fixed-width vs full-width; both persisted browser-wide (`briefUI` key).
 - Progress reads "n/N questions resolved" and **is itself a jump-link to the next
-  unresolved question** (advances as each is resolved; becomes plain text once all
-  are) — so a long brief never has to be scrolled to find what's outstanding.
+  unresolved question** (advances as each is resolved, and once all are resolved it
+  jumps to the first question, in muted colour) so a long brief never has to be
+  scrolled to find what is outstanding or to re-read the answers.
   **Resolved = an answer has been typed OR the question has been ticked** — typing
   an answer *is* resolving it, and the counter updates live as you type. The tick
   remains meaningful on its own: it's how a question is resolved by accepting the

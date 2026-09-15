@@ -72,8 +72,8 @@
     border-bottom: 1px solid var(--line);
   }
   .topbar h1 { font-size: 1.02rem; font-family: var(--font-ui); font-weight: 600; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* Doubles as a jump-link to the next unresolved question (brief.js sets href).
-     Plain muted text once everything is resolved, when there's nowhere to jump. */
+  /* Doubles as a jump-link to the next unresolved question (brief.js sets href),
+     and to the first question once everything is resolved, in muted colour. */
   .progress { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; white-space: nowrap; }
   a.progress[href] { color: var(--accent); text-decoration: none; border-bottom: 1px dotted currentColor; cursor: pointer; }
   a.progress[href]:hover, a.progress[href]:focus-visible { border-bottom-style: solid; }
