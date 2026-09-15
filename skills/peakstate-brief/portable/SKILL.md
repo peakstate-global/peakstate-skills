@@ -181,7 +181,7 @@ typed but never saved, so read them and confirm before acting on them.
 removed or marked, and your answer to each comment you acted on written straight onto
 `<body>` as `data-replies`. There is no build step here, so put the escaped JSON on the tag
 yourself: an array of `{"match", "reply"}`, where `match` is the first forty characters of
-the reader's comment and every `"` inside the value becomes `&quot;`.
+the reader's comment. Escape the value as an HTML attribute, in this order: every `&` becomes `&amp;` first, then every `"` becomes `&quot;` (and `<` becomes `&lt;`). Escaping quotes alone lets a literal `&quot;` in the text decode into a raw quote and break the JSON, and the runtime then drops every reply.
 
 ```html
 <body data-brief-id="…" data-replies="[{&quot;match&quot;:&quot;the table is missing the fee column&quot;,&quot;reply&quot;:&quot;Added it, with the FY26 rate.&quot;}]">

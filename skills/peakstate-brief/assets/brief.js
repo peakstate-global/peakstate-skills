@@ -401,8 +401,16 @@
     /* A comment can match a legacy `addressed` entry AND a `replies` entry at
        once, and the wordless one is first in the list. The written answer is the
        one the reader has to see, so an entry that carries words always wins. */
-    var hit = hits.filter(function (a) { return a.reply; })[0] || hits[0];
-    return hit.reply;
+    /* Prefer the most specific key: an exact match, then the longest prefix, so a
+       legacy `fix header` entry cannot inherit the written reply meant for
+       `fix header and footer`. Words only beat silence at the same key. */
+    hits.sort(function (a, b) {
+      var ea = a.key === n ? 1 : 0, eb = b.key === n ? 1 : 0;
+      if (ea !== eb) return eb - ea;
+      if (a.key.length !== b.key.length) return b.key.length - a.key.length;
+      return (b.reply ? 1 : 0) - (a.reply ? 1 : 0);
+    });
+    return hits[0].reply;
   }
   function hasReply(c) { return typeof c.reply === 'string'; }
   /* The file is the record, so a regenerated brief updates the reply it holds.
