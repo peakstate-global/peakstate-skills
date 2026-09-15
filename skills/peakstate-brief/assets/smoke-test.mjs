@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
 const url = 'file://' + process.argv[2] + '/test.html';
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -206,8 +207,13 @@ await page.waitForSelector('#cpop.thread', { timeout: 3000 });
 const threadWho = await page.locator('#cpop .ctwho').first().textContent();
 const threadOriginal = await page.locator('#cpop .ctmsg .cttext').first().textContent();
 const threadReply = await page.locator('#cpop .ctreply .cttext').textContent();
+/* The fixture names this comment in data-addressed AND in data-replies, so the
+   wordless legacy entry is matched first. The written answer must still be the
+   one on screen. */
 const threadShowsReply = threadReply.includes('fixed in this revision')
   && threadReply.includes('A second line');
+const writtenReplyBeatsAddressed = threadShowsReply
+  && !(await page.locator('#cpop .ctreply .ctnone').count());
 // a follow-up saves, stacks in the thread, and the box empties for the next one
 await page.fill('#cpop textarea', 'a follow up from the reader');
 await page.click('#cpop [data-act="save"]');
@@ -223,7 +229,8 @@ const followUpInJSON = !!repliedOut && repliedOut.follow_up[0] === 'a follow up 
 const unrepliedUntouched = (json3.comments || [])
   .some(c => c.comment === 'crosses an element boundary' && !('reply' in c));
 console.log(JSON.stringify({ repliedMarks, noLineThrough, repliedTip, repliedBadge, dimmedRows,
-  rowNotStruck, threadWho, threadOriginal, threadShowsReply, threadMsgs, threadBoxCleared,
+  rowNotStruck, threadWho, threadOriginal, threadShowsReply, writtenReplyBeatsAddressed,
+  threadMsgs, threadBoxCleared,
   followUpInJSON, unrepliedUntouched, jsErrors: errors }, null, 1));
 
 // ── summary page: placement, and "Copy summary as markdown" ─────────────
@@ -269,3 +276,36 @@ console.log(JSON.stringify({ contentsAboveSummary, definitionsInsideSummary, led
   summaryHasVerdict, summaryHasDefinitions }, null, 1));
 
 await browser.close();
+
+/* ── two devices carry the same comment on: the merge keeps both ──────────
+   The sync path needs a host frame answering postMessage, which is a lot of rig
+   for three pure functions. So lift them out of the shipped file and run them
+   directly: the source under test is the same bytes the browser loaded. */
+const src = readFileSync(process.argv[2] + '/brief.js', 'utf8');
+function lift(name) {
+  const at = src.indexOf('function ' + name + '(');
+  if (at < 0) throw new Error('smoke test cannot find ' + name + ' in brief.js');
+  let i = src.indexOf('{', at), depth = 0;
+  for (let j = i; j < src.length; j++) {
+    if (src[j] === '{') depth++;
+    else if (src[j] === '}' && --depth === 0) return src.slice(at, j + 1);
+  }
+  throw new Error('unbalanced ' + name);
+}
+const merge = new Function(lift('mergeList') + lift('mergeThreads') + lift('mergeComments') +
+  'return mergeComments;')();
+const A = { cid: 'c1', comment: 'a test comment', thread: [
+  { by: 'reader', text: 'from device A', at: '2026-09-15T01:00:00.000Z' },
+  { by: 'reader', text: 'shared', at: '2026-09-15T00:00:00.000Z' }] };
+const B = { cid: 'c1', comment: 'a test comment', thread: [
+  { by: 'reader', text: 'from device B', at: '2026-09-15T02:00:00.000Z' },
+  { by: 'reader', text: 'shared', at: '2026-09-15T00:00:00.000Z' }] };
+const mergedThread = merge([JSON.parse(JSON.stringify(A))],
+  [JSON.parse(JSON.stringify(B))])[0].thread;
+const texts = mergedThread.map(m => m.text);
+console.log(JSON.stringify({
+  mergeKeepsBothDevices: texts.includes('from device A') && texts.includes('from device B'),
+  mergeDeDuplicates: texts.filter(t => t === 'shared').length === 1,
+  mergeOrderedByTime: JSON.stringify(texts) ===
+    JSON.stringify(['shared', 'from device A', 'from device B'])
+}, null, 1));

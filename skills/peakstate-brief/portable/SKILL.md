@@ -178,7 +178,14 @@ are keyed by `selected_text` — find the passage before acting. Entries under `
 typed but never saved, so read them and confirm before acting on them.
 
 **Then regenerate the same file, same `brief-id`, same path**, with resolved questions
-removed or marked, and a front-matter `replies:` line holding your answer to each comment
-you acted on: a JSON array of `{"match", "reply"}`, where `match` is the first forty
-characters of the reader's comment. The runtime shows your answer in a thread on that
-comment, so the reader reads it where they asked and is not asked to send the point twice.
+removed or marked, and your answer to each comment you acted on written straight onto
+`<body>` as `data-replies`. There is no build step here, so put the escaped JSON on the tag
+yourself: an array of `{"match", "reply"}`, where `match` is the first forty characters of
+the reader's comment and every `"` inside the value becomes `&quot;`.
+
+```html
+<body data-brief-id="…" data-replies="[{&quot;match&quot;:&quot;the table is missing the fee column&quot;,&quot;reply&quot;:&quot;Added it, with the FY26 rate.&quot;}]">
+```
+
+The runtime shows your answer in a thread on that comment, so the reader reads it where
+they asked and is not asked to send the point twice.

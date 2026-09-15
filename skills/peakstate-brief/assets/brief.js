@@ -394,19 +394,30 @@
        having answered it. A mark with nothing written on it cannot have been
        replied to. */
     if (!n) return null;
-    var hit = REPLIES.filter(function (a) {
+    var hits = REPLIES.filter(function (a) {
       return n.indexOf(a.key) === 0 || a.key.indexOf(n) === 0;
-    })[0];
-    return hit ? hit.reply : null;
+    });
+    if (!hits.length) return null;
+    /* A comment can match a legacy `addressed` entry AND a `replies` entry at
+       once, and the wordless one is first in the list. The written answer is the
+       one the reader has to see, so an entry that carries words always wins. */
+    var hit = hits.filter(function (a) { return a.reply; })[0] || hits[0];
+    return hit.reply;
   }
   function hasReply(c) { return typeof c.reply === 'string'; }
   /* The file is the record, so a regenerated brief updates the reply it holds.
-     A `resolved` flag from an older runtime is a reply with no words. */
-  state.comments.forEach(function (c) {
-    var r = replyFor(c);
-    if (r !== null) c.reply = r;
-    else if (c.resolved && c.reply === undefined) c.reply = '';
-  });
+     A `resolved` flag from an older runtime is a reply with no words. Runs at
+     load AND after every remote merge: a comment made on another device arrives
+     later than this, and an unmatched one would be shown and exported as though
+     the author had never answered it. */
+  function applyReplies() {
+    state.comments.forEach(function (c) {
+      var r = replyFor(c);
+      if (r !== null) c.reply = r;
+      else if (c.resolved && c.reply === undefined) c.reply = '';
+    });
+  }
+  applyReplies();
   save();
 
   /* Mark the replied comments once the marks exist. Runs after init rather than
@@ -1960,18 +1971,30 @@
     });
     return out;
   }
-  /* A thread is append-only, so the longer of the two IS the merge: the shorter
-     one is a prefix of it. Taking the newer blob's copy wholesale would drop a
-     follow-up the other device wrote first. */
+  /* Two devices can each carry the same comment on, so neither thread is a
+     prefix of the other and taking the longer array silently drops one side's
+     follow-ups. Merge by identity instead: the same (at, text) is the same
+     message, and the order is the order they were written in. */
+  function mergeThreads(a, b) {
+    var seen = {}, out = [];
+    (a || []).concat(b || []).forEach(function (m) {
+      if (!m) return;
+      var k = (m.at || '') + '\u0000' + (m.text || '');
+      if (k in seen) return;
+      seen[k] = 1; out.push(m);
+    });
+    return out.sort(function (x, y) {
+      return String(x.at || '') < String(y.at || '') ? -1 : String(x.at || '') > String(y.at || '') ? 1 : 0;
+    });
+  }
   function mergeComments(win, lose) {
-    var longest = {};
+    var threads = {};
     win.concat(lose).forEach(function (c) {
-      var t = c.thread || [];
-      if (!longest[c.cid] || t.length > longest[c.cid].length) longest[c.cid] = t;
+      threads[c.cid] = mergeThreads(threads[c.cid], c.thread);
     });
     return mergeList(win, lose, function (c) { return c.cid; }).map(function (c) {
-      var t = longest[c.cid];
-      if (t && t.length > (c.thread || []).length) c.thread = t;
+      var t = threads[c.cid];
+      if (t && t.length) c.thread = t;
       return c;
     });
   }
@@ -2018,6 +2041,7 @@
       sec.classList.toggle('done', box.checked);
     });
     renderProgress();
+    applyReplies();
     reanchor();
   }
 
