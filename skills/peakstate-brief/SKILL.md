@@ -119,6 +119,11 @@ with their locators, each linking to its exact passage in the references.
    round trip to disambiguate it costs more than the brief saved. Test before
    building: search the question's rendered text for a bare letter or digit outside
    the `<ul class="options">`; a hit is a defect, not a style note.
+10. **A Definitions block that carries every piece of jargon the brief uses**, with the
+   industry's own term preferred to a coined one and any coined term marked as such. The
+   reader learns the field's words from the brief; a term used and not defined is a lookup
+   pushed onto them. See `reference/definitions-block.md`. Omit the block only when the brief
+   uses no technical terms at all.
 
 Self-check before sending: run `python3 assets/brief-lint.py <file>.html`, which checks the
 mechanical half of this list, then open the file and confirm you can see the H1 title block,
@@ -333,7 +338,7 @@ true, and confirm you opened each one.
 | File | Read this when |
 |---|---|
 | `reference/runtime.md` | You are about to build an interaction, or wondering whether the runtime already has it |
-| `reference/definitions-block.md` | The brief coins a term, or two parties define one of its words differently |
+| `reference/definitions-block.md` | The brief uses any jargon; every technical term goes in the block, industry terms preferred over coined ones |
 | `reference/editable-documents.md` | The reader is meant to REWRITE a draft in place, not just comment on it |
 | `reference/inlining.md` | You are asked why a brief is 240KB, or need to retrofit one that still links its runtime |
 | `reference/maintaining.md` | You edited `build-brief.mjs`, `brief.css` or `brief.js` and need the checks that must pass |

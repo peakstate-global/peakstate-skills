@@ -5,9 +5,21 @@ block.** Contested, ambiguous or newly-coined words are the commonest reason a b
 at cross purposes, and the fix is cheap: say what each word means *here*, before anything rests on
 it. Borrowed from the SOURCED definitions block, so a brief and a position paper teach one layout.
 
-**Use it when** the brief coins a term, uses a word two parties define differently, or asks a
-question whose answer depends on which sense of a word is meant. **Skip it** for a brief with no
-such words — an empty Definitions block is worse than none.
+**Use it when** the brief uses any jargon at all: a technical or industry term the reader would
+have to look up, a word two parties define differently, or a term the brief coins. **Every piece
+of jargon the brief uses goes in the block**, not only the contested ones. The reader is using
+the brief to learn the field's language as well as its conclusions, so a term left undefined is
+a lookup pushed onto them. **Skip the block** only for a brief with no such words; an empty
+Definitions block is worse than none.
+
+**Prefer the industry's own term to a coined one.** Time spent learning a word is only well spent
+if the word travels: "drawdown", "volatility", "real yield", "hedged" carry into every other
+document the reader meets, and a private shorthand carries nowhere. Reach for the standard word
+first, and define it. Coin a term only when no standard word says the thing, say in the entry
+that it is coined here, and name the nearest standard terms it sits between (2026-09-16: a brief
+used "the mix's calm" for "small drawdowns in the years other assets fell", which two industry
+words already cover between them; the reader asked which it was and would rather have learnt
+those).
 
 Two halves, in this order, inside one `section.brief-section`:
 
