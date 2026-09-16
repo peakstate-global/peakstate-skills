@@ -93,7 +93,9 @@ it in `<div class="summary-page">…</div>`.
 
 **Contents go above the summary page**, never inside it: a list of sections inside a boxed
 verdict reads as part of the verdict. **Definitions go inside it** — the words a brief
-turns on are read before the verdict that uses them.
+turns on are read before the verdict that uses them. **Every piece of jargon the brief uses
+goes in the Definitions block**, industry terms preferred to coined ones and any coined term
+marked as such: the reader learns the field's words from the brief.
 
 ## House style
 
