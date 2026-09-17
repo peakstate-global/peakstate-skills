@@ -398,8 +398,16 @@ function renderBlock(lines, ctx) {
       if (m) opts.push({ k: m[1], text: [m[2]] });
       else if (opts.length) opts[opts.length - 1].text.push(l.trim());
     }
-    return '<ul class="options">\n' + opts.map((o) =>
-      '  <li><b>' + o.k + '</b> ' + inline(o.text.join(' '), refs) + '</li>').join('\n') + '\n</ul>';
+    /* "Recommended" inside an option becomes a badge, wherever the author put
+       it, so a reader scanning the list finds the pick without reading it. */
+    const badge = (h) => h.replace(
+      /(?:<(?:strong|b)>\s*)?\(?Recommended\)?:?(?:\s*<\/(?:strong|b)>)?:?/i,
+      '<span class="rec">Recommended</span>');
+    return '<ul class="options">\n' + opts.map((o) => {
+      const h = badge(inline(o.text.join(' '), refs));
+      const cls = /class="rec"/.test(h) ? ' class="is-rec"' : '';
+      return '  <li' + cls + '><b>' + o.k + '</b> ' + h + '</li>';
+    }).join('\n') + '\n</ul>';
   }
 
   /* The assumption block: two labelled sentences, always first in a question

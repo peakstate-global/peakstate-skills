@@ -568,6 +568,14 @@ mark.cmt.replied::after { content: "\21A9"; font-size: .72em; vertical-align: su
 
 #cdrawer .dbadge.done { border-color: #1a7f37; color: #1a7f37; }
 
+/* The recommended option: a badge where the author wrote "Recommended", and a
+   marker on the list item, so the pick is found by scanning rather than reading. */
+.options .rec { display: inline-block; font-family: var(--sans, system-ui, sans-serif); font-size: .62rem;
+                letter-spacing: .07em; text-transform: uppercase; font-weight: 600; color: var(--bg);
+                background: var(--accent); border-radius: 999px; padding: .08rem .45rem; margin: 0 .3rem 0 .1rem;
+                vertical-align: .1em; }
+.options li.is-rec > b { color: var(--accent); }
+
 /* ── the reply thread in the popover ── */
 #cpop .cthread { margin: .1rem 0 .55rem; max-height: 14rem; overflow-y: auto;
                  border-left: 2px solid var(--line); padding-left: .55rem; }

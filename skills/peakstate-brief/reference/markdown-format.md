@@ -37,7 +37,7 @@ still accepted, and becomes `data-addressed`: the same matching with no words.
 | `## Title :: what is in it` | adds the `<span class="tnote">` in the contents |
 | `## Q1 … :: short label \| what is in it` | shortens the contents link as well |
 | `My assumption: …` then `If wrong: …` | `<p class="assume">` with both labels bold |
-| `a) …` and `b) …` lines | `<ul class="options">` with `<b>a)</b>` |
+| `a) …` and `b) …` lines | `<ul class="options">` with `<b>a)</b>`. The word `Recommended` (bold, bracketed or with a colon) inside an option renders as a `.rec` badge in place, and the item gets `class="is-rec"`; write it once, on one option |
 | `[^3]` and `[^3q2]` | `<sup class="fn"><a href="#ref3-q1">3</a></sup>` and `#ref3-q2` |
 | `[^3]` where source 3 has no quote | `#ref3`, the entry itself. A marker pointing at a quote that does not exist is a build error. |
 | `:::verdict` … `:::` | `<div class="verdict">` with markdown rendered inside |
