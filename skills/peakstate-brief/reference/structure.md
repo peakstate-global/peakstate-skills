@@ -100,6 +100,39 @@ restated. A reader who reads only this block has every answer the brief was writ
 give. A brief that genuinely answers no questions, such as a pure findings report, may
 omit it and lead with its findings in the same shape.
 
+## The verdict is the first paragraph after the answers block
+
+**One sentence stating the call, followed by one sentence giving its price and what the
+price buys, with the likelihood of the future it buys cover in where one applies.**
+Nothing sits between the answers block and that paragraph. In the rendered page it is the
+part lede of the summary page, or the first paragraph of a `:::verdict` fence; the
+contents list renders between the two and is not prose, so it does not count.
+
+- **The price is part of the call, not a caveat under it.** A verdict that names the
+  recommendation and leaves its cost to a later section has asked the reader to accept a
+  number they have not seen.
+- **Say what the price buys.** Cover, optionality, a faster build, a smaller blast radius.
+  A cost with no purchase beside it reads as a tax.
+- **Give the likelihood when the thing bought is a future**, in the same sentence. "Buys
+  cover in the 20% case" is a decision; "buys cover" is a mood.
+- `brief-lint.py` holds the paragraph to 400 characters, the stand-in for two sentences.
+
+## A decision question restates the crux, never only the mechanism
+
+**Every `section.q` that asks a decision says in plain words what the answer costs, what
+it buys, and how likely the case it buys cover in is.** The mechanism explains how the
+thing works, which the reader may already accept, and still leaves them unable to choose.
+A decision question with no number in it has not restated the crux, and the linter fails
+it on that test.
+
+A "Recommended" tag inside such a question carries a further rule. **It must be consistent
+with every disclosure in the same brief.** A pre-registered gate passed by a margin below
+the reported precision cannot carry "Recommended", and neither can an option resting on a
+tie, a proxy, a back-cast or an approximation the brief discloses elsewhere, unless the
+option says why that disclosure does not touch it. The linter flags the pairing for review
+and stops there, because whether the disclosure undercuts the tag is a reading of the
+evidence rather than a shape on the page.
+
 ## Contents — a brief over about four sections gets one
 
 First thing in `<main>` after the title block and the answers block, `data-sec="toc"`, so it ticks off and

@@ -23,6 +23,35 @@ import sys
 import pathlib
 
 RUNTIME = re.compile(r"<style\b.*?</style>|<script\b.*?</script>", re.S | re.I)
+TAGS = re.compile(r"<[^>]+>")
+TOC = re.compile(r'<nav class="toc">.*?</nav>', re.S)
+QSEC = re.compile(r'<section class="q"[^>]*>.*?</section>', re.S)
+SECTION = re.compile(r"<section\b[^>]*>.*?</section>", re.S)
+# The verdict is two sentences, the call and its price. 400 characters is the
+# ceiling this file enforces, because sentence splitting breaks on "e.g." and on
+# a decimal, and a character count cannot be argued with.
+VERDICT_MAX = 400
+# Disclosures a "Recommended" tag has to be read against. The linter cannot judge
+# whether the tag survives the disclosure, so it asks for a human look.
+DISCLOSURES = ("tie", "proxy", "back-cast", "approximated")
+
+
+def text(fragment):
+    """Visible text of an HTML fragment, whitespace collapsed."""
+    return re.sub(r"\s+", " ", TAGS.sub(" ", fragment)).strip()
+
+
+def verdict(b):
+    """The first paragraph after the answers block, or None.
+
+    The contents list is dropped first: it renders between the answers block and
+    the summary page and it opens each part with a <p> of its own.
+    """
+    m = re.search(r'class="answers"', b)
+    if not m:
+        return None
+    p = re.search(r"<p\b[^>]*>(.*?)</p>", TOC.sub(" ", b[m.end():]), re.S)
+    return text(p.group(1)) if p else None
 
 
 def body(html):
@@ -84,6 +113,25 @@ def check(html):
     if dangling:
         bad(f"footnote marker(s) pointing at nothing: {', '.join(dangling[:5])}")
 
+    # The verdict, directly under the answers block: the call, then its price.
+    if 'class="answers"' in b:
+        v = verdict(b)
+        if v is None:
+            bad("verdict rule: no paragraph after the answers block. The first paragraph "
+                "there is the verdict, stating the call and then its price")
+        elif len(v) > VERDICT_MAX:
+            bad(f"verdict rule: the verdict paragraph is {len(v)} characters, over the "
+                f"{VERDICT_MAX} character ceiling for two sentences, the call and its price")
+
+    # A decision question states the crux in plain words, which means a number.
+    for sec in QSEC.findall(b):
+        if "DECIDE" not in text(sec) and "data-decision" not in sec.split(">", 1)[0]:
+            continue
+        if not re.search(r"\d", text(re.sub(r'<span class="qid">[^<]*</span>', " ", sec))):
+            qid = re.search(r'data-q="([^"]+)"', sec)
+            bad(f"decision-crux rule: {qid.group(1) if qid else 'a DECIDE question'} carries no "
+                f"number. Restate the crux in plain words: the cost, the benefit, the likelihood")
+
     if "—" in b:
         n = b.count("—")
         where = re.search(r".{40}—.{40}", b)
@@ -93,18 +141,43 @@ def check(html):
     return out
 
 
+def warnings(html):
+    """Things a human has to judge, so they never change the exit code.
+
+    A "Recommended" tag has to hold against every disclosure in the same brief.
+    Whether a tie, a proxy, a back-cast or an approximation undercuts the tag is a
+    reading of the evidence, which regex cannot do, so this asks rather than fails.
+    """
+    out = []
+    for sec in SECTION.findall(body(html)):
+        if 'class="rec"' not in sec and "is-rec" not in sec:
+            continue
+        t = text(sec).lower()
+        hit = [d for d in DISCLOSURES if d in t]
+        if hit:
+            name = re.search(r'(?:data-q|data-sec)="([^"]+)"', sec)
+            out.append(f"Recommended-consistency rule: {name.group(1) if name else 'a section'} "
+                       f"tags an option Recommended and discloses a {hit[0]}. Read the tag against "
+                       f"that disclosure by hand")
+    return out
+
+
 def main(argv):
-    if not argv or argv[0] == "--self-check":
+    if not argv or argv[0] in ("--self-check", "--selftest"):
         return self_check()
     path = pathlib.Path(argv[0])
-    found = check(path.read_text(encoding="utf-8", errors="replace"))
-    if not found:
+    html = path.read_text(encoding="utf-8", errors="replace")
+    found = check(html)
+    warned = warnings(html)
+    if found:
+        print(f"brief-lint: {len(found)} defect(s) in {path.name}")
+        for f in found:
+            print(f"  - {f}")
+    else:
         print(f"brief-lint: {path.name} clean")
-        return 0
-    print(f"brief-lint: {len(found)} defect(s) in {path.name}")
-    for f in found:
-        print(f"  - {f}")
-    return 1
+    for w in warned:
+        print(f"  ? {w}")
+    return 1 if found else 0
 
 
 GOOD = """<html><style>body{}/* — */</style><body>
@@ -117,8 +190,26 @@ GOOD = """<html><style>body{}/* — */</style><body>
 </main></body></html>"""
 
 
+Q = ('<section class="q" id="s-q1" data-q="Q1"><h3><span class="qid">Q1</span> '
+     'DECIDE: which road</h3><p>{}</p></section>')
+Q_BAD = GOOD.replace("</main>", Q.format("The mechanism, and nothing it costs.") + "</main>")
+Q_OK = GOOD.replace("</main>", Q.format(
+    "Road A costs $4k and buys cover on the 30% case.") + "</main>")
+REC = GOOD.replace("</main>", '<section class="q" data-q="Q2"><ul class="options">'
+                   '<li class="is-rec">a) ship it <span class="rec">Recommended</span></li></ul>'
+                   "<p>The gate used a proxy for the real measure.</p></section></main>")
+
+
 def self_check():
     fails = []
+    if check(Q_OK):
+        fails.append(f"a DECIDE question carrying numbers should be clean: {check(Q_OK)}")
+    if warnings(GOOD):
+        fails.append(f"no Recommended tag, so no warning: {warnings(GOOD)}")
+    if "Recommended-consistency rule: Q2" not in " ".join(warnings(REC)):
+        fails.append(f"Recommended beside a proxy should warn: {warnings(REC)}")
+    if check(REC):
+        fails.append(f"the Recommended check warns, it never fails: {check(REC)}")
     if check(GOOD):
         fails.append(f"the good page should be clean: {check(GOOD)}")
     cases = [
@@ -129,6 +220,14 @@ def self_check():
         ("em dash in body", GOOD.replace("<p>x<sup", "<p>a — b<sup"), "em dash"),
         ("dangling footnote", GOOD.replace('<li id="r1">apa</li>', "apa"), "pointing at nothing"),
         ("prose definitions", GOOD.replace('data-sec="a"', 'data-sec="definitions"'), "defs-in"),
+        ("no verdict after the answers block",
+         GOOD.replace('<p class="partlede">lede</p>', "")
+             .replace("<p>x<sup", "<div>x<sup").replace('</a></sup></p>', "</a></sup></div>"),
+         "no paragraph after the answers block"),
+        ("verdict over the ceiling",
+         GOOD.replace(">lede<", ">" + "word " * 120 + "<"),
+         "over the 400 character ceiling"),
+        ("DECIDE question with no number", Q_BAD, "decision-crux rule: Q1"),
     ]
     for name, page, want in cases:
         got = " ".join(check(page))
@@ -142,7 +241,7 @@ def self_check():
             print("FAIL ", f)
         print(f"\nFAILED  {len(fails)} failure(s)")
         return 1
-    print(f"PASS  {len(cases) + 2} cases, 0 failures")
+    print(f"PASS  {len(cases) + 6} cases, 0 failures")
     return 0
 
 

@@ -124,6 +124,35 @@ with their locators, each linking to its exact passage in the references.
    reader learns the field's words from the brief; a term used and not defined is a lookup
    pushed onto them. See `reference/definitions-block.md`. Omit the block only when the brief
    uses no technical terms at all.
+11. **The first paragraph after the answers block is the verdict.** One sentence stating
+   the call, followed by one sentence giving its price and what the price buys, with the
+   likelihood of the future it buys cover in where one applies. Nothing sits between the
+   answers block and that paragraph. `brief-lint.py` holds it to 400 characters, the
+   stand-in for two sentences.
+12. **Every `section.q` that asks a decision restates the crux in plain words: the cost,
+   the benefit, the likelihood.** Never the mechanism alone. A reader who knows how the
+   thing works still cannot decide until the brief says what saying yes costs, what it
+   buys, and how likely the case it buys cover in is. A decision question with no number
+   in it has not restated the crux, and the linter fails it.
+13. **A "Recommended" tag on an option is consistent with every disclosure in the same
+   brief.** A pre-registered gate passed by a margin below the reported precision cannot
+   carry "Recommended". Where the brief discloses a tie, a proxy, a back-cast or an
+   approximation that the option rests on, drop the tag or say in the option itself why
+   that disclosure does not touch it. The linter warns; the consistency is yours to judge.
+
+### Acceptance list
+
+These three are judgement, so nothing refuses on them. Read the brief against them
+before sending.
+
+- The first paragraph after the answers block is the verdict: one sentence stating the
+  call, followed by one sentence giving its price and what the price buys, with the
+  likelihood of the future it buys cover in where one applies.
+- Every section.q that asks a decision restates the crux in plain words (the cost, the
+  benefit, the likelihood), never only the mechanism.
+- A "Recommended" tag on an option must be consistent with every disclosure in the same
+  brief; a pre-registered gate passed by a margin below the reported precision cannot
+  carry "Recommended".
 
 Self-check before sending: run `python3 assets/brief-lint.py <file>.html`, which checks the
 mechanical half of this list, then open the file and confirm you can see the H1 title block,
