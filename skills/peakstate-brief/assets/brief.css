@@ -1457,7 +1457,9 @@ mark.cmt[data-hl] { color: var(--fg); }
 /* The current section: its band runs flush to the rule, and a small solid
    equilateral triangle comes out of the rule, pointing at the text's middle. */
 .ptoc-list ol a[aria-current] { position: relative; background: var(--accent-soft);
-  margin-left: -.8rem; padding-left: 1.15rem; border-radius: 0 4px 4px 0; }
+  /* -.8rem reaches the rule; .8rem puts the text back where its neighbours'
+     text sits, with the triangle in the space between. */
+  margin-left: -.8rem; padding-left: .8rem; border-radius: 0 4px 4px 0; }
 .ptoc-list ol a[aria-current]::before { content: ''; position: absolute; left: 0; top: 50%;
   transform: translateY(-50%); width: 0; height: 0;
   border-top: 4px solid transparent; border-bottom: 4px solid transparent;
