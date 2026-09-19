@@ -1430,6 +1430,8 @@ mark.cmt[data-hl] { color: var(--fg); }
 /* The flyout matches the page's Contents section: a small uppercase caption,
    parts as uppercase accent labels, sections in the body face beside a rule. */
 .ptoc-list { margin: 0 0 0 .3rem; padding: .8rem 1rem .9rem; max-height: 80vh; overflow-y: auto;
+  /* Follow-the-pointer scrolling stops below the pinned caption, not under it. */
+  scroll-padding-top: 2.9rem; scroll-padding-bottom: .9rem;
   min-width: 15rem; max-width: 24rem; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
   box-shadow: 0 10px 30px -12px rgba(0,0,0,.35);
   opacity: 0; visibility: hidden; transform: translateX(-6px);

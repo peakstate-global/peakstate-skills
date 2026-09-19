@@ -2923,7 +2923,9 @@ var __briefTip = (() => {
         it.bar.style.setProperty('--swell', d > 3 ? '0px' : (4 - d) * 3 + 'px');
         it.bar.classList.toggle('hot', d === 0);
         it.link.classList.toggle('hot', d === 0);
-        if (d === 0) it.link.scrollIntoView({ block: 'nearest' });
+        if (d === 0) {
+          if (i === 0) list.scrollTop = 0; else it.link.scrollIntoView({ block: 'nearest' });
+        }
       });
     }
     var active = -1, ticking = false;
