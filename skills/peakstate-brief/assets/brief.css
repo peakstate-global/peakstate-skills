@@ -1421,7 +1421,30 @@ mark.cmt[data-hl] { color: var(--fg); }
 .ptoc-list li.l3 a { padding-left: 1.5rem; }
 .ptoc-list a:hover, .ptoc-list a:focus-visible { background: var(--accent-soft); color: var(--fg); outline: none; }
 .ptoc-list a[aria-current] { color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+/* Wide screens: the gutter holds the whole list, always visible, pinned to
+   the far left. Each entry is a short line and its label; hover brightens the
+   label and lengthens the line. Narrower screens keep the bars and popover. */
+@media screen and (min-width: 88rem) {
+  body.has-ptoc:not(.fullwidth) .ptoc { left: 1.5rem; width: calc((100vw - 62rem) / 2 - 3rem); max-width: 18rem; }
+  .ptoc .ptoc-bars { display: none; }
+  .ptoc .ptoc-list, .ptoc:hover .ptoc-list, .ptoc:focus-within .ptoc-list {
+    opacity: 1; visibility: visible; transform: none; transition: none;
+    margin: 0; min-width: 0; max-width: none; width: 100%; padding: 0;
+    background: none; border: 0; box-shadow: none; }
+  .ptoc-list a { display: flex; align-items: center; gap: .55rem; padding: .16rem 0;
+    color: color-mix(in srgb, var(--muted) 80%, transparent); transition: color .15s; }
+  .ptoc-list a::before { content: ''; flex: none; height: 1.5px; border-radius: 2px; width: 10px;
+    background: color-mix(in srgb, var(--muted) 60%, transparent);
+    transition: width .2s cubic-bezier(.34,1.56,.64,1), background .15s; }
+  .ptoc-list li.l2 a { color: color-mix(in srgb, var(--fg) 75%, transparent); margin-top: .5rem; }
+  .ptoc-list li.l2 a::before { width: 18px; }
+  .ptoc-list li.l3 a { padding-left: 0; }
+  .ptoc-list a:hover, .ptoc-list a:focus-visible { background: none; color: var(--fg); }
+  .ptoc-list a:hover::before, .ptoc-list a:focus-visible::before { width: 26px; background: var(--fg); }
+  .ptoc-list a[aria-current] { color: var(--accent); box-shadow: none; }
+  .ptoc-list a[aria-current]::before { background: var(--accent); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .ptoc-bar::before, .ptoc-list { transition: none; }
+  .ptoc-bar::before, .ptoc-list, .ptoc-list a, .ptoc-list a::before { transition: none; }
 }
 @media print { .ptoc { display: none !important; } body.has-ptoc main { margin: 0 auto !important; } }
