@@ -1167,7 +1167,13 @@ body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap,
 body.fullwidth .sec-body > pre, body.fullwidth .q-body > pre,
 body.fullwidth .sec-body > figure, body.fullwidth .q-body > figure,
 body.fullwidth .sec-body > table, body.fullwidth .q-body > table,
-body.fullwidth .sec-body > .diag, body.fullwidth .q-body > .diag {
+body.fullwidth .sec-body > .diag, body.fullwidth .q-body > .diag,
+/* A `:::html` block arrives as a plain wrapper div, so a table inside one was
+   never a direct child and stayed at the prose measure in full width. Any
+   top-level div holding a table bleeds too; `data-nobleed` opts one out.
+   Measured 2026-09-19 at 2000px: a seven-column table went 798px to 1684px. */
+body.fullwidth .sec-body > div:not(.tblwrap):not([data-nobleed]):has(table),
+body.fullwidth .q-body > div:not(.tblwrap):not([data-nobleed]):has(table) {
   max-width: none;
   /* `width: auto` is load-bearing, not tidying. `.diag` carries `width: 100%`
      from its base rule, and a percentage width is resolved against the

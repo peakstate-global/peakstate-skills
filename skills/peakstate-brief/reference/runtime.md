@@ -150,6 +150,9 @@
 - Table cells wrap and never truncate (see the question-writing rules above).
 - Top-bar icon toggles: theme switcher (system → light → dark, default system)
   and fixed-width vs full-width; both persisted browser-wide (`briefUI` key).
+  In full width the prose keeps its measure while every table, diagram, code block
+  and any top-level `div` holding a table (a `:::html` block) spills out to the
+  window's width. Add `data-nobleed` to a div to keep it at the measure.
 - Progress reads "n/N questions resolved" and **is itself a jump-link to the next
   unresolved question** (advances as each is resolved, and once all are resolved it
   jumps to the first question, in muted colour) so a long brief never has to be
