@@ -86,4 +86,8 @@ than a warning:
 Both values must appear verbatim in `brief-template.html`, alongside the same `<sha>`. To check
 the pin currently in the template against the repo, hash the pinned commit's own copies:
 
-    git show <sha>:skills/peakstate-brief/assets/brief.js | openssl dgst -sha384 -binary | openssl base64 -A
+    git cat-file blob <sha>:skills/peakstate-brief/assets/brief.js | openssl dgst -sha384 -binary | openssl base64 -A
+
+Use `git cat-file blob`, not `git show`: a shell wrapper that summarises git output (RTK and
+similar) rewrites `git show`, and the hash is then taken over the summary. Two files hashing
+to the same value is the sign it happened.
