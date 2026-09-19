@@ -674,9 +674,11 @@ function inlineRuntime(template, opts = {}) {
   };
   return template
     .replace(/<link rel="stylesheet" href="brief\.css"[^>]*>\n<script>[\s\S]*?<\/script>/,
-      '<style>\n' + guard(css, 'style') + '\n</style>')
+      /* A function, not a string: a string replacement expands `$&` and `$'`
+         inside the asset, which silently corrupts the inlined code. */
+      () => '<style>\n' + guard(css, 'style') + '\n</style>')
     .replace(/<script src="brief\.js"[^>]*><\/script>/,
-      '<script>\n' + guard(js, 'script') + '\n</script>');
+      () => '<script>\n' + guard(js, 'script') + '\n</script>');
 }
 
 /* A diagram that vanishes in dark mode is the one defect an author cannot see:

@@ -2254,3 +2254,677 @@
   else boot();
 
 })();
+
+/* ── Definition links and the gutter contents rail ────────────────────────
+   Both build themselves after load from what the page already has, so an
+   author writes nothing extra: the Definitions block drives the links, and the
+   part and section headings drive the rail. Both run after the brief is
+   interactive and neither can block it. */
+(function () {
+  'use strict';
+  if (window.__briefExtras) return;
+  window.__briefExtras = true;
+
+  /* Tooltip engine, bundled from the tooltip skill's tooltip-core.ts with
+     esbuild (iife). Regenerate from the skill rather than editing it here. */
+  var TT = (function () {
+var __briefTip = (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+
+  // tooltip-core.ts
+  var tooltip_core_exports = {};
+  __export(tooltip_core_exports, {
+    attach: () => attach,
+    configure: () => configure,
+    onResolve: () => onResolve
+  });
+
+  // solve.ts
+  var OPP = {
+    top: "bottom",
+    bottom: "top",
+    left: "right",
+    right: "left"
+  };
+  var AXIS = { top: "y", bottom: "y", left: "x", right: "x" };
+  var clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+  function candidates(pref) {
+    const perp = AXIS[pref] === "y" ? ["right", "left"] : ["bottom", "top"];
+    return [pref, OPP[pref], perp[0], perp[1]];
+  }
+  function rawPos(p, a, w, h, off) {
+    const cx = a.left + a.width / 2;
+    const cy = a.top + a.height / 2;
+    if (p === "top") return { x: cx - w / 2, y: a.top - h - off };
+    if (p === "bottom") return { x: cx - w / 2, y: a.bottom + off };
+    if (p === "left") return { x: a.left - w - off, y: cy - h / 2 };
+    return { x: a.right + off, y: cy - h / 2 };
+  }
+  function solve(a, w, h, pref, off, b, pad = 8) {
+    const L = b.left + pad;
+    const T = b.top + pad;
+    const R = b.right - pad;
+    const B = b.bottom - pad;
+    let best = null;
+    for (const p of candidates(pref)) {
+      const r = rawPos(p, a, w, h, off);
+      let x = r.x;
+      let y = r.y;
+      let shifted = 0;
+      let overflow = 0;
+      if (p === "top" || p === "bottom") {
+        const nx = clamp(x, L, Math.max(L, R - w));
+        shifted = Math.abs(nx - x);
+        x = nx;
+        overflow = p === "top" ? Math.max(0, T - y) : Math.max(0, y + h - B);
+      } else {
+        const ny = clamp(y, T, Math.max(T, B - h));
+        shifted = Math.abs(ny - y);
+        y = ny;
+        overflow = p === "left" ? Math.max(0, L - x) : Math.max(0, x + w - R);
+      }
+      const candidate = { x, y, placement: p, shifted, overflow };
+      if (overflow <= 0.5) return candidate;
+      if (!best || overflow < best.overflow) best = candidate;
+    }
+    return best;
+  }
+  function classify(pref, chosen, shifted) {
+    if (chosen === pref) return shifted > 0.5 ? "shift" : "none";
+    if (AXIS[chosen] === AXIS[pref]) return shifted > 0.5 ? "flip + shift" : "flip";
+    return "re-anchor";
+  }
+  function solveFollow(mx, my, w, h, off, vw, vh, pad = 8) {
+    let x = mx + off;
+    let y = my + off;
+    let flipped = false;
+    if (x + w > vw - pad) {
+      x = mx - w - off;
+      flipped = true;
+    }
+    if (y + h > vh - pad) {
+      y = my - h - off;
+      flipped = true;
+    }
+    x = clamp(x, pad, Math.max(pad, vw - w - pad));
+    y = clamp(y, pad, Math.max(pad, vh - h - pad));
+    return { x, y, flipped };
+  }
+
+  // tooltip-core.ts
+  var PAD = 8;
+  var GROUP_WINDOW = 400;
+  var LAYER_CLASS = "";
+  var booted = false;
+  var layer = null;
+  var canPopover = false;
+  var layerShown = false;
+  var reduceMotion = false;
+  var registry = [];
+  function boot() {
+    var _a;
+    if (booted || typeof document === "undefined") return;
+    booted = true;
+    reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const el = document.createElement("div");
+    el.id = "tt-layer";
+    if (LAYER_CLASS) el.className = LAYER_CLASS;
+    canPopover = typeof el.showPopover === "function";
+    if (canPopover) el.setAttribute("popover", "manual");
+    ((_a = document.body) != null ? _a : document.documentElement).appendChild(el);
+    layer = el;
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") registry.forEach((t) => t.dismiss());
+    });
+    const reflow = () => registry.forEach((t) => t.reflow());
+    window.addEventListener("scroll", reflow, { passive: true, capture: true });
+    window.addEventListener("resize", reflow);
+  }
+  function ensureLayerShown() {
+    if (canPopover && layer && !layerShown) {
+      try {
+        layer.showPopover();
+        layerShown = true;
+      } catch {
+      }
+    }
+  }
+  var group = { open: 0, lastClose: 0 };
+  var groupWarm = () => group.open > 0 || Date.now() - group.lastClose < GROUP_WINDOW;
+  var reporter = null;
+  var report = (info) => reporter == null ? void 0 : reporter(info);
+  function boundsOf(el) {
+    const v = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+    if (!el) return v;
+    const r = el.getBoundingClientRect();
+    return {
+      left: Math.max(v.left, r.left),
+      top: Math.max(v.top, r.top),
+      right: Math.min(v.right, r.right),
+      bottom: Math.min(v.bottom, r.bottom)
+    };
+  }
+  var seq = 0;
+  var Tip = class {
+    constructor(target, opts) {
+      __publicField(this, "t");
+      __publicField(this, "o");
+      __publicField(this, "el", null);
+      __publicField(this, "arrow", null);
+      __publicField(this, "showT", null);
+      __publicField(this, "hideT", null);
+      __publicField(this, "raf", 0);
+      __publicField(this, "open", false);
+      __publicField(this, "overBubble", false);
+      __publicField(this, "suppressed", false);
+      // set by hideOnClick until the pointer leaves
+      __publicField(this, "lastDown", 0);
+      // timestamp of the last pointerdown, to spot mouse-driven focus
+      __publicField(this, "mouse", { x: 0, y: 0 });
+      __publicField(this, "followMove", null);
+      __publicField(this, "id");
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+      this.t = target;
+      this.o = {
+        content: opts.content,
+        placement: (_a = opts.placement) != null ? _a : "top",
+        mode: (_b = opts.mode) != null ? _b : "anchored",
+        showDelay: (_c = opts.showDelay) != null ? _c : 420,
+        hideDelay: (_d = opts.hideDelay) != null ? _d : 90,
+        offset: (_e = opts.offset) != null ? _e : 12,
+        hoverable: (_f = opts.hoverable) != null ? _f : false,
+        onlyIfTruncated: (_g = opts.onlyIfTruncated) != null ? _g : false,
+        boundary: (_h = opts.boundary) != null ? _h : null,
+        hideOnClick: (_i = opts.hideOnClick) != null ? _i : false,
+        decorative: (_j = opts.decorative) != null ? _j : false,
+        anchor: (_k = opts.anchor) != null ? _k : null,
+        awayFromCursor: (_l = opts.awayFromCursor) != null ? _l : false
+      };
+      this.id = `tt-${++seq}`;
+      this.bind();
+    }
+    resolveContent(ev) {
+      const c = this.o.content;
+      return typeof c === "function" ? c(ev != null ? ev : this.mouse) : c;
+    }
+    fill(el, c) {
+      var _a;
+      Array.from(el.childNodes).forEach((n) => {
+        if (n !== this.arrow) el.removeChild(n);
+      });
+      const frag = document.createDocumentFragment();
+      if (c instanceof HTMLElement) {
+        frag.appendChild(c);
+      } else if (typeof c === "object") {
+        const t = document.createElement("div");
+        t.className = "tt-title";
+        t.textContent = c.title;
+        frag.appendChild(t);
+        if (c.sub) {
+          const s = document.createElement("div");
+          s.className = "tt-sub";
+          s.textContent = c.sub;
+          frag.appendChild(s);
+        }
+      } else {
+        frag.appendChild(document.createTextNode(c));
+      }
+      el.insertBefore(frag, (_a = this.arrow) != null ? _a : null);
+    }
+    build(ev) {
+      const el = document.createElement("div");
+      el.className = "tt" + (this.o.hoverable && this.o.mode === "anchored" ? " tt-hoverable" : "");
+      el.setAttribute("role", "tooltip");
+      if (this.o.decorative) el.setAttribute("aria-hidden", "true");
+      el.id = this.id;
+      if (this.o.mode === "anchored") {
+        const arrow = document.createElement("div");
+        arrow.className = "tt-arrow";
+        el.appendChild(arrow);
+        this.arrow = arrow;
+      }
+      this.fill(el, this.resolveContent(ev));
+      if (this.o.hoverable && this.o.mode === "anchored") {
+        el.addEventListener("pointerenter", () => {
+          this.overBubble = true;
+          this.clearHide();
+        });
+        el.addEventListener("pointerleave", () => {
+          this.overBubble = false;
+          this.scheduleHide();
+        });
+      }
+      return el;
+    }
+    place() {
+      var _a, _b, _c;
+      if (!this.el) return;
+      let w = this.el.offsetWidth;
+      let h = this.el.offsetHeight;
+      const off = this.o.offset;
+      if (this.o.mode === "follow") {
+        if (typeof this.o.content === "function") {
+          this.fill(this.el, this.resolveContent());
+          w = this.el.offsetWidth;
+          h = this.el.offsetHeight;
+        }
+        const sol2 = solveFollow(
+          this.mouse.x,
+          this.mouse.y,
+          w,
+          h,
+          off,
+          window.innerWidth,
+          window.innerHeight,
+          PAD
+        );
+        this.el.style.left = `${sol2.x}px`;
+        this.el.style.top = `${sol2.y}px`;
+        report({
+          mode: "follow",
+          pref: "cursor",
+          resolved: sol2.flipped ? "flipped" : "bottom",
+          collision: sol2.flipped ? "flip" : "none",
+          x: Math.round(this.mouse.x),
+          y: Math.round(this.mouse.y)
+        });
+        return;
+      }
+      const anchorEl = (_c = (_b = (_a = this.o).anchor) == null ? void 0 : _b.call(_a)) != null ? _c : null;
+      const a = anchorEl ? anchorEl.getBoundingClientRect() : this.t.getBoundingClientRect();
+      let pref = this.o.placement;
+      if (this.o.awayFromCursor && (pref === "top" || pref === "bottom")) {
+        pref = this.mouse.y < a.top + a.height / 2 ? "bottom" : "top";
+      }
+      const sol = solve(a, w, h, pref, off, boundsOf(this.o.boundary), PAD);
+      this.el.style.left = `${sol.x}px`;
+      this.el.style.top = `${sol.y}px`;
+      this.placeArrow(sol.placement, sol.x, sol.y, a, w, h);
+      report({
+        mode: "anchored",
+        pref,
+        resolved: sol.placement,
+        collision: classify(pref, sol.placement, sol.shifted),
+        x: Math.round(a.left + a.width / 2),
+        y: Math.round(a.top + a.height / 2)
+      });
+    }
+    placeArrow(p, x, y, a, w, h) {
+      if (!this.arrow) return;
+      const arw = 8;
+      const acx = a.left + a.width / 2;
+      const acy = a.top + a.height / 2;
+      const s = this.arrow.style;
+      s.left = s.top = s.right = s.bottom = s.transform = "";
+      if (p === "top" || p === "bottom") {
+        s.left = `${Math.min(Math.max(acx - x, 11), w - 11) - arw / 2}px`;
+        if (p === "top") {
+          s.bottom = `${-arw / 2}px`;
+          s.transform = "rotate(45deg)";
+        } else {
+          s.top = `${-arw / 2}px`;
+          s.transform = "rotate(225deg)";
+        }
+      } else {
+        s.top = `${Math.min(Math.max(acy - y, 11), h - 11) - arw / 2}px`;
+        if (p === "left") {
+          s.right = `${-arw / 2}px`;
+          s.transform = "rotate(-45deg)";
+        } else {
+          s.left = `${-arw / 2}px`;
+          s.transform = "rotate(135deg)";
+        }
+      }
+    }
+    show(ev) {
+      var _a, _b, _c;
+      if (this.open || !booted || !layer) return;
+      if (this.o.onlyIfTruncated) {
+        const measured = (_c = (_b = (_a = this.o).anchor) == null ? void 0 : _b.call(_a)) != null ? _c : this.t;
+        if (measured.scrollWidth <= measured.clientWidth + 1) return;
+      }
+      ensureLayerShown();
+      const el = this.build(ev);
+      el.style.visibility = "hidden";
+      layer.appendChild(el);
+      this.el = el;
+      this.place();
+      el.style.visibility = "";
+      if (!this.o.decorative) this.t.setAttribute("aria-describedby", this.id);
+      const target = el;
+      requestAnimationFrame(() => {
+        if (this.el === target) target.classList.add("tt-in");
+      });
+      this.open = true;
+      group.open += 1;
+      if (this.o.mode === "follow") {
+        this.followMove = (e) => {
+          this.mouse.x = e.clientX;
+          this.mouse.y = e.clientY;
+          if (!this.raf) {
+            this.raf = requestAnimationFrame(() => {
+              this.raf = 0;
+              this.place();
+            });
+          }
+        };
+        window.addEventListener("pointermove", this.followMove, { passive: true });
+      }
+    }
+    hide() {
+      if (!this.open) return;
+      this.open = false;
+      group.open = Math.max(0, group.open - 1);
+      group.lastClose = Date.now();
+      if (!this.o.decorative) this.t.removeAttribute("aria-describedby");
+      if (this.followMove) {
+        window.removeEventListener("pointermove", this.followMove);
+        this.followMove = null;
+      }
+      if (this.raf) {
+        cancelAnimationFrame(this.raf);
+        this.raf = 0;
+      }
+      const el = this.el;
+      this.el = null;
+      this.arrow = null;
+      if (!el) return;
+      if (reduceMotion) {
+        el.remove();
+        return;
+      }
+      el.classList.remove("tt-in");
+      setTimeout(() => el.remove(), 160);
+    }
+    clearHide() {
+      if (this.hideT) {
+        clearTimeout(this.hideT);
+        this.hideT = null;
+      }
+    }
+    clearShow() {
+      if (this.showT) {
+        clearTimeout(this.showT);
+        this.showT = null;
+      }
+    }
+    scheduleShow(ev) {
+      if (this.suppressed) return;
+      this.clearHide();
+      this.clearShow();
+      const pt = { x: ev ? ev.clientX : 0, y: ev ? ev.clientY : 0 };
+      if (ev) this.mouse = { x: ev.clientX, y: ev.clientY };
+      const delay = groupWarm() ? 0 : this.o.showDelay;
+      this.showT = setTimeout(() => this.show(pt), delay);
+    }
+    scheduleHide() {
+      this.clearShow();
+      this.clearHide();
+      if (this.overBubble) return;
+      this.hideT = setTimeout(() => this.hide(), this.o.hideDelay);
+    }
+    /**
+     * Focus-driven show, gated so a mouse click never pins the tip. A focus that
+     * lands right after a pointerdown is mouse-driven (the click's residual focus);
+     * a focus with no recent press is keyboard navigation, which should show. This
+     * is env-independent — it doesn't rely on `:focus-visible` support.
+     */
+    focusShow() {
+      if (this.o.mode === "follow") return;
+      if (Date.now() - this.lastDown < 300) return;
+      this.scheduleShow();
+    }
+    bind() {
+      this.t.addEventListener("pointerenter", (e) => {
+        if (e.pointerType !== "touch") this.scheduleShow(e);
+      });
+      this.t.addEventListener("pointerleave", () => {
+        this.suppressed = false;
+        this.scheduleHide();
+      });
+      this.t.addEventListener("pointermove", (e) => {
+        this.mouse = { x: e.clientX, y: e.clientY };
+      });
+      this.t.addEventListener("pointerdown", () => {
+        this.lastDown = Date.now();
+        if (this.o.hideOnClick) {
+          this.suppressed = true;
+          this.clearShow();
+          this.hide();
+        }
+      });
+      this.t.addEventListener("focus", () => this.focusShow(), true);
+      this.t.addEventListener("blur", () => this.scheduleHide(), true);
+    }
+    /** Reposition if open — called on scroll/resize. */
+    reflow() {
+      if (this.open && this.o.mode === "anchored") this.place();
+    }
+    /** Dismiss immediately (Escape). */
+    dismiss() {
+      this.clearShow();
+      this.hide();
+    }
+    destroy() {
+      this.clearShow();
+      this.clearHide();
+      this.hide();
+      const i = registry.indexOf(this);
+      if (i >= 0) registry.splice(i, 1);
+    }
+  };
+  function attach(target, opts) {
+    boot();
+    const t = new Tip(target, opts);
+    registry.push(t);
+    return t;
+  }
+  function configure({
+    padding,
+    groupWindow,
+    layerClass
+  }) {
+    if (padding != null) PAD = padding;
+    if (groupWindow != null) GROUP_WINDOW = groupWindow;
+    if (layerClass != null) {
+      LAYER_CLASS = layerClass;
+      if (layer) layer.className = layerClass;
+    }
+  }
+  function onResolve(fn) {
+    reporter = fn;
+  }
+  return __toCommonJS(tooltip_core_exports);
+})();
+  return __briefTip;
+  })();
+
+  var idle = window.requestIdleCallback
+    ? function (fn) { return window.requestIdleCallback(fn, { timeout: 600 }); }
+    : function (fn) { return setTimeout(function () { fn({ timeRemaining: function () { return 6; } }); }, 30); };
+  function mainEl() { return document.getElementById('briefMain') || document.querySelector('main'); }
+
+  /* ── definition links ──────────────────────────────────────────────────
+     First use of each term per section, not every use: a page where every
+     "bootstrap" is underlined reads as noise. Skips headings, code, links,
+     table header cells, the Definitions and Answers blocks, and any widget
+     that carries its own script. */
+  var SKIP = 'h1,h2,h3,h4,h5,h6,code,pre,kbd,a,button,label,th,textarea,select,svg,script,style,' +
+    'sup.fn,.l5,#s-definitions,dl.answers,nav.toc,.brief-title,.topbar,.bterm,[contenteditable],[data-noterms]';
+
+  function defLinks() {
+    var root = mainEl();
+    var cards = document.querySelectorAll('section#s-definitions .defs-in .term');
+    if (!root || !cards.length) return;
+    var byKey = {}, words = [];
+    Array.prototype.forEach.call(cards, function (card, idx) {
+      var h = card.querySelector('h4'); if (!h) return;
+      var li = card.querySelector('li'), k = li && li.querySelector('.k');
+      var def = li ? li.textContent.slice(k ? k.textContent.length : 0).trim() : '';
+      var entry = { id: idx, title: h.textContent.trim(), def: def };
+      /* "Authored blend / AI-bust-tilted blend" defines two names for one card. */
+      h.textContent.split(/\s+\/\s+/).forEach(function (w) {
+        w = w.trim();
+        if (w.length < 2 || byKey[w.toLowerCase()]) return;
+        byKey[w.toLowerCase()] = entry; words.push(w);
+      });
+    });
+    if (!words.length) return;
+    words.sort(function (a, b) { return b.length - a.length; });
+    var esc = words.map(function (w) { return w.replace(/[.*+?^${}()|[\]\\]/g, function (c) { return '\\' + c; }); });
+    var RE = new RegExp('(?<![\\w-])(?:' + esc.join('|') + ')(?![\\w-])', 'gi');
+
+    /* A widget with its own script owns its DOM: leave all of it alone. */
+    var widgets = [];
+    Array.prototype.forEach.call(root.querySelectorAll('script'), function (s) {
+      if (s.parentElement && s.parentElement !== root) widgets.push(s.parentElement);
+    });
+    function skipped(el) {
+      if (el.closest(SKIP)) return true;
+      for (var i = 0; i < widgets.length; i++) if (widgets[i].contains(el)) return true;
+      return false;
+    }
+    var used = new WeakMap();
+    function seen(scope, id) {
+      var s = used.get(scope); if (!s) { s = {}; used.set(scope, s); }
+      if (s[id]) return true; s[id] = 1; return false;
+    }
+    function card(entry) {
+      var d = document.createElement('div'); d.className = 'bterm-card';
+      var t = document.createElement('strong'); t.textContent = entry.title;
+      var p = document.createElement('span'); p.textContent = entry.def;
+      d.appendChild(t); d.appendChild(p); return d;
+    }
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        if (n.nodeType === 1) return skipped(n) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP;
+        return n.nodeValue && n.nodeValue.trim().length > 1 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+      }
+    });
+    function linkNode(tn) {
+      var text = tn.nodeValue, m, last = 0, frag = null;
+      var scope = tn.parentElement.closest('section, p.partlede, .summary-page') || root;
+      RE.lastIndex = 0;
+      while ((m = RE.exec(text))) {
+        var entry = byKey[m[0].toLowerCase()];
+        if (!entry || seen(scope, entry.id)) continue;
+        frag = frag || document.createDocumentFragment();
+        frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        var s = document.createElement('span');
+        s.className = 'bterm'; s.tabIndex = 0; s.textContent = m[0];
+        TT.attach(s, { content: (function (en) { return function () { return card(en); }; })(entry),
+          hoverable: true, placement: 'top', showDelay: 300 });
+        frag.appendChild(s);
+        last = m.index + m[0].length;
+      }
+      if (!frag) return tn;
+      var tail = document.createTextNode(text.slice(last));
+      frag.appendChild(tail);
+      tn.parentNode.replaceChild(frag, tn);
+      return tail;
+    }
+    /* Small slices in idle time: a 500KB brief never freezes the page. */
+    function slice(deadline) {
+      var n, count = 0;
+      while ((deadline.timeRemaining() > 2 || count < 5) && (n = walker.nextNode())) {
+        walker.currentNode = linkNode(n);
+        count++;
+      }
+      if (n) idle(slice);
+    }
+    idle(slice);
+  }
+
+  /* ── gutter contents rail ──────────────────────────────────────────────
+     One short line per part (long) and section (short). Hover or keyboard
+     focus opens the labels beside it; the current section is marked as the
+     reader scrolls. Fixed-width mode only; hidden below the mobile breakpoint
+     and in full-width mode (both in brief.css). */
+  function rail() {
+    var root = mainEl(); if (!root || document.querySelector('.ptoc')) return;
+    var heads = root.querySelectorAll('h2.part[id], section.brief-section[id] > .sec-head h3, section.q[id] > .q-head h3');
+    var items = [];
+    Array.prototype.forEach.call(heads, function (h) {
+      var part = h.tagName === 'H2', target = part ? h : h.closest('section');
+      var pn = part && h.querySelector('.pnum');
+      var label = part ? (pn ? pn.textContent.trim() + ': ' : '') + h.textContent.slice(pn ? pn.textContent.length : 0).trim()
+        : h.textContent.trim();
+      if (label && target && target.id) items.push({ level: part ? 2 : 3, label: label, el: target, head: h });
+    });
+    if (items.length < 3) return;
+    var nav = document.createElement('nav');
+    nav.className = 'ptoc'; nav.setAttribute('aria-label', 'Page contents');
+    var bars = document.createElement('div'); bars.className = 'ptoc-bars'; bars.setAttribute('aria-hidden', 'true');
+    var list = document.createElement('ol'); list.className = 'ptoc-list';
+    items.forEach(function (it, i) {
+      var b = document.createElement('span');
+      b.className = 'ptoc-bar l' + it.level; b.style.setProperty('--i', i);
+      b.addEventListener('click', function () { go(it); });
+      b.addEventListener('mouseenter', function () { wave(i); });
+      bars.appendChild(b); it.bar = b;
+      var li = document.createElement('li'), a = document.createElement('a');
+      a.href = '#' + it.el.id; a.textContent = it.label; li.className = 'l' + it.level;
+      a.addEventListener('click', function (e) { e.preventDefault(); go(it); });
+      a.addEventListener('mouseenter', function () { wave(i); });
+      a.addEventListener('focus', function () { wave(i); });
+      li.appendChild(a); list.appendChild(li); it.link = a;
+    });
+    nav.appendChild(bars); nav.appendChild(list);
+    nav.addEventListener('mouseleave', function () { wave(-1); });
+    document.body.appendChild(nav);
+    document.body.classList.add('has-ptoc');
+
+    function go(it) {
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      it.head.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      if (history.replaceState) history.replaceState(null, '', '#' + it.el.id);
+    }
+    /* The playful part: bars near the pointer swell like a fisheye, and the
+       swell follows the cursor down the rail. */
+    function wave(h) {
+      items.forEach(function (it, i) {
+        var d = h < 0 ? 99 : Math.abs(i - h);
+        it.bar.style.setProperty('--swell', d > 3 ? 0 : (4 - d) * 3 + 'px');
+        it.bar.classList.toggle('hot', d === 0);
+      });
+    }
+    var active = -1, ticking = false;
+    function mark() {
+      ticking = false;
+      var hit = 0;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].head.getBoundingClientRect().top <= 120) hit = i; else break;
+      }
+      if (hit === active) return;
+      if (active >= 0) { items[active].bar.classList.remove('on'); items[active].link.removeAttribute('aria-current'); }
+      active = hit;
+      items[hit].bar.classList.add('on'); items[hit].link.setAttribute('aria-current', 'location');
+    }
+    window.addEventListener('scroll', function () {
+      if (!ticking) { ticking = true; requestAnimationFrame(mark); }
+    }, { passive: true });
+    mark();
+  }
+
+  function start() { rail(); idle(defLinks); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();

@@ -123,7 +123,10 @@ with their locators, each linking to its exact passage in the references.
    industry's own term preferred to a coined one and any coined term marked as such. The
    reader learns the field's words from the brief; a term used and not defined is a lookup
    pushed onto them. See `reference/definitions-block.md`. Omit the block only when the brief
-   uses no technical terms at all.
+   uses no technical terms at all. **The runtime links every body use of a defined term
+   to its card automatically** (first use per section, hover and focus), and builds a
+   gutter contents rail from the headings; write neither by hand
+   (`reference/runtime.md`, "Definition links and the gutter contents rail").
 11. **The first paragraph after the answers block is the verdict.** One sentence stating
    the call, followed by one sentence giving its price and what the price buys, with the
    likelihood of the future it buys cover in where one applies. Nothing sits between the

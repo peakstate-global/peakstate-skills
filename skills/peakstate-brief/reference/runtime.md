@@ -159,3 +159,39 @@
   remains meaningful on its own: it's how a question is resolved by accepting the
   stated assumption without typing anything. Light + dark theme, print-safe,
   `cursor: pointer` affordances, no external network assets.
+
+## Definition links and the gutter contents rail (automatic, no authoring)
+
+Both features build themselves after page load. An author writes nothing for them
+beyond a normal Definitions block and normal headings.
+
+- **Definition links.** Every term in the Definitions block
+  (`section#s-definitions .defs-in .term h4`) is linked where the body uses it: a
+  dotted underline, and the term's definition as a card on hover, on keyboard focus
+  and on tap. A heading written `A / B` defines two names for one card. Matching is
+  whole-word, case-insensitive, longest term first.
+  - **First use per section only**, not every use. A page with every "bootstrap"
+    underlined reads as noise, and the reader needs the card once per section.
+  - **Skipped:** headings, code, links, buttons, table header cells, footnote
+    markers, source lines (`.l5`), the Definitions block, the answers block, the
+    contents, and any element that carries its own `<script>` (an interactive
+    `:::html` widget owns its DOM). Add `data-noterms` to opt any other element out.
+  - **Non-blocking.** A `TreeWalker` runs in small slices under
+    `requestIdleCallback` (a `setTimeout` fallback), so a 500KB brief never freezes.
+  - **Accessible.** Each linked word is focusable; the card shows on focus, stays
+    while hovered, and closes with Escape (WCAG 1.4.13). The card uses the tooltip
+    skill's engine (`tooltip-core.ts`, bundled into `brief.js` with esbuild as an
+    IIFE); regenerate that block from the skill, never edit it in place. No `title=`.
+- **Gutter contents rail.** A column of short lines in the left gutter, one per
+  part (`h2.part`, long line) and section (`section > .sec-head h3`, short line),
+  modelled on Navigator's mini contents sidebar.
+  - Hover or keyboard focus opens the headings beside the lines; the lines swell
+    around the pointer; the current section is marked as the reader scrolls;
+    clicking a line or a heading jumps there.
+  - **Fixed-width mode only**, never full-width, and hidden below `48rem` and in
+    print. The existing Contents section is unchanged.
+  - **Layout.** While the gutter has room the content column stays centred. Only
+    when the gutter is narrower than the rail does the column's left margin hold at
+    `3.5rem`, so the content hangs right rather than sliding under the rail.
+  - Motion respects `prefers-reduced-motion`.
+
