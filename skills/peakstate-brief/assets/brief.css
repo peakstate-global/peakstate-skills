@@ -1404,57 +1404,50 @@ mark.cmt[data-hl] { color: var(--fg); }
 }
 /* Every line is always visible, solid, and nearly flush with the window's
    left edge. Nothing hides until hover. */
+/* The closed flyout still takes room in the rail's box, and that box sat over
+   the page and swallowed clicks on the content beside it. Only the lines and
+   the open flyout take the pointer; the hidden list gets none (visibility). */
+.ptoc { pointer-events: none; }
+.ptoc > * { pointer-events: auto; }
 .ptoc { position: fixed; z-index: 40; top: 50%; transform: translateY(-50%);
         left: .6rem; align-items: center; }
 .ptoc-bars { display: flex; flex-direction: column; width: 2.2rem; max-height: 80vh; padding: .4rem 0; }
 .ptoc-bar { display: block; flex: 0 0 9px; min-height: 9px; position: relative; cursor: pointer; }
 .ptoc-bar::before { content: ''; position: absolute; left: 0; top: 50%; height: 2px; border-radius: 2px;
   width: calc(var(--w) + var(--swell, 0px)); background: var(--muted); transform: translateY(-50%);
-  transition: width .22s cubic-bezier(.34,1.56,.64,1), background .15s, height .15s;
-  transition-delay: calc(var(--i, 0) * 4ms); }
+  /* Short and unstaggered: the lines must move with the pointer. A per-line
+     delay (index x 4ms) left the lower lines up to a quarter-second behind. */
+  transition: width .1s ease-out, background .1s, height .1s; }
 .ptoc-bar.l2 { --w: 22px; margin-top: 4px; }
 .ptoc-bar.l3 { --w: 14px; }
 .ptoc-bar.on::before { background: var(--accent); height: 2.5px; }
 .ptoc-bar.hot::before { background: var(--gold, var(--accent)); }
-.ptoc-list { list-style: none; margin: 0 0 0 .3rem; padding: .35rem 0; max-height: 80vh; overflow-y: auto;
-  min-width: 13rem; max-width: 22rem; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
-  box-shadow: 0 10px 30px -12px rgba(0,0,0,.35); font: .78rem/1.3 var(--font-ui, system-ui, sans-serif);
+/* The flyout matches the page's Contents section: a small uppercase caption,
+   parts as uppercase accent labels, sections in the body face beside a rule. */
+.ptoc-list { margin: 0 0 0 .3rem; padding: .8rem 1rem .9rem; max-height: 80vh; overflow-y: auto;
+  min-width: 15rem; max-width: 24rem; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 10px 30px -12px rgba(0,0,0,.35);
   opacity: 0; visibility: hidden; transform: translateX(-6px);
-  transition: opacity .15s, transform .15s, visibility 0s linear .2s; }
+  transition: opacity .12s, transform .12s, visibility 0s linear .15s; }
 .ptoc:hover .ptoc-list, .ptoc:focus-within .ptoc-list {
-  opacity: 1; visibility: visible; transform: none; transition: opacity .15s, transform .15s, visibility 0s; }
-/* Labels wrap: a brief never cuts text off. */
-.ptoc-list a { display: block; padding: .18rem .8rem; color: var(--muted); text-decoration: none;
-  white-space: normal; overflow-wrap: anywhere; }
+  opacity: 1; visibility: visible; transform: none; transition: opacity .12s, transform .12s, visibility 0s; }
+.ptoc-cap { margin: -.8rem -1rem .5rem; padding: .8rem 1rem .4rem; font: 600 11px/1.4 var(--font-ui); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+  /* Stays at the top while the list scrolls to follow the hovered line. */
+  position: sticky; top: -.8rem; z-index: 1; background: var(--card); }
+.ptoc-part { margin: .8rem 0 .3rem; }
+.ptoc-cap + .ptoc-part { margin-top: 0; }
+.ptoc-part a { font: 600 11px/1.4 var(--font-ui); letter-spacing: .09em; text-transform: uppercase;
+  color: var(--accent); text-decoration: none; }
+.ptoc-list ol { list-style: none; margin: 0 0 0 .3rem; padding-left: .8rem; border-left: 1px solid var(--line); }
+.ptoc-list li { margin: .12rem 0; }
+.ptoc-list ol a { display: block; color: var(--fg); text-decoration: none; font-size: .88rem; line-height: 1.35;
+  padding: .1rem .35rem; margin-left: -.35rem; border-radius: 4px; overflow-wrap: anywhere; }
 /* The entry whose line the pointer is on lights up, so the click target is clear. */
-.ptoc-list a.hot { background: var(--accent-soft); color: var(--fg); }
-.ptoc-list li.l2 a { color: var(--fg); font-weight: 600; margin-top: .25rem; }
-.ptoc-list li.l3 a { padding-left: 1.5rem; }
-.ptoc-list a:hover, .ptoc-list a:focus-visible { background: var(--accent-soft); color: var(--fg); outline: none; }
-.ptoc-list a[aria-current] { color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
-/* Wide screens: the gutter holds the whole list, always visible, pinned to
-   the far left. Each entry is a short line and its label; hover brightens the
-   label and lengthens the line. Narrower screens keep the bars and popover. */
-@media screen and (min-width: 88rem) {
-  body.has-ptoc:not(.fullwidth) .ptoc { left: .75rem; width: calc((100vw - 62rem) / 2 - 2rem); max-width: 18rem; }
-  .ptoc .ptoc-bars { display: none; }
-  .ptoc .ptoc-list, .ptoc:hover .ptoc-list, .ptoc:focus-within .ptoc-list {
-    opacity: 1; visibility: visible; transform: none; transition: none;
-    margin: 0; min-width: 0; max-width: none; width: 100%; padding: 0;
-    background: none; border: 0; box-shadow: none; }
-  .ptoc-list a { display: flex; align-items: flex-start; gap: .55rem; padding: .16rem 0;
-    color: color-mix(in srgb, var(--muted) 80%, transparent); transition: color .15s; }
-  .ptoc-list a::before { content: ''; flex: none; height: 1.5px; border-radius: 2px; width: 10px; margin-top: .62em;
-    background: color-mix(in srgb, var(--muted) 60%, transparent);
-    transition: width .2s cubic-bezier(.34,1.56,.64,1), background .15s; }
-  .ptoc-list li.l2 a { color: color-mix(in srgb, var(--fg) 75%, transparent); margin-top: .5rem; }
-  .ptoc-list li.l2 a::before { width: 18px; }
-  .ptoc-list li.l3 a { padding-left: 0; }
-  .ptoc-list a:hover, .ptoc-list a:focus-visible, .ptoc-list a.hot { background: none; color: var(--fg); }
-  .ptoc-list a:hover::before, .ptoc-list a:focus-visible::before, .ptoc-list a.hot::before { width: 26px; background: var(--fg); }
-  .ptoc-list a[aria-current] { color: var(--accent); box-shadow: none; }
-  .ptoc-list a[aria-current]::before { background: var(--accent); }
-}
+.ptoc-list a.hot, .ptoc-list a:hover, .ptoc-list a:focus-visible { color: var(--accent); outline: none; }
+.ptoc-list ol a.hot, .ptoc-list ol a:hover, .ptoc-list ol a:focus-visible { background: var(--accent-soft); }
+.ptoc-list a[aria-current] { color: var(--accent); }
+.ptoc-list ol a[aria-current] { box-shadow: inset 2px 0 0 var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   .ptoc-bar::before, .ptoc-list, .ptoc-list a, .ptoc-list a::before { transition: none; }
 }

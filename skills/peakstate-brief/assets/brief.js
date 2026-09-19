@@ -2873,19 +2873,31 @@ var __briefTip = (() => {
     var nav = document.createElement('nav');
     nav.className = 'ptoc'; nav.setAttribute('aria-label', 'Page contents');
     var bars = document.createElement('div'); bars.className = 'ptoc-bars'; bars.setAttribute('aria-hidden', 'true');
-    var list = document.createElement('ol'); list.className = 'ptoc-list';
+    /* The flyout reads like the page's own Contents: a CONTENTS label, each part
+       as an uppercase accent label, its sections in a ruled list beneath. */
+    var list = document.createElement('div'); list.className = 'ptoc-list';
+    var cap = document.createElement('p'); cap.className = 'ptoc-cap'; cap.textContent = 'Contents';
+    list.appendChild(cap);
+    var group = null;
     items.forEach(function (it, i) {
       var b = document.createElement('span');
       b.className = 'ptoc-bar l' + it.level; b.style.setProperty('--i', i);
       b.addEventListener('click', function () { go(it); });
       b.addEventListener('mouseenter', function () { wave(i); });
       bars.appendChild(b); it.bar = b;
-      var li = document.createElement('li'), a = document.createElement('a');
-      a.href = '#' + it.el.id; a.textContent = it.label; li.className = 'l' + it.level;
+      var a = document.createElement('a');
+      a.href = '#' + it.el.id; a.textContent = it.label;
       a.addEventListener('click', function (e) { e.preventDefault(); go(it); });
       a.addEventListener('mouseenter', function () { wave(i); });
       a.addEventListener('focus', function () { wave(i); });
-      li.appendChild(a); list.appendChild(li); it.link = a;
+      if (it.level === 2) {
+        var ph = document.createElement('p'); ph.className = 'ptoc-part';
+        ph.appendChild(a); list.appendChild(ph); group = null;
+      } else {
+        if (!group) { group = document.createElement('ol'); list.appendChild(group); }
+        var li = document.createElement('li'); li.appendChild(a); group.appendChild(li);
+      }
+      it.link = a;
     });
     nav.appendChild(bars); nav.appendChild(list);
     nav.addEventListener('mouseleave', function () { wave(-1); });
@@ -2894,7 +2906,12 @@ var __briefTip = (() => {
 
     function go(it) {
       var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      it.head.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      /* Land the heading just below the sticky top bar. scrollIntoView put it
+         under the bar, because sections carry no scroll margin. */
+      var bar = document.querySelector('.topbar');
+      var off = (bar ? bar.getBoundingClientRect().bottom : 0) + 12;
+      window.scrollTo({ top: it.head.getBoundingClientRect().top + window.scrollY - off,
+        behavior: reduce ? 'auto' : 'smooth' });
       if (history.replaceState) history.replaceState(null, '', '#' + it.el.id);
     }
     /* The playful part: bars near the pointer swell like a fisheye, and the

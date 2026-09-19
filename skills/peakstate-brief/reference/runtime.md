@@ -188,9 +188,13 @@ beyond a normal Definitions block and normal headings.
 - **Gutter contents rail.** A column of short lines in the left gutter, one per
   part (`h2.part`, long line) and section (`section > .sec-head h3`, short line),
   modelled on Navigator's mini contents sidebar.
-  - Hover or keyboard focus opens the headings beside the lines; the lines swell
-    around the pointer; the current section is marked as the reader scrolls;
-    clicking a line or a heading jumps there.
+  - The rail stays a column of lines at every width, never a full list: it is
+    unobtrusive, and a standing list competes with the page.
+  - Hover or keyboard focus opens a flyout styled like the page's Contents: a
+    CONTENTS caption that stays pinned, parts as uppercase accent labels, sections
+    in a ruled list. The lines swell around the pointer with no stagger, so they
+    move with it; the current section is marked as the reader scrolls.
+  - Clicking a line or a heading lands that heading 12px below the sticky top bar.
   - **Fixed-width mode only**, never full-width, and hidden below `48rem` and in
     print. The existing Contents section is unchanged.
   - **Layout.** While the gutter has room the content column stays centred. Only
