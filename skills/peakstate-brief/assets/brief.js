@@ -2856,8 +2856,8 @@ var __briefTip = (() => {
   /* ── gutter contents rail ──────────────────────────────────────────────
      One short line per part (long) and section (short). Hover or keyboard
      focus opens the labels beside it; the current section is marked as the
-     reader scrolls. Fixed-width mode only; hidden below the mobile breakpoint
-     and in full-width mode (both in brief.css). */
+     reader scrolls. Shown in both width modes, hidden below the mobile
+     breakpoint (brief.css), and hidden while page content sits under it. */
   function rail() {
     var root = mainEl(); if (!root || document.querySelector('.ptoc')) return;
     var heads = root.querySelectorAll('h2.part[id], section.brief-section[id] > .sec-head h3, section.q[id] > .q-head h3');
@@ -2938,10 +2938,37 @@ var __briefTip = (() => {
       active = hit;
       items[hit].bar.classList.add('on'); items[hit].link.setAttribute('aria-current', 'location');
     }
+    /* Full width lets tables and narrow-window prose reach the rail's strip.
+       When anything in the page sits under the lines, the rail steps aside
+       rather than draw over it. Sampled with elementsFromPoint down both edges
+       of the lines; the rail itself and bare page padding (main) never count. */
+    function covered() {
+      if (nav.matches(':hover, :focus-within')) return false;
+      var r = bars.getBoundingClientRect();
+      if (!r.height) return false;
+      for (var y = r.top + 4; y < r.bottom; y += 24) {
+        var xs = [r.left + 2, r.right - 2];
+        for (var k = 0; k < 2; k++) {
+          var stack = document.elementsFromPoint(xs[k], y);
+          for (var j = 0; j < stack.length; j++) {
+            var e = stack[j];
+            if (nav.contains(e)) continue;
+            if (e === root || !root.contains(e)) break;
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    function check() { nav.classList.toggle('ptoc-covered', covered()); }
     window.addEventListener('scroll', function () {
-      if (!ticking) { ticking = true; requestAnimationFrame(mark); }
+      if (!ticking) { ticking = true; requestAnimationFrame(function () { mark(); check(); }); }
     }, { passive: true });
-    mark();
+    window.addEventListener('resize', function () { requestAnimationFrame(check); });
+    /* The width toggle flips body.fullwidth; re-check when it does. */
+    new MutationObserver(function () { requestAnimationFrame(check); })
+      .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    mark(); check();
   }
 
   function start() { rail(); idle(defLinks); }

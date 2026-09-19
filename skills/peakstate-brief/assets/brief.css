@@ -1400,7 +1400,7 @@ mark.cmt[data-hl] { color: var(--fg); }
 .ptoc { display: none; }
 @media screen and (min-width: 48rem) {
   body.has-ptoc:not(.fullwidth) main { margin-left: max(3.5rem, calc((100% - 62rem) / 2)); margin-right: auto; }
-  body.has-ptoc:not(.fullwidth) .ptoc { display: flex; }
+  body.has-ptoc .ptoc { display: flex; }
 }
 /* Every line is always visible, solid, and nearly flush with the window's
    left edge. Nothing hides until hover. */
@@ -1409,6 +1409,11 @@ mark.cmt[data-hl] { color: var(--fg); }
    the open flyout take the pointer; the hidden list gets none (visibility). */
 .ptoc { pointer-events: none; }
 .ptoc > * { pointer-events: auto; }
+.ptoc { transition: opacity .15s; }
+/* brief.js sets this while page content sits under the lines (full width, a
+   wide table or a narrow window): the rail steps aside rather than cover it. */
+.ptoc.ptoc-covered { opacity: 0; }
+.ptoc.ptoc-covered > * { pointer-events: none; }
 .ptoc { position: fixed; z-index: 40; top: 50%; transform: translateY(-50%);
         left: .6rem; align-items: center; }
 .ptoc-bars { display: flex; flex-direction: column; width: 2.2rem; max-height: 80vh; padding: .4rem 0; }
@@ -1447,7 +1452,14 @@ mark.cmt[data-hl] { color: var(--fg); }
 .ptoc-list a.hot, .ptoc-list a:hover, .ptoc-list a:focus-visible { color: var(--accent); outline: none; }
 .ptoc-list ol a.hot, .ptoc-list ol a:hover, .ptoc-list ol a:focus-visible { background: var(--accent-soft); }
 .ptoc-list a[aria-current] { color: var(--accent); }
-.ptoc-list ol a[aria-current] { box-shadow: inset 2px 0 0 var(--accent); }
+/* The current section: its band runs flush to the rule, and a small solid
+   equilateral triangle comes out of the rule, pointing at the text's middle. */
+.ptoc-list ol a[aria-current] { position: relative; background: var(--accent-soft);
+  margin-left: -.8rem; padding-left: 1.15rem; border-radius: 0 4px 4px 0; }
+.ptoc-list ol a[aria-current]::before { content: ''; position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%); width: 0; height: 0;
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  border-left: 7px solid var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   .ptoc-bar::before, .ptoc-list, .ptoc-list a, .ptoc-list a::before { transition: none; }
 }

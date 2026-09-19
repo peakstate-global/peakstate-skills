@@ -195,8 +195,12 @@ beyond a normal Definitions block and normal headings.
     in a ruled list. The lines swell around the pointer with no stagger, so they
     move with it; the current section is marked as the reader scrolls.
   - Clicking a line or a heading lands that heading 12px below the sticky top bar.
-  - **Fixed-width mode only**, never full-width, and hidden below `48rem` and in
-    print. The existing Contents section is unchanged.
+  - **Both width modes.** In full width, page content can reach the rail's strip
+    (a bled table, prose in a narrow window); the rail fades out while anything
+    sits under its lines and returns when the strip clears. Hidden below `48rem`
+    and in print. The existing Contents section is unchanged.
+  - The current section's entry is a band flush to the list's rule, with a small
+    solid triangle coming out of the rule, pointing at the text.
   - **Layout.** While the gutter has room the content column stays centred. Only
     when the gutter is narrower than the rail does the column's left margin hold at
     `3.5rem`, so the content hangs right rather than sliding under the rail.
