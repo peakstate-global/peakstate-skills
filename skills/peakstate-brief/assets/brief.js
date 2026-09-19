@@ -239,7 +239,9 @@
     var k, any = false;
     for (k in state.answers) if ((state.answers[k] || '').trim()) any = true;
     for (k in state.notes) if ((state.notes[k] || '').trim()) any = true;
-    if (state.comments.length) any = true;
+    /* A sent comment is not unsent work: once the file has moved past it, it
+       must not keep the red marker lit. */
+    if (state.comments.some(function (c) { return !isSent(c); })) any = true;
     if (state.drafts.some(function (d) { return (d.comment || '').trim(); })) any = true;
     Array.prototype.forEach.call(document.querySelectorAll('[data-doc]'), function (doc) {
       var e = state.edits[doc.dataset.doc];
@@ -628,6 +630,7 @@
          carried the conversation on. Without a follow-up it is settled, and
          round-tripping it makes the author read their own answer back. */
       if (hasReply(c) && !follow.length) return;
+      if (isSent(c)) return;
       var o = { selected_text: c.text, near_question: c.near || null, comment: c.comment };
       if (hasReply(c)) { o.reply = c.reply; o.follow_up = follow; }
       o.highlight = c.unhl ? null : hlOf(c);
@@ -655,7 +658,27 @@
       navigator.clipboard.writeText(txt).then(function () { toast(msg); }, fallback);
     } else fallback();
   }
-  function copyJSON() { copyText(responsesJSON(), 'Responses JSON copied'); markCopied(); }
+  /* Sent comments. A comment the reader exported under one build of the file,
+     and has not changed since, reached Claude once the file is rebuilt: the new
+     build is Claude's work on what it received. It then leaves later exports,
+     so a re-copy carries only what is new or changed, never the whole history.
+     It stays on the page and in the drawer. Editing it, recolouring it or
+     adding a follow-up makes it travel again. No build token (an older file)
+     means nothing is ever treated as sent. */
+  function buildTok() { return document.body.dataset.build || ''; }
+  function csig(c) { return JSON.stringify([c.comment, c.hl, c.unhl, (c.thread || []).length]); }
+  function isSent(c) {
+    return !!(c.sent && buildTok() && c.sent.tok !== buildTok() && c.sent.sig === csig(c));
+  }
+  function markSent() {
+    var tok = buildTok(); if (!tok) return;
+    state.comments.forEach(function (c) {
+      if (isSent(c)) return;          // keep the older stamp; it already left
+      c.sent = { tok: tok, sig: csig(c) };
+    });
+    save();
+  }
+  function copyJSON() { copyText(responsesJSON(), 'Responses JSON copied'); markSent(); markCopied(); }
   var copyBtnEl = document.getElementById('copyBtn');
   copyBtnEl.innerHTML = ICON.copy;
   tip(copyBtnEl, 'Copy responses JSON', MOD + 'C');
@@ -674,6 +697,7 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     toast('Responses JSON downloaded');
+    markSent();
     markCopied();
   }
   var dlBtn = document.getElementById('downloadBtn');
@@ -2914,6 +2938,18 @@ var __briefTip = (() => {
         behavior: reduce ? 'auto' : 'smooth' });
       if (history.replaceState) history.replaceState(null, '', '#' + it.el.id);
     }
+    /* Keep the hovered entry in view by scrolling the LIST only. scrollIntoView
+       also scrolled the page whenever the pointer merely crossed a line on its
+       way somewhere else, and a click aimed at the page then landed on whatever
+       had moved under it. A closed flyout is left alone. */
+    function follow(a, i) {
+      if (getComputedStyle(list).visibility === 'hidden') return;
+      if (i === 0) { list.scrollTop = 0; return; }
+      var lr = list.getBoundingClientRect(), ar = a.getBoundingClientRect();
+      var top = lr.top + cap.getBoundingClientRect().height + 4;
+      if (ar.top < top) list.scrollTop -= top - ar.top;
+      else if (ar.bottom > lr.bottom - 8) list.scrollTop += ar.bottom - lr.bottom + 8;
+    }
     /* The playful part: bars near the pointer swell like a fisheye, and the
        swell follows the cursor down the rail. */
     function wave(h) {
@@ -2923,9 +2959,7 @@ var __briefTip = (() => {
         it.bar.style.setProperty('--swell', d > 3 ? '0px' : (4 - d) * 3 + 'px');
         it.bar.classList.toggle('hot', d === 0);
         it.link.classList.toggle('hot', d === 0);
-        if (d === 0) {
-          if (i === 0) list.scrollTop = 0; else it.link.scrollIntoView({ block: 'nearest' });
-        }
+        if (d === 0) follow(it.link, i);
       });
     }
     var active = -1, ticking = false;
@@ -2962,13 +2996,29 @@ var __briefTip = (() => {
       }
       return false;
     }
-    function check() { nav.classList.toggle('ptoc-covered', covered()); }
-    window.addEventListener('scroll', function () {
-      if (!ticking) { ticking = true; requestAnimationFrame(function () { mark(); check(); }); }
-    }, { passive: true });
-    window.addEventListener('resize', function () { requestAnimationFrame(check); });
+    /* Only full width can put content under the rail: fixed width reserves the
+       gutter. And only once scrolling settles: sampling elementsFromPoint on
+       every scroll frame disturbed the page's hover state mid-gesture, so a
+       click aimed at a tick box landed on the heading beside it. */
+    var settle = 0;
+    function check() {
+      nav.classList.toggle('ptoc-covered', document.body.classList.contains('fullwidth') && covered());
+    }
+    function checkSoon() { clearTimeout(settle); settle = setTimeout(check, 150); }
+    /* Current-section tracking runs only when a heading crosses the marker
+       line, not on every scroll frame: measuring headings each frame forced a
+       layout per frame during smooth scrolls, and on a loaded machine that made
+       the page too unsteady for a click to land where it was aimed. */
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function () {
+        if (!ticking) { ticking = true; requestAnimationFrame(mark); }
+      }, { rootMargin: '-120px 0px 0px 0px' });
+      items.forEach(function (it) { io.observe(it.head); });
+    }
+    window.addEventListener('scroll', checkSoon, { passive: true });
+    window.addEventListener('resize', checkSoon);
     /* The width toggle flips body.fullwidth; re-check when it does. */
-    new MutationObserver(function () { requestAnimationFrame(check); })
+    new MutationObserver(checkSoon)
       .observe(document.body, { attributes: true, attributeFilter: ['class'] });
     mark(); check();
   }

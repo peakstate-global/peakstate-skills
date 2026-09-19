@@ -24,6 +24,9 @@ import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
+/* Tick boxes are revealed by hovering the question head, and the heading slides
+   aside to make room. Hover first, as a reader does, so a click never races the
+   reveal animation (it lost that race on a loaded machine). */
 
 const DIR = process.argv[2];
 if (!DIR) { console.error('usage: test-sync.mjs <dir with brief.js, brief.css, test-fixture.html>'); process.exit(2); }
@@ -135,7 +138,7 @@ const out = {};
   await page.goto(ORIGIN + '/host.html');
   const frame = page.frameLocator('#f');
   await frame.locator('#ans-Q1').fill('typed on an unpublished brief');
-  await frame.locator('section[data-q="Q1"] .tick input').check();
+  await frame.locator('section[data-q="Q1"] .q-head').hover(); await frame.locator('section[data-q="Q1"] .tick input').check();
   await page.waitForTimeout(2000);
   /* The page, the frame document, the runtime and the stylesheet, and nothing else. */
   out.unpublishedExtraRequests = reqs.filter((u) => !/\/(host\.html|brief\.html|brief\.js|brief\.css)$/.test(u) && u !== ORIGIN + '/');
@@ -160,7 +163,7 @@ async function copyAfterAnswer(html) {
   await page.goto(ORIGIN + '/host.html');
   const frame = page.frameLocator('#f');
   await frame.locator('#ans-Q1').fill('the same answer, both ways');
-  await frame.locator('section[data-q="Q1"] .tick input').check();
+  await frame.locator('section[data-q="Q1"] .q-head').hover(); await frame.locator('section[data-q="Q1"] .tick input').check();
   await page.waitForTimeout(600);
   await frame.locator('#copyBtn').click();
   const text = await page.evaluate(() => navigator.clipboard.readText());
@@ -228,11 +231,11 @@ STORE = {};
   out.serverAfterB = serverComments();
 
   /* A saves again — that is when it hears about B. */
-  await fa.locator('section[data-q="Q1"] .tick input').check();
+  await fa.locator('section[data-q="Q1"] .q-head').hover(); await fa.locator('section[data-q="Q1"] .tick input').check();
   await pa.waitForTimeout(2500);
   out.deviceA = await frameComments(pa);
   await pb.waitForTimeout(200);
-  await fb.locator('section[data-q="Q1"] .tick input').check();
+  await fb.locator('section[data-q="Q1"] .q-head').hover(); await fb.locator('section[data-q="Q1"] .tick input').check();
   await pb.waitForTimeout(2500);
   out.deviceB = await frameComments(pb);
   out.serverFinal = serverComments();
@@ -306,7 +309,7 @@ sandbox = 'allow-scripts';
     try { localStorage.getItem('probe'); return false; } catch (e) { return true; }
   });
   await frame.locator('#ans-Q1').fill('typed with no storage of my own');
-  await frame.locator('section[data-q="Q1"] .tick input').check();
+  await frame.locator('section[data-q="Q1"] .q-head').hover(); await frame.locator('section[data-q="Q1"] .tick input').check();
   await page.waitForTimeout(2000);
   out.opaqueHostHolds = (await deviceBlob(page)).answers.Q1;
   out.opaqueServerHas = serverAnswer('Q1');
@@ -345,7 +348,7 @@ sandbox = 'allow-scripts';
   out.noInitToldTheReader = await frameEval(page, () => !!document.getElementById('nopersist'));
   const frame = page.frameLocator('#f');
   await frame.locator('#ans-Q1').fill('typed into a brief nobody is holding');
-  await frame.locator('section[data-q="Q1"] .tick input').check();
+  await frame.locator('section[data-q="Q1"] .q-head').hover(); await frame.locator('section[data-q="Q1"] .tick input').check();
   await page.waitForTimeout(2000);
   out.noInitTypedFine = await frame.locator('#ans-Q1').inputValue();
   /* A late init. The wait has already given up and opened the brief with no store,
@@ -358,7 +361,7 @@ sandbox = 'allow-scripts';
       state: { [k]: JSON.stringify({ answers: { Q1: 'the reader\'s earlier saved answer' }, ticks: {}, comments: [] }) } }, '*');
   }, 'brief:' + BRIEF_ID);
   await page.waitForTimeout(1200);
-  await frame.locator('section[data-q="Q1"] .tick input').uncheck();   // a change, which would persist
+  await frame.locator('section[data-q="Q1"] .q-head').hover(); await frame.locator('section[data-q="Q1"] .tick input').uncheck();   // a change, which would persist
   await page.waitForTimeout(1500);
   out.lateInitStillShowsTyped = await frame.locator('#ans-Q1').inputValue();
   out.noInitMessages = [...new Set(await page.evaluate(() => window.__seen))];
@@ -389,7 +392,7 @@ STORE = {};
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(ORIGIN + '/brief.html');
   await page.locator('#ans-Q1').fill('typed at the top level');
-  await page.locator('section[data-q="Q1"] .tick input').check();
+  await page.locator('section[data-q="Q1"] .q-head').hover(); await page.locator('section[data-q="Q1"] .tick input').check();
   await page.waitForTimeout(600);
   out.topLevelNeverInert = await page.evaluate(() => document.body.inert === false);
   out.topLevelUsedOwnStorage = await page.evaluate(() => {

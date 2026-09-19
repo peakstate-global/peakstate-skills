@@ -1,4 +1,7 @@
 import { chromium } from 'playwright';
+/* Tick boxes are revealed by hovering the question head, and the heading slides
+   aside to make room. Hover first, as a reader does, so a click never races the
+   reveal animation (it lost that race on a loaded machine). */
 import { readFileSync } from 'node:fs';
 const url = 'file://' + process.argv[2] + '/test.html';
 const browser = await chromium.launch();
@@ -12,7 +15,7 @@ const okProgress = (await page.locator('#progress').textContent()) === '0/1 ques
 // answer persist
 await page.fill('#ans-Q1', 'my test answer');
 // tick
-await page.check('section[data-q="Q1"] .tick input');
+await page.hover('section[data-q="Q1"] .q-head'); await page.check('section[data-q="Q1"] .tick input');
 /* Collapsing animates over .22s, so asserting straight after check() catches
    the body mid-fold and reports it visible. Wait for the settled height rather
    than for a duration: it is the thing the assertion actually means. */
@@ -51,7 +54,7 @@ const okDownload = /^[a-z0-9-]+-responses-\d{4}-\d{2}-\d{2}\.json$/.test(dlName)
 // reload persistence
 await page.reload();
 const persistTick = await page.locator('section[data-q="Q1"]').evaluate(el => el.classList.contains('done'));
-await page.uncheck('section[data-q="Q1"] .tick input');
+await page.hover('section[data-q="Q1"] .q-head'); await page.uncheck('section[data-q="Q1"] .tick input');
 /* Un-ticking now animates the body back open over .22s. Selecting text before
    it settles scrolls to a position the layout is about to move, which leaves
    the pointer over the topbar and the comment popover never opens. */

@@ -296,6 +296,14 @@ A replied comment leaves the exported JSON **only if the reader has followed it 
 travel it carries `reply` and `follow_up: [texts]` beside the original comment, so you read the
 whole exchange. Unreplied comments export exactly as before.
 
+**Sent comments leave the export on their own.** The renderer stamps every build with
+`data-build`, a hash of the source. When the reader copies or downloads, each exported comment is
+stamped with that build. Once a later build is open, a comment exported under an earlier one and
+untouched since counts as received, and it leaves later exports. A re-copy carries only what is new
+or changed, never the whole history. The comment stays on the page and in the drawer; editing it,
+recolouring it or adding a follow-up makes it travel again. This needs no front matter, so it holds
+even when a regeneration forgets `replies:`. `replies:` is still how the reader sees your answer.
+
 `addressed:` still works for older files: it is the same mechanism with no words, and it renders as
 a reply that says the comment was addressed.
 

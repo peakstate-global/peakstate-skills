@@ -23,6 +23,7 @@
 import { readFileSync, writeFileSync, realpathSync } from 'node:fs';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PARTWORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
@@ -845,6 +846,11 @@ export function render(source, opts = {}) {
      which highlights are now part of the document rather than of one browser. */
   const consumed = meta.consumed ? ' data-consumed="' + escAttr(meta.consumed) + '"' : '';
   const baked = meta.highlights ? ' data-highlights="' + escAttr(meta.highlights) + '"' : '';
+  /* A token that changes whenever the source does. A comment the reader
+     exported under one build and has not touched since is treated as received
+     once a later build arrives, and leaves the export (brief.js, "sent"). Taken
+     from the source, so an unchanged rebuild keeps the same token. */
+  const build = ' data-build="' + createHash('sha256').update(String(source).replace(/\r\n?/g, '\n')).digest('hex').slice(0, 12) + '"';
   /* Publish-only, and private unless the front matter says otherwise. The
      ordinary render never carries these, so a brief that was never published
      cannot be mistaken for one that was. */
@@ -855,7 +861,7 @@ export function render(source, opts = {}) {
   return template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + pub + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + build + pub + '>')
     .replace(/<main>[\s\S]*<\/main>/, '<main>\n\n' + out.join('\n\n') + '\n\n</main>');
 }
 

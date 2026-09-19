@@ -1041,6 +1041,7 @@ label.tick:has(input:checked) { opacity: 1; transform: translateX(0); pointer-ev
    here is what would put the tick back on top of the heading, for exactly the
    readers least able to tolerate it. */
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   label.tick, .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transition: none; }
   /* section.done raises the specificity of the collapse transition, so a bare
      .sec-body rule no longer wins and the fold ran anyway. Matched here rather
