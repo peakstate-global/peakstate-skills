@@ -2902,8 +2902,11 @@ var __briefTip = (() => {
     function wave(h) {
       items.forEach(function (it, i) {
         var d = h < 0 ? 99 : Math.abs(i - h);
-        it.bar.style.setProperty('--swell', d > 3 ? 0 : (4 - d) * 3 + 'px');
+        // '0px', never a bare 0: calc(14px + 0) is invalid and collapses the line.
+        it.bar.style.setProperty('--swell', d > 3 ? '0px' : (4 - d) * 3 + 'px');
         it.bar.classList.toggle('hot', d === 0);
+        it.link.classList.toggle('hot', d === 0);
+        if (d === 0) it.link.scrollIntoView({ block: 'nearest' });
       });
     }
     var active = -1, ticking = false;

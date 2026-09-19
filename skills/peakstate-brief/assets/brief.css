@@ -1396,27 +1396,32 @@ mark.cmt[data-hl] { color: var(--fg); }
   body.has-ptoc:not(.fullwidth) main { margin-left: max(3.5rem, calc((100% - 62rem) / 2)); margin-right: auto; }
   body.has-ptoc:not(.fullwidth) .ptoc { display: flex; }
 }
+/* Every line is always visible, solid, and nearly flush with the window's
+   left edge. Nothing hides until hover. */
 .ptoc { position: fixed; z-index: 40; top: 50%; transform: translateY(-50%);
-        left: calc(max(3.5rem, (100vw - 62rem) / 2) - 3rem); align-items: center; }
+        left: .6rem; align-items: center; }
 .ptoc-bars { display: flex; flex-direction: column; width: 2.2rem; max-height: 80vh; padding: .4rem 0; }
-.ptoc-bar { display: block; flex: 0 1 7px; min-height: 3px; position: relative; cursor: pointer; }
-.ptoc-bar::before { content: ''; position: absolute; left: 0; top: 50%; height: 1.5px; border-radius: 2px;
-  width: calc(var(--w) + var(--swell, 0px)); background: color-mix(in srgb, var(--muted) 60%, transparent); transform: translateY(-50%);
+.ptoc-bar { display: block; flex: 0 0 9px; min-height: 9px; position: relative; cursor: pointer; }
+.ptoc-bar::before { content: ''; position: absolute; left: 0; top: 50%; height: 2px; border-radius: 2px;
+  width: calc(var(--w) + var(--swell, 0px)); background: var(--muted); transform: translateY(-50%);
   transition: width .22s cubic-bezier(.34,1.56,.64,1), background .15s, height .15s;
   transition-delay: calc(var(--i, 0) * 4ms); }
 .ptoc-bar.l2 { --w: 22px; margin-top: 4px; }
-.ptoc-bar.l3 { --w: 10px; }
+.ptoc-bar.l3 { --w: 14px; }
 .ptoc-bar.on::before { background: var(--accent); height: 2.5px; }
 .ptoc-bar.hot::before { background: var(--gold, var(--accent)); }
 .ptoc-list { list-style: none; margin: 0 0 0 .3rem; padding: .35rem 0; max-height: 80vh; overflow-y: auto;
-  min-width: 13rem; max-width: 19rem; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  min-width: 13rem; max-width: 22rem; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
   box-shadow: 0 10px 30px -12px rgba(0,0,0,.35); font: .78rem/1.3 var(--font-ui, system-ui, sans-serif);
   opacity: 0; visibility: hidden; transform: translateX(-6px);
   transition: opacity .15s, transform .15s, visibility 0s linear .2s; }
 .ptoc:hover .ptoc-list, .ptoc:focus-within .ptoc-list {
   opacity: 1; visibility: visible; transform: none; transition: opacity .15s, transform .15s, visibility 0s; }
+/* Labels wrap: a brief never cuts text off. */
 .ptoc-list a { display: block; padding: .18rem .8rem; color: var(--muted); text-decoration: none;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  white-space: normal; overflow-wrap: anywhere; }
+/* The entry whose line the pointer is on lights up, so the click target is clear. */
+.ptoc-list a.hot { background: var(--accent-soft); color: var(--fg); }
 .ptoc-list li.l2 a { color: var(--fg); font-weight: 600; margin-top: .25rem; }
 .ptoc-list li.l3 a { padding-left: 1.5rem; }
 .ptoc-list a:hover, .ptoc-list a:focus-visible { background: var(--accent-soft); color: var(--fg); outline: none; }
@@ -1425,22 +1430,22 @@ mark.cmt[data-hl] { color: var(--fg); }
    the far left. Each entry is a short line and its label; hover brightens the
    label and lengthens the line. Narrower screens keep the bars and popover. */
 @media screen and (min-width: 88rem) {
-  body.has-ptoc:not(.fullwidth) .ptoc { left: 1.5rem; width: calc((100vw - 62rem) / 2 - 3rem); max-width: 18rem; }
+  body.has-ptoc:not(.fullwidth) .ptoc { left: .75rem; width: calc((100vw - 62rem) / 2 - 2rem); max-width: 18rem; }
   .ptoc .ptoc-bars { display: none; }
   .ptoc .ptoc-list, .ptoc:hover .ptoc-list, .ptoc:focus-within .ptoc-list {
     opacity: 1; visibility: visible; transform: none; transition: none;
     margin: 0; min-width: 0; max-width: none; width: 100%; padding: 0;
     background: none; border: 0; box-shadow: none; }
-  .ptoc-list a { display: flex; align-items: center; gap: .55rem; padding: .16rem 0;
+  .ptoc-list a { display: flex; align-items: flex-start; gap: .55rem; padding: .16rem 0;
     color: color-mix(in srgb, var(--muted) 80%, transparent); transition: color .15s; }
-  .ptoc-list a::before { content: ''; flex: none; height: 1.5px; border-radius: 2px; width: 10px;
+  .ptoc-list a::before { content: ''; flex: none; height: 1.5px; border-radius: 2px; width: 10px; margin-top: .62em;
     background: color-mix(in srgb, var(--muted) 60%, transparent);
     transition: width .2s cubic-bezier(.34,1.56,.64,1), background .15s; }
   .ptoc-list li.l2 a { color: color-mix(in srgb, var(--fg) 75%, transparent); margin-top: .5rem; }
   .ptoc-list li.l2 a::before { width: 18px; }
   .ptoc-list li.l3 a { padding-left: 0; }
-  .ptoc-list a:hover, .ptoc-list a:focus-visible { background: none; color: var(--fg); }
-  .ptoc-list a:hover::before, .ptoc-list a:focus-visible::before { width: 26px; background: var(--fg); }
+  .ptoc-list a:hover, .ptoc-list a:focus-visible, .ptoc-list a.hot { background: none; color: var(--fg); }
+  .ptoc-list a:hover::before, .ptoc-list a:focus-visible::before, .ptoc-list a.hot::before { width: 26px; background: var(--fg); }
   .ptoc-list a[aria-current] { color: var(--accent); box-shadow: none; }
   .ptoc-list a[aria-current]::before { background: var(--accent); }
 }
