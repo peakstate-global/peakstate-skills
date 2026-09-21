@@ -1274,8 +1274,17 @@
     }
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
-  window.addEventListener('hashchange', function () { revealTarget(location.hash); });
-  if (location.hash) setTimeout(function () { revealTarget(location.hash); }, 0);
+  /* Published, the host page cannot see this frame's hash, so a jump in here
+     never reaches the address bar and nobody can copy a deep link. Tell the host,
+     which mirrors it into its own URL. `host` is only set once an init has named
+     it, so an unpublished or unframed brief sends nothing. */
+  function tellHostHash() {
+    if (host && FRAMED && location.hash) {
+      window.parent.postMessage({ v: 1, type: 'brief-hash', hash: location.hash }, host);
+    }
+  }
+  window.addEventListener('hashchange', function () { revealTarget(location.hash); tellHostHash(); });
+  if (location.hash) setTimeout(function () { revealTarget(location.hash); tellHostHash(); }, 0);
 
   var citedBy = {};
   Array.prototype.forEach.call(document.querySelectorAll('sup.fn > a[href^="#"]'), function (a, i) {
@@ -2258,6 +2267,10 @@
       host = e.origin;
       hostStore = normaliseStore(d.state);
       start();
+      /* A deep link to the host page: its `#fragment` rides on the init. Set only
+         after start(), so the hashchange listener init() installs does the reveal
+         and scroll, once. The frame's own hash wins if it already has one. */
+      if (typeof d.hash === 'string' && d.hash.charAt(0) === '#' && !location.hash) location.hash = d.hash;
     });
     /* Carries no reader data — it only says this document is ready and asks the
        host to name itself. Answers and comments go to a known origin, never to '*'.

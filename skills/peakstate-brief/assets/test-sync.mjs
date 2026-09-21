@@ -55,6 +55,11 @@ const HOST_PAGE = (sandbox) => `<!doctype html><meta charset="utf-8"><title>host
      would make this double more forgiving than the page it stands in for, and a
      document that sent a number would pass here and fail in production. */
   window.__id = function (v) { return String(v); };
+  /* A deep link to the host page: its hash rides on the init, and every
+     brief-hash the document sends back is recorded. */
+  window.__hash = (/[?&]hash=([^&]+)/.exec(location.search) || [])[1] || '';
+  if (window.__hash) window.__hash = '#' + window.__hash;
+  window.__hashes = [];
   /* The host owns the storage. localStorage on THIS page, because the host has a
      real origin and survives the frame being reloaded — which is what "the same
      device" means to the cases below. */
@@ -71,9 +76,12 @@ const HOST_PAGE = (sandbox) => `<!doctype html><meta charset="utf-8"><title>host
     if (window.__mute) return;
     if (d.type === 'brief-sync-hello') {
       if (window.__eathello) { window.__eathello = false; return; }
-      w.postMessage({ v: 1, type: 'brief-sync-init', state: window.__store() }, '*');
+      var init = { v: 1, type: 'brief-sync-init', state: window.__store() };
+      if (window.__hash) init.hash = window.__hash;
+      w.postMessage(init, '*');
       return;
     }
+    if (d.type === 'brief-hash') { window.__hashes.push(d.hash); return; }
     if (d.type === 'brief-store-set') {
       for (var k in d.data) localStorage.setItem(k, d.data[k]);
       return;
@@ -494,6 +502,26 @@ sandbox = 'allow-scripts';
 }
 assert.ok(out.overCapWarned, 'the reader is told the over-cap change is not being kept');
 assert.ok(out.overCapHeldLength < 270000, 'the over-cap value was never handed to the host');
+
+/* ── 12. deep links: the host's hash opens the brief there, and a jump in the
+   brief is reported back so the host can put it in its own URL ────────── */
+STORE = {};
+briefHtml = published;
+sandbox = 'allow-scripts';
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html?hash=s-definitions');
+  await page.waitForTimeout(1200);
+  out.deepLinkFrameHash = await frameEval(page, () => location.hash);
+  await frameEval(page, () => { location.hash = '#ref2'; });
+  await page.waitForTimeout(300);
+  out.deepLinkReported = await page.evaluate(() => window.__hashes);
+  await ctx.close();
+}
+assert.equal(out.deepLinkFrameHash, '#s-definitions', 'the init hash was applied inside the frame');
+assert.deepEqual(out.deepLinkReported, ['#s-definitions', '#ref2'], 'every hash change reached the host');
 
 await browser.close();
 server.close();
