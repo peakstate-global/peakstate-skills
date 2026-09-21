@@ -1216,16 +1216,32 @@ body.fullwidth .sec-body, body.fullwidth .q-body {
   .brief-title h1 { font-size: 2.1rem; }
   .brief-title .sub { font-size: 1.14rem; }
   h2.part { font-size: 1.6rem; }
-  /* On a phone every inset stacks (page, card, section step), and at 375px they
-     left a 241px column. The page and card give back most of it; the left step
-     keeps just enough for the tick; the right step goes, because the page
-     padding already gives the text an edge to stop against. */
-  main { padding-inline: .75rem; }
+  /* On a phone every inset stacks: page, summary card, section step, then the
+     box the text sits in. Trimming each one still left the text 48-62px in at
+     390px, so the staircase goes flat here, the same way it does on paper: no
+     step, the tick inline in the heading row, no heading shift. Boxes keep a
+     thin padding so their border or rail still reads as a box. */
+  main { padding-inline: .625rem; }
   /* Full width pads with --pad-x on a more specific selector; match it. */
-  body.fullwidth main { --pad-x: .75rem; }
-  .summary-page { padding: 1.1rem .85rem 1.2rem; }
-  :root { --step: 1.35rem; }
-  section.brief-section, section.q { padding-right: 0; }
+  body.fullwidth main { --pad-x: .625rem; }
+  .summary-page { padding: 1rem .6rem 1.1rem; }
+  :root { --step: 0rem; }
+  section.brief-section, section.q { padding-inline: 0; }
+  label.tick { position: static; height: auto; padding-left: 0; margin-left: 0;
+               opacity: 1; transform: none; pointer-events: auto; }
+  /* Specificity matches the hover / focus / checked shift above, so this wins
+     over all three as well as the touch rule. */
+  :is(.sec-head, .q-head) :is(h2, h3),
+  :is(.sec-head, .q-head):is(:hover, :focus-within, :has(input:checked)) :is(h2, h3) {
+    transform: none; max-width: none;
+  }
+  details.example { margin-left: 0; }
+  .verdict { padding: .7rem .75rem; }
+  .defs-in .term { padding: .65rem; }
+  .l5 { padding: .6rem .65rem; }
+  /* No hanging indent on a phone: every line starts just past the number. */
+  ol.reflist { padding: 0; }
+  ol.reflist > li { padding-left: 2.1rem; text-indent: 0; }
   /* Measured at 375px: the copy/download pair ran past the right edge. */
   .topbar { gap: .5rem; padding-inline: .75rem; }
   /* The title gets squeezed to a sliver here anyway; the page heading carries it. */
