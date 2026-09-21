@@ -131,9 +131,14 @@
   var THEMES = ['auto', 'light', 'dark'];
   var TICON = { auto: '\u25D0', light: '\u2600\uFE0E', dark: '\u263E' };
   var TLABEL = { auto: 'Theme: system', light: 'Theme: light', dark: 'Theme: dark' };
+  /* Set by the host's brief-theme message. Once the page framing this brief
+     owns the theme, its switch is the only one: this one hides and this
+     document's own saved choice stops applying. */
+  var hostTheme = null;
   function applyUI() {
-    if (ui.theme === 'auto') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', ui.theme);
+    var th = hostTheme || ui.theme;
+    if (th === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', th);
     document.body.classList.toggle('fullwidth', ui.width === 'full');
     var tbn = document.getElementById('themeBtn'), wbn = document.getElementById('widthBtn');
     if (tbn) {
@@ -151,6 +156,18 @@
   var themeBtn = document.getElementById('themeBtn');
   if (themeBtn) themeBtn.addEventListener('click', function () {
     ui.theme = THEMES[(THEMES.indexOf(ui.theme) + 1) % THEMES.length]; applyUI();
+  });
+  /* Host to brief: the page's resolved theme, sent after init and on every
+     change. Same origin rule as brief-hash-set: only the host that initialised
+     this document is heard. */
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!host || !d || d.v !== 1 || d.type !== 'brief-theme') return;
+    if (e.source !== window.parent || e.origin !== host) return;
+    if (d.theme !== 'light' && d.theme !== 'dark') return;
+    hostTheme = d.theme;
+    if (themeBtn) themeBtn.style.display = 'none';
+    applyUI();
   });
   var widthBtn = document.getElementById('widthBtn');
   if (widthBtn) widthBtn.addEventListener('click', function () {

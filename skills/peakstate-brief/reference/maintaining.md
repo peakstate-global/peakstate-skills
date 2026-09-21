@@ -69,6 +69,7 @@ Seven messages, all `{ v: 1, type }`:
 | parent → doc | `brief-sync-res` `{id, ok, store, overCap}` | the 200 body, or `ok: false` on any error |
 | doc → parent | `brief-hash` `{hash}` | the document's hash changed; the host mirrors it into its own URL with `replaceState`. The host accepts only `#` plus `[A-Za-z0-9._~:-]`, 200 characters at most, or exactly `''`, which CLEARS the host's fragment (Back past the first jump) |
 | parent → doc | `brief-hash-set` `{hash}` | the host page's own hash changed after init (a same-document link or bookmark), so the frame did not reload. Same validation, `''` clears. Sent only after an init; the document applies it and does not echo it back as `brief-hash` |
+| parent → doc | `brief-theme` `{theme}` | the host page's resolved theme, `light` or `dark`. Sent after init and on every change. The document applies it, hides its own theme button, and ignores its saved theme from then on |
 
 `state` and `data` are both a **store**: a flat object of `localStorage`-shaped
 keys to string values, exactly what `brief-sync-res` returns as `store`. Two keys
