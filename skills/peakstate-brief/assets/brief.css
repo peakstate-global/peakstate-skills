@@ -1035,7 +1035,9 @@ label.tick:has(input:checked) { opacity: 1; transform: translateX(0); pointer-ev
    the room for it. */
 @media (hover: none) {
   label.tick { opacity: 1; transform: none; }
-  .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transform: translateX(2.1rem); }
+  /* The shift is paid back on the width, so a long heading wraps rather than
+     running 2.1rem past the column's right edge. */
+  .sec-head h3, .q-head h3, .sec-head h2, .q-head h2 { transform: translateX(2.1rem); max-width: calc(100% - 2.1rem); }
 }
 /* Reduced motion kills the ANIMATION, never the offset. Removing the transform
    here is what would put the tick back on top of the heading, for exactly the
@@ -1219,6 +1221,8 @@ body.fullwidth .sec-body, body.fullwidth .q-body {
      keeps just enough for the tick; the right step goes, because the page
      padding already gives the text an edge to stop against. */
   main { padding-inline: .75rem; }
+  /* Full width pads with --pad-x on a more specific selector; match it. */
+  body.fullwidth main { --pad-x: .75rem; }
   .summary-page { padding: 1.1rem .85rem 1.2rem; }
   :root { --step: 1.35rem; }
   section.brief-section, section.q { padding-right: 0; }
