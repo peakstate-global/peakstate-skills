@@ -523,6 +523,48 @@ sandbox = 'allow-scripts';
 assert.equal(out.deepLinkFrameHash, '#s-definitions', 'the init hash was applied inside the frame');
 assert.deepEqual(out.deepLinkReported, ['#s-definitions', '#ref2'], 'every hash change reached the host');
 
+/* ── 13. deep links: Back past the first jump CLEARS the host's fragment, and a
+   host-side hash change (brief-hash-set) moves the brief without being echoed ── */
+STORE = {};
+{
+  const ctx = await browser.newContext(VIEWPORT);
+  const page = await ctx.newPage();
+  await page.exposeFunction('__review', ({ base, next }) => serverMerge(base, next));
+  await page.goto(ORIGIN + '/host.html');
+  await page.waitForTimeout(1200);
+  await frameEval(page, () => { location.hash = '#ref2'; });
+  await page.waitForTimeout(300);
+  await frameEval(page, () => { history.back(); });
+  await page.waitForTimeout(500);
+  out.clearFrameHash = await frameEval(page, () => location.hash);
+  out.clearReported = await page.evaluate(() => window.__hashes.slice());
+  const hashSet = (hash) => page.evaluate((h) => {
+    document.getElementById('f').contentWindow.postMessage({ v: 1, type: 'brief-hash-set', hash: h }, '*');
+  }, hash);
+  await hashSet('#ref1');
+  await page.waitForTimeout(300);
+  out.hashSetApplied = await frameEval(page, () => location.hash);
+  await hashSet('#a b');
+  await page.waitForTimeout(300);
+  out.hashSetMalformed = await frameEval(page, () => location.hash);
+  await hashSet('');
+  await page.waitForTimeout(300);
+  out.hashSetCleared = await frameEval(page, () => location.hash);
+  out.hashSetEchoes = (await page.evaluate(() => window.__hashes)).slice(out.clearReported.length);
+  /* The echo guard is one-shot: the reader's own next jump still reaches the host. */
+  await frameEval(page, () => { location.hash = '#ref3'; });
+  await page.waitForTimeout(300);
+  out.afterHashSetReported = (await page.evaluate(() => window.__hashes)).slice(out.clearReported.length);
+  await ctx.close();
+}
+assert.equal(out.clearFrameHash, '', 'Back left the frame with no fragment');
+assert.deepEqual(out.clearReported, ['#ref2', ''], 'the cleared fragment reached the host as an empty hash');
+assert.equal(out.hashSetApplied, '#ref1', 'brief-hash-set moved the brief');
+assert.equal(out.hashSetMalformed, '#ref1', 'a malformed brief-hash-set was ignored');
+assert.equal(out.hashSetCleared, '', 'an empty brief-hash-set cleared the frame fragment');
+assert.deepEqual(out.hashSetEchoes, [], 'brief-hash-set was never echoed back as brief-hash');
+assert.deepEqual(out.afterHashSetReported, ['#ref3'], 'the reader\'s next jump is still reported');
+
 await browser.close();
 server.close();
 console.log(JSON.stringify(out, null, 1));

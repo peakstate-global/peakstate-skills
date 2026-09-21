@@ -1277,13 +1277,38 @@
   /* Published, the host page cannot see this frame's hash, so a jump in here
      never reaches the address bar and nobody can copy a deep link. Tell the host,
      which mirrors it into its own URL. `host` is only set once an init has named
-     it, so an unpublished or unframed brief sends nothing. */
+     it, so an unpublished or unframed brief sends nothing. An empty hash is sent
+     as '' and means CLEAR: Back past the first jump drops the host's fragment too. */
+  var hashFromHost = null;
   function tellHostHash() {
-    if (host && FRAMED && location.hash) {
-      window.parent.postMessage({ v: 1, type: 'brief-hash', hash: location.hash }, host);
-    }
+    if (!host || !FRAMED) return;
+    /* The host moved us with brief-hash-set; its URL already says so, and echoing
+       it back would be a ping-pong. One-shot, so the reader's own next jump to
+       the same place is still reported. */
+    if (hashFromHost !== null && location.hash === hashFromHost) { hashFromHost = null; return; }
+    hashFromHost = null;
+    window.parent.postMessage({ v: 1, type: 'brief-hash', hash: location.hash }, host);
   }
   window.addEventListener('hashchange', function () { revealTarget(location.hash); tellHostHash(); });
+  /* The host page's own fragment moved after init (a same-document link or a
+     bookmark to this brief), so the frame did not reload and no init carries it.
+     Same origin and validation rules as every other host message. */
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!host || !d || d.v !== 1 || d.type !== 'brief-hash-set') return;
+    if (e.source !== window.parent || e.origin !== host) return;
+    var h = d.hash;
+    if (typeof h !== 'string' || h.length > 200 || (h !== '' && !/^#[A-Za-z0-9._~:-]+$/.test(h))) return;
+    if (h === location.hash) return;
+    if (h === '') {
+      /* replaceState, not `location.hash = ''`, which would leave a bare '#'.
+         It fires no hashchange, so there is nothing to echo. */
+      history.replaceState(history.state, '', location.pathname + location.search);
+      return;
+    }
+    hashFromHost = h;
+    location.hash = h;
+  });
   if (location.hash) setTimeout(function () { revealTarget(location.hash); tellHostHash(); }, 0);
 
   var citedBy = {};

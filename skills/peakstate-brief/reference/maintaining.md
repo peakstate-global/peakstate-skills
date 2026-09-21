@@ -58,7 +58,7 @@ The document is served inside a sandboxed frame with no `allow-same-origin`, so
 its origin is opaque: it cannot call the review endpoint, and it cannot touch
 `localStorage` either — reading the property throws rather than returning null.
 The host owns both the network and the storage; the document owns the protocol.
-Six messages, all `{ v: 1, type }`:
+Seven messages, all `{ v: 1, type }`:
 
 | Direction | Message | Meaning |
 |---|---|---|
@@ -67,7 +67,8 @@ Six messages, all `{ v: 1, type }`:
 | doc → parent | `brief-store-set` `{data}` | keep this; fire and forget, no reply. The host writes its own `localStorage` |
 | doc → parent | `brief-sync-put` `{id, briefId, slug, base, next}` | forward `base`/`next` to `PUT /api/briefs/<briefId>/review` |
 | parent → doc | `brief-sync-res` `{id, ok, store, overCap}` | the 200 body, or `ok: false` on any error |
-| doc → parent | `brief-hash` `{hash}` | the document's hash changed; the host mirrors it into its own URL with `replaceState`. The host accepts only `#` plus `[A-Za-z0-9._~:-]`, 200 characters at most |
+| doc → parent | `brief-hash` `{hash}` | the document's hash changed; the host mirrors it into its own URL with `replaceState`. The host accepts only `#` plus `[A-Za-z0-9._~:-]`, 200 characters at most, or exactly `''`, which CLEARS the host's fragment (Back past the first jump) |
+| parent → doc | `brief-hash-set` `{hash}` | the host page's own hash changed after init (a same-document link or bookmark), so the frame did not reload. Same validation, `''` clears. Sent only after an init; the document applies it and does not echo it back as `brief-hash` |
 
 `state` and `data` are both a **store**: a flat object of `localStorage`-shaped
 keys to string values, exactly what `brief-sync-res` returns as `store`. Two keys
