@@ -22,19 +22,19 @@
    and permanent: the reader sees a brief with no runtime and no way to know why.
    A commit SHA cannot move, so the SHA and the two hashes below pin the same
    bytes forever. Recompute all three together or none of them. */
-var BRIEF_CDN = 'https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@3ffa58c9f8c7222e3fb3590b7b9db7e53a485d6a/skills/peakstate-brief/assets';
+var BRIEF_CDN = 'https://cdn.jsdelivr.net/gh/peakstate-global/peakstate-skills@40fd4f5f1a69463f25328f651ca79b2db6e08d78/skills/peakstate-brief/assets';
 function briefCdnCss(el) {
   el.remove();
   var l = document.createElement('link');
   l.rel = 'stylesheet'; l.href = BRIEF_CDN + '/brief.css';
-  l.integrity = 'sha384-00cswOmG1sM+PpTxLvn39BWncH9beEyfaAeb9/7oOCY/1cTGxSayPKV7LmqKQArJ'; l.crossOrigin = 'anonymous';
+  l.integrity = 'sha384-nJYJKqf0zpl+IDnvsORy5NPvVgQWs+6XMoKnrthvLP1etWJs9x83AZwZ8lbytVSr'; l.crossOrigin = 'anonymous';
   document.head.appendChild(l);
 }
 function briefCdnJs(el) {
   el.remove();
   var s = document.createElement('script');
   s.src = BRIEF_CDN + '/brief.js';
-  s.integrity = 'sha384-Kmg2L9v9a90BkiLJYeM3qO1hAY4KHDO8pbU+7lzce01OaqUl0aMd+j7LiEvKU4YO'; s.crossOrigin = 'anonymous';
+  s.integrity = 'sha384-bXi9KW487F/tdGqFsGrsrz+BQfTEWhsepHOW72/G7Yu1it7VxeTjkZJ498QCj1oW'; s.crossOrigin = 'anonymous';
   s.onerror = briefNoRuntime;
   document.body.appendChild(s);
 }
