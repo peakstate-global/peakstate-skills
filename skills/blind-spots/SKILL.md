@@ -38,7 +38,7 @@ If you cannot browse or open files, say so in one line. Any fact from memory is 
 Your next three moves. Each has an owner, a first action this week and an observable result. The owner is "you" or a role the user named. Never invent a person, a date or a source.
 
 1. Run the cheap test for the top-ranked assumption and record what it shows.
-2. Ask the checking question for the highest-confidence finding, or reword the passage it came from.
+2. Ask the checking question for the highest-confidence finding, or reword the passage it came from. If no bias or fallacy finding reaches medium confidence, base this move on the top-ranked assumption instead: name the assumption and its cheap test.
 3. Show the revised argument to one person who disagrees with it, and note their first objection.
 
 To ground the claims themselves in sources, the user may also like a skill for checking claims and provenance, if they have one. Do not run it for them.
