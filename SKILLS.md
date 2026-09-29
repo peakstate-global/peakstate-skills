@@ -14,6 +14,8 @@ CLI and anything else that reads the format.
 | [root-cause](skills/root-cause/) | Guides a team from a symptom to a problem statement, containment, a 5 Whys, fishbone or Pareto analysis drawn as a diagram and a text tree, two or three suspected causes with confirming evidence, and a first fix with reach, reversal and a rollback trigger | **Yes.** Markdown only |
 | [double-diamond](skills/double-diamond/) | Takes a fuzzy challenge through Discover, Define, Develop and Deliver, holds back every solution until you confirm the problem statement, and ends with the options, a chosen direction, an assumptions table, hypotheses with thresholds set before the test, and the next test with its owner and date | **Yes.** Markdown only |
 | [improve-prompt](skills/improve-prompt/) | Shows an improved version of a prompt you paste, with a table of each change and the reason for it, asks at most two clarifying questions, and runs the prompt only after an explicit yes. An edit is shown again before anything runs | **Yes.** Markdown only |
+| [pyramid-rewrite](skills/pyramid-rewrite/) | Rewrites a document answer-first: the answer, then the situation, complication and question behind it (SCQA), with point headings. Keeps every fact, adds none, and never picks a recommendation the writer did not make | **Yes.** Markdown only |
+| [plain-english](skills/plain-english/) | Rewrites text to the core Simplified Technical English rules and flags each jargon word, passive verb and long sentence with the rule behind it. Keeps every fact and never guesses who did something | **Yes.** Markdown only |
 
 ## Conventions every skill here follows
 
