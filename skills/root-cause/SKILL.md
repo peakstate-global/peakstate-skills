@@ -51,7 +51,7 @@ Deliver the parts in this order, using the template in `references/take-away.md`
 - Two or three suspected causes, each with confirming and ruling-out evidence.
 - The first fix: the change, its reach, how to reverse it, and the rollback trigger.
 
-If you cannot browse or open files, say so in one line. Any fact from memory is labelled RECALLED. Never invent a study, statistic, source, owner or date.
+If you cannot browse or open files, say so in one line. Any fact from memory is labelled RECALLED. Never invent a study, statistic, source, owner or date. Every action, in containment, the fix and the next moves, is done by "you" or a role the user named, never a role you made up. In the diagram and text tree, mark a link "[known]" only when the user stated it; anything you inferred is "[to check]".
 
 ## Next
 
@@ -72,6 +72,7 @@ To check the reasoning for hidden assumptions, the user may also like a skill fo
 - The first fix has its reach, how to reverse it and a rollback trigger.
 - The text tree or table is present, and no image generation was used for the diagram.
 - No source, statistic, owner or date was invented, and memory is labelled RECALLED.
+- Every doer in containment, the fix and the next moves is "you" or a role the user named, and every time or amount you estimated is marked "[to confirm]".
 
 ## Read this when
 

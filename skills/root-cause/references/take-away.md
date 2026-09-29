@@ -28,7 +28,7 @@ Suspected causes
 First fix
 Change: {{the smallest change that acts on cause 1}}
 Reach: {{what and who it touches}}
-Reversal: {{how to undo it, and how long it takes}}
+Reversal: {{how to undo it, and how long it takes, marked [to confirm] unless the user said}}
 Worked if: {{result, number, period}}
 Rollback if: {{result, number, period}}. Then reverse the fix and keep the containment.
 
@@ -40,7 +40,8 @@ Your next three moves
 
 ## Worked example (short)
 
-A warehouse shipped 14 orders to old addresses last week.
+A warehouse shipped 14 orders to old addresses last week. The user said labels print from the
+overnight order export and named a dispatch lead.
 
 ```text
 Problem statement
@@ -70,7 +71,7 @@ Suspected causes
 First fix
 Change: the export reads the live delivery address at print time.
 Reach: label printing at one warehouse for one week.
-Reversal: switch the export setting back; about ten minutes.
+Reversal: switch the export setting back; about ten minutes [to confirm].
 Worked if: zero wrong-address orders in one week, from at least 5 recent address changes.
 Rollback if: any wrong-address order, or label printing slower than 2 seconds a label.
 ```

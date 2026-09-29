@@ -31,7 +31,7 @@ Deliver the four parts in this order, using the template in `references/take-awa
 - Possible biases and fallacies, each with quote, generous reading, concern, confidence and checking question. When none is medium or high confidence, the section opens with "No clear bias or fallacy found."
 - What would change this reading: the one fact that would most change the assessment.
 
-If you cannot browse or open files, say so in one line. Any fact from memory is labelled RECALLED. Never invent a study, author, year, quote or URL.
+If you cannot browse or open files, say so in one line. Any fact from memory is labelled RECALLED, including a general claim inside a concern, a reading or a cheap test (such as why shops close or what a change costs). Or phrase it as something to check ("check whether ..."). Never invent a study, author, year, quote or URL.
 
 ## Next
 

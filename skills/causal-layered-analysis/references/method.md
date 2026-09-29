@@ -86,12 +86,14 @@ When the question is about the user's own life, run the same steps with the inne
 Auto mode picks four inner selves or inner worldviews at each checkpoint. State nothing about
 the user's life that they did not say. An inner voice, habit, fear, motive or cause the user
 did not name is a candidate to explore, marked `[to confirm]`. This applies at every layer and
-to every sideways reading: a lens says what it would look for, and the user decides if it fits.
+to every sideways reading: a lens says what it would look for, and the user decides if it fits. Each Drivers or Incentives line is wholly a question or wholly one marked candidate. A general mechanism stated before the marker still reads as a fact about the user.
 
 | Do not write | Write |
 |---|---|
 | Taoist: you force against the grain of your own energy. | Taoist: a possible reading to test: is effort going against the grain of your energy? `[to confirm]` |
 | Stoic: the distress comes from carrying outcomes you cannot control. | Stoic: a possible reading to test: some of the load may be outcomes outside your control. `[to confirm]` |
+| Incentives: finishing gets praise and starting does not. Starting may feel risky `[to confirm]`. | Incentives: a possible reading to test: finishing gets praise and starting does not, so starting feels risky. `[to confirm]` |
+| Drivers: deadlines pile up at the end of term. Is that true for you? | Drivers: do your deadlines pile up at one time of year? |
 
 Keep the marker when a thread is carried forward and in the take-away. Never assume the user's gender, family
 or history; write headlines about the user with "I" or "you". Draw no medical conclusion (skill rule).

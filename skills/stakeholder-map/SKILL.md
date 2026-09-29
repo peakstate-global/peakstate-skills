@@ -36,7 +36,7 @@ In the first reply, say once: "Power and interest ratings about named people are
 If the user asks to skip the questions, build the whole take-away in one pass from what they gave: every rating is "suggested", every unknown is `[to confirm]`, and the warning stays. Then offer to confirm the ratings.
 
 1. **Name the change.** Ask one question: what change or decision is the map for, and who decides.
-2. **List the stakeholders.** Ask one question: who is affected, who decides, and who could block it. Accept names, roles or groups. Keep each as the user wrote it.
+2. **List the stakeholders.** Ask one question: who is affected, who decides, and who could block it. Accept names, roles or groups. Keep each as the user wrote it. Never assume a stakeholder's gender from a name or a role: refer to each by name or role, or use "they", unless the user used a pronoun for that person.
 3. **Rate power and interest.** For each stakeholder, suggest high or low power and high or low interest, with a one-line reason from what the user said (S1). Ask the user to confirm or correct them in one reply. A rating the user gives or confirms is marked "you". Every other rating stays "suggested", including after "your call" or "I don't know". Never mark a suggested rating as confirmed.
 4. **Find what each cares about.** Ask one question: what does each stakeholder care about most in this change? What the user says is used as given. An unknown concern is `[to confirm]`, with a question the user could ask that person. Do not guess a concern and state it as fact.
 5. **Write one message each.** One or two sentences per stakeholder, aimed at what they care about and fitted to their quadrant (S2). Use `references/method.md`. When the concern is `[to confirm]`, write the message from the change itself and mark it "[depends on: concern to confirm]".
@@ -72,6 +72,7 @@ If you need to prepare a hard conversation with one of these people, the user ma
 - Each reply before the take-away asked at most one question, unless the user asked to skip them.
 - Every rating says "you" or "suggested", and no suggested rating is called confirmed.
 - No concern is stated as fact unless the user gave it; unknowns are `[to confirm]`.
+- No reply calls a stakeholder "he" or "she" unless the user did; each is named, given a role, or "they".
 - Every stakeholder has one message, and a message that rests on an unknown concern is marked.
 - The text table is present, the diagram rung is named, and no image generation was used.
 - The three next moves have an owner, a first action this week and an observable result, with no invented person or date.
