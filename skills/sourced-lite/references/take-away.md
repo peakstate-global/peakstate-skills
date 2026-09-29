@@ -3,7 +3,7 @@
 Fill every part. Keep the order. Entries follow the method library (S1).
 
     ## Final position
-    <The answer in one to three sentences, citing the findings it rests on, such as (F2, F7). Conditions go in the sentence, not a footnote.>
+    <The answer in one to three sentences. Each sentence ends with the rows and findings that hold its facts, such as (C1, F2). Conditions go in the sentence, not a footnote.>
 
     ## Claim ledger
     | # | Claim | Label | Evidence and locator | Status |
@@ -50,7 +50,7 @@ The user asks whether a four-day week raises output. They confirm they want to t
     F3 [C2] In shift work, output tracks staffed hours → C2 would be false if shift teams on a four-day week held output with no extra staff.
     F4 [F1, F2, F3] → Integration, conditional. Region: work where people control their own hours. Observation that places a case in it: can a person move a task to another day without anyone waiting on them? (INFERRED)
 
-- **Final position:** A four-day week kept output steady in the one trial that measured it, so the ledger does not support the claim that it raises output, and in shift work output tracks staffed hours (F1, F2, F4).
+- **Final position:** A four-day week kept output steady in the one trial in the ledger, so the ledger does not support the claim that it raises output (C1, F1, F2). In shift work, output tracks staffed hours (C2, F3, F4).
 - **Decision record entry:** Decision: which result to trust. Options: the trial report; press summaries of it. Evidence: C1. Chosen: the trial report. Rejected: the press summaries, because they are not in the ledger (INFERRED). Uncertainty: C1 is one trial (C1).
 - **Wrong, and why:** `F5 [C1] "output held steady" → and several other trials found a bigger gain.` The other trials are not in the ledger, so the conclusion adds a fact. Add each trial as a row with its quote, then write a line from that row, or cut it.
 - **Wrong, and why:** a sentence under the findings that starts "Worth noting, the trial was run by a group that promotes the idea." It is not a numbered line and has no row. Make the stake a ledger row (RECALLED if unchecked), then write a line from it.
