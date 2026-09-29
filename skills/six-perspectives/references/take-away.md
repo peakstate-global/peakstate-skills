@@ -1,6 +1,6 @@
 # Take-away template
 
-Fill every line. Keep the order. Mark every item "yours" or "suggested". A line that records a gap ("not given", or "[to confirm]" for who decides or by when) is not an item and carries no marker. Use lists, not tables, so user text needs no escaping.
+Fill every line. Keep the order. Mark every item "yours" or "suggested". A "yours" item is the user's words, unchanged, with nothing added; an addition of yours is a separate "suggested" item, and a "no source" or "no figure" note goes in the reply text, never in an item. A line that records a gap ("not given", or "[to confirm]" for who decides or by when) is not an item and carries no marker. Use lists, not tables, so user text needs no escaping.
 
 ```md
 ### Synthesis
@@ -79,8 +79,8 @@ A shop owner asks whether to open on Sundays. The user said: "Foot traffic on Sa
 
 ### Facts
 
-- Known: Saturday is the busiest day for foot traffic (you said) (yours)
-- Known: The café next door opens on Sundays (you said) (yours)
+- Known: Foot traffic on Saturdays is your busiest (you said) (yours)
+- Known: A café next door opens Sundays (you said) (yours)
 - To find out: Sunday foot traffic in the street (suggested)
 - To find out: Whether any current staff want Sunday shifts (suggested)
 
@@ -91,7 +91,7 @@ A shop owner asks whether to open on Sundays. The user said: "Foot traffic on Sa
 
 ### Risks
 
-- No staff for Sundays yet (yours)
+- You'd have to find staff (yours)
 - The owners end up working the Sunday shifts themselves (suggested)
 
 ### Benefits

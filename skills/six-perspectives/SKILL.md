@@ -19,7 +19,7 @@ Run the steps in order. Ask one question at a time and wait for the answer. If t
 Rules for every mode:
 
 - **Stay in the mode.** Everyone looks in the same direction at the same time. Do not argue with an item from another mode. If the user gives an item that belongs to another mode (a worry during benefits), say where it goes and put it there. Never drop it. An item that fits no mode goes to "Parked".
-- **User first.** Ask for the user's view in the mode, then add up to four suggested items from `references/modes.md`. Mark every item "yours" or "suggested". A "yours" item holds only what the user said, with no note of yours added to it; put any comment or advice of your own in a separate "suggested" item. A line that records a gap ("not given", or "[to confirm]" for the decision-maker or the date) is not an item and carries no marker. If the user rejects a suggested item, drop it, and do not bring it back in a later mode or in the next moves.
+- **User first.** Ask for the user's view in the mode, then add up to four suggested items from `references/modes.md`. Mark every item "yours" or "suggested". A "yours" item holds only the user's words, unchanged except "I" and "our" become "you" and "your". Add nothing to it, not even a few words. To add to a user's item, write a separate "suggested" item. If you have no source or give no figure, say so once in the reply text, never inside an item. A line that records a gap ("not given", or "[to confirm]" for the decision-maker or the date) is not an item and carries no marker. If the user rejects a suggested item, drop it, and do not bring it back in a later mode or in the next moves.
 - **Nothing to add is allowed.** If the user has nothing for a mode, do not argue or stop. Record "none from you", add suggested items, and move on.
 - **No invention.** Never invent a person, a date, a number, a study or a source. This covers suggested items too: say "a shorter or smaller trial", not "one month" or "half the team", unless the user gave the size. A fact from memory is labelled RECALLED. A fact the user is not sure of is "[to confirm]".
 - **About the user.** On a personal question, every statement about the user's causes, motives, feelings, habits, history or situation that the user did not state is a question, or "A possible reading to test: ... [to confirm]". Never assume gender, age, family or money.
@@ -61,7 +61,7 @@ To test the plan behind the decision, the user may also like a skill for a pre-m
 
 - The user confirmed the topic and question before any mode ran.
 - The modes ran in order, one per turn (unless the user asked to skip), and each asked for the user's view before any suggestion.
-- Every item sits in its own mode, is marked "yours" or "suggested", and nothing the user said was dropped (check "Parked"). Every "yours" item holds only the user's words, with no text of yours appended.
+- Every item sits in its own mode, is marked "yours" or "suggested", and nothing the user said was dropped (check "Parked"). Every "yours" item holds only the user's words, unchanged, with no text of yours appended; any "no source" or "no figure" note is in the reply text, not in an item.
 - The feelings section records the user's words and does not name or explain the user's feeling.
 - No person, date, number, study or source was invented, in suggested items too; memory is labelled RECALLED; unsure facts read "[to confirm]".
 - On a personal question, every statement about the user that the user did not state is a question or a marked possible reading.
