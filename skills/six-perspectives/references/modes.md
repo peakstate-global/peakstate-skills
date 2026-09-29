@@ -14,7 +14,7 @@ In each mode, everyone looks in the same direction at the same time. Ideas are p
 | Feelings | Gut reactions, hunches, likes, dislikes, fears, in a few words and with no reasons | Arguments for or against | How might the people affected react when they hear? Who might feel left out? | (S1, S2, S3) |
 | Risks | What could go wrong, weak points, what does not fit | Feelings without a reason, new options | What must be true for this to work? What if it takes longer or costs more? Who could block it? | (S1, S3) |
 | Benefits | Value, gains, who gains, what each gain rests on | Hope with nothing behind it | Who is better off, and how would you see it? What does this make possible later? | (S1, S3) |
-| Ideas | Other ways, changes that answer a risk, new options | Judging the ideas | What would halve the top risk? What is a smaller trial? What would a very different option look like? | (S1, S2) |
+| Ideas | Other ways, changes that answer a risk, new options | Judging the ideas | What would reduce the top risk? What is a smaller trial? What would a very different option look like? | (S1, S2) |
 | Process | Who decides, by when, what they need to see, the next step in the thinking | The decision itself, made for the user | Who must agree? What evidence would they want? What is the first step? | (S1, S2, S3) |
 
 ## Moving items between modes (skill rule)

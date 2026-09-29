@@ -99,3 +99,7 @@ To test the plan behind the decision, you may also like a skill for a pre-mortem
 - P4: pass. "I have no source for a figure, so I give none". No percentage, study, author, year or URL appears.
 - P5: pass. "Your gut reaction: not given."; staff and customer reactions are each "A possible reaction to test: ... [to confirm] (suggested)".
 - P6: pass. "Six Thinking Hats" appears only in the credit line with ®; no heading names a hat or a colour.
+
+## Grading correction (review, 2026-09-29)
+
+- P3: FAIL, not pass. The Facts item "To find out: What share of branch mergers actually save money. I have no source for a figure, so I give none (yours)" appends the skill's own text to a "yours" item. The run text above is unchanged. Triage: skill fault. The rule was already in the skill at d345fc7 and the run broke it; the self-check now names it as its own line. Case 3 is re-run on the current skill.

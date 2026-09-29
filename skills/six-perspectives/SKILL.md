@@ -19,9 +19,9 @@ Run the steps in order. Ask one question at a time and wait for the answer. If t
 Rules for every mode:
 
 - **Stay in the mode.** Everyone looks in the same direction at the same time. Do not argue with an item from another mode. If the user gives an item that belongs to another mode (a worry during benefits), say where it goes and put it there. Never drop it. An item that fits no mode goes to "Parked".
-- **User first.** Ask for the user's view in the mode, then add up to four suggested items from `references/modes.md`. Mark every item "yours" or "suggested". A "yours" item holds only what the user said; put any advice of your own on it in a separate "suggested" item. If the user rejects a suggested item, drop it.
+- **User first.** Ask for the user's view in the mode, then add up to four suggested items from `references/modes.md`. Mark every item "yours" or "suggested". A "yours" item holds only what the user said, with no note of yours added to it; put any comment or advice of your own in a separate "suggested" item. A line that records a gap ("not given", or "[to confirm]" for the decision-maker or the date) is not an item and carries no marker. If the user rejects a suggested item, drop it, and do not bring it back in a later mode or in the next moves.
 - **Nothing to add is allowed.** If the user has nothing for a mode, do not argue or stop. Record "none from you", add suggested items, and move on.
-- **No invention.** Never invent a person, a date, a number, a study or a source. A fact from memory is labelled RECALLED. A fact the user is not sure of is "[to confirm]".
+- **No invention.** Never invent a person, a date, a number, a study or a source. This covers suggested items too: say "a shorter or smaller trial", not "one month" or "half the team", unless the user gave the size. A fact from memory is labelled RECALLED. A fact the user is not sure of is "[to confirm]".
 - **About the user.** On a personal question, every statement about the user's causes, motives, feelings, habits, history or situation that the user did not state is a question, or "A possible reading to test: ... [to confirm]". Never assume gender, age, family or money.
 
 To save turns, give the suggested items for one mode and the question for the next mode in the same reply.
@@ -49,7 +49,7 @@ Based on Edward de Bono's parallel thinking method, known as Six Thinking Hats®
 
 ## Next
 
-Your next three moves. Each has an owner, a first action this week and an observable result. The owner is "you" or a person or role the user named. Never invent a person, a date or a source. Write every move in this shape: "**Owner:** [who]. This week: [first action]. Result: [what someone could see]."
+Your next three moves. Each has an owner, a first action this week and an observable result. The owner is "you" or a person or role the user named. Never invent a person, a date, a number or a source. A move never brings back an idea the user rejected. If the obvious move is a rejected idea, the move asks the user to choose a first step they would accept instead. Write every move in this shape: "**Owner:** [who]. This week: [first action]. Result: [what someone could see]."
 
 1. Close the gap in the facts that would most change the reading.
 2. Act on the top risk: test it, or start the idea that answers it.
@@ -61,11 +61,11 @@ To test the plan behind the decision, the user may also like a skill for a pre-m
 
 - The user confirmed the topic and question before any mode ran.
 - The modes ran in order, one per turn (unless the user asked to skip), and each asked for the user's view before any suggestion.
-- Every item sits in its own mode, is marked "yours" or "suggested", and nothing the user said was dropped (check "Parked").
+- Every item sits in its own mode, is marked "yours" or "suggested", and nothing the user said was dropped (check "Parked"). Every "yours" item holds only the user's words, with no text of yours appended.
 - The feelings section records the user's words and does not name or explain the user's feeling.
-- No person, date, number, study or source was invented; memory is labelled RECALLED; unsure facts read "[to confirm]".
+- No person, date, number, study or source was invented, in suggested items too; memory is labelled RECALLED; unsure facts read "[to confirm]".
 - On a personal question, every statement about the user that the user did not state is a question or a marked possible reading.
-- The decision status is "Not decided" unless the user stated a decision or lean.
+- The decision status is "Not decided" unless the user stated a decision or lean. No rejected idea comes back anywhere, including the next moves.
 - The take-away ends with the credit line word for word; "Six Thinking Hats" appears nowhere else, never in a heading or as a name.
 
 ## Read this when

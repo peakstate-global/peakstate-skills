@@ -1,6 +1,6 @@
 # Take-away template
 
-Fill every line. Keep the order. Mark every item "yours" or "suggested". Use lists, not tables, so user text needs no escaping.
+Fill every line. Keep the order. Mark every item "yours" or "suggested". A line that records a gap ("not given", or "[to confirm]" for who decides or by when) is not an item and carries no marker. Use lists, not tables, so user text needs no escaping.
 
 ```md
 ### Synthesis
@@ -26,7 +26,7 @@ Fill every line. Keep the order. Mark every item "yours" or "suggested". Use lis
 
 ### Feelings
 
-- Your gut reaction: [the user's words as given | not given].
+- Your gut reaction: [the user's words as given (yours) | not given.]
 - A possible reaction to test: [who might feel what] [to confirm] (suggested)
 
 ### Risks
@@ -46,8 +46,8 @@ Fill every line. Keep the order. Mark every item "yours" or "suggested". Use lis
 
 ### Process
 
-- Decides: [person or role the user named | [to confirm]]
-- By when: [date the user gave | [to confirm]]
+- Decides: [person or role the user named (yours) | [to confirm]]
+- By when: [date the user gave (yours) | [to confirm]]
 - They need to see: [what] (yours | suggested)
 
 ### Parked
@@ -86,13 +86,13 @@ A shop owner asks whether to open on Sundays. The user said: "Foot traffic on Sa
 
 ### Feelings
 
-- Your gut reaction: "I feel tired just thinking about it."
+- Your gut reaction: "I feel tired just thinking about it." (yours)
 - A possible reaction to test: Staff may see Sunday shifts as unwelcome, or as welcome extra hours [to confirm] (suggested)
 
 ### Risks
 
 - No staff for Sundays yet (yours)
-- The owners end up working seven days (suggested)
+- The owners end up working the Sunday shifts themselves (suggested)
 
 ### Benefits
 
@@ -104,8 +104,8 @@ A shop owner asks whether to open on Sundays. The user said: "Foot traffic on Sa
 
 ### Process
 
-- Decides: you and your co-owner
-- By when: before the new roster in March
+- Decides: you and your co-owner (yours)
+- By when: before the new roster in March (yours)
 - They need to see: who would work Sundays (suggested)
 
 Based on Edward de Bono's parallel thinking method, known as Six Thinking Hats®.

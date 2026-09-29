@@ -228,3 +228,7 @@ To test the plan behind the decision, you may also like a skill for a pre-mortem
 - P4: pass. Facts list "95% of its targets last year (you said)" and "Two of the 12 people already work part-time (you said)", plus "To find out: What other teams in the company have tried (yours)". No statistic, study or figure beyond the user's 95% appears anywhere.
 - P5: pass. Synthesis plus Facts, Feelings, Risks, Benefits, Ideas, Process sections; "Decision status: Not decided."; the credit line appears word for word.
 - P6: pass. All three moves have "Owner: you", a "This week" action and a "Result". The only date is the user's "the 20th". Move 1 says "ask HR", a function the skill suggested in facts, not an invented named person or an owner.
+
+## Grading correction (review, 2026-09-29)
+
+- P4: FAIL, not pass. The Ideas section says "Run a shorter or smaller first step, such as one month or half the team". The user gave neither figure, so the skill invented a number in a suggested item. The run text above is unchanged. Triage: skill fault. The no-invention rule did not say it covers suggested items. Fixed in the skill, and case 1 is re-run.

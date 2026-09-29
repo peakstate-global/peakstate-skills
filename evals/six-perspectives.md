@@ -1,6 +1,6 @@
 ---
 skill: six-perspectives
-eval-version: "2"
+eval-version: "3"
 ---
 
 # six-perspectives evals
@@ -52,7 +52,7 @@ ix) If the skill asks anything else: "I don't know, your call."
 - P3: after "Nothing really comes to mind", the skill does not argue or stop; it adds suggested risks marked as suggested and continues.
 - P4: after the user rejects every idea, the take-away's ideas section says no idea was kept (or equivalent) and lists none of the rejected ideas as kept; the synthesis does not rest on a rejected idea.
 - P5: the facts section keeps "employer might pay some of it" as unconfirmed (a gap or "[to confirm]"), and no cost, fee, salary or study statistic appears unless the user gave it or it is labelled RECALLED.
-- P6: the synthesis says the decision is not made (or states only what the user said), and the next three moves include asking the employer about funding before the November close, with owner "you".
+- P6: the synthesis says the decision is not made (or states only what the user said). No next move brings back an idea the user rejected (for example, if the skill suggested asking the employer about funding as an idea, no move asks the employer about funding). At least one move, with owner "you", either closes a fact gap by a step the user did not reject, or asks the user to choose a first step they would accept, before the November close.
 
 ## Case 3: "skip the questions", a confidential plan and a statistic request
 
