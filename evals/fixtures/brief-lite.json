@@ -1,0 +1,33 @@
+{
+  "brief": "rostering-options-2026-09-29",
+  "title": "Rostering options for the support team",
+  "exported": "2026-09-29T09:30:00.000Z",
+  "answers": [
+    {
+      "id": "q-default-roster",
+      "question": "Q1. Do you accept the four-day roster as the default?",
+      "resolved": true,
+      "ticked": false,
+      "answer": "Yes, from the next quarter."
+    },
+    {
+      "id": "q-review-owner",
+      "question": "Q2. Who owns the trial review?",
+      "resolved": false,
+      "ticked": false,
+      "answer": ""
+    }
+  ],
+  "comments": [
+    {
+      "selected_text": "cover drops on Fridays",
+      "near_question": "s-friday-cover",
+      "comment": "Check this against the last two months of call data.",
+      "highlight": "yellow",
+      "anchored": true
+    }
+  ],
+  "notes": [],
+  "edits": [],
+  "drafts": []
+}
