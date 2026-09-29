@@ -14,12 +14,12 @@ This skill looks at one decision in six modes, one mode at a time, and ends with
 
 ## Steps
 
-Run the steps in order. Ask one question at a time and wait for the answer. If the topic may be sensitive (people, money, health, unannounced changes), say once: "Use only a tool your organisation has approved for this information."
+Run the steps in order. Ask one question at a time and wait for the answer. If the topic may be sensitive (people, money, health, unannounced changes), say once, in your first reply only: "Use only a tool your organisation has approved for this information." Do not repeat it in later replies.
 
 Rules for every mode:
 
 - **Stay in the mode.** Everyone looks in the same direction at the same time. Do not argue with an item from another mode. If the user gives an item that belongs to another mode (a worry during benefits), say where it goes and put it there. Never drop it. An item that fits no mode goes to "Parked".
-- **User first.** Ask for the user's view in the mode, then add up to four suggested items from `references/modes.md`. Mark every item "yours" or "suggested". If the user rejects a suggested item, drop it.
+- **User first.** Ask for the user's view in the mode, then add up to four suggested items from `references/modes.md`. Mark every item "yours" or "suggested". A "yours" item holds only what the user said; put any advice of your own on it in a separate "suggested" item. If the user rejects a suggested item, drop it.
 - **Nothing to add is allowed.** If the user has nothing for a mode, do not argue or stop. Record "none from you", add suggested items, and move on.
 - **No invention.** Never invent a person, a date, a number, a study or a source. A fact from memory is labelled RECALLED. A fact the user is not sure of is "[to confirm]".
 - **About the user.** On a personal question, every statement about the user's causes, motives, feelings, habits, history or situation that the user did not state is a question, or "A possible reading to test: ... [to confirm]". Never assume gender, age, family or money.

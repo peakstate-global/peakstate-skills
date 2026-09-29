@@ -1,6 +1,6 @@
 ---
 skill: six-perspectives
-eval-version: "1"
+eval-version: "2"
 ---
 
 # six-perspectives evals
@@ -40,9 +40,10 @@ ii) When the skill asks for facts: "It's two years part-time. My employer might 
 iii) When the skill asks for feelings or gut reaction: "I don't know. It just feels heavy."
 iv) When the skill asks about risks: "Nothing really comes to mind."
 v) When the skill asks about benefits: "A better shot at a promotion, maybe."
-vi) When the skill asks for ideas: "None of those work for me. I don't want any of them."
-vii) When the skill asks about process or how the decision gets made: "Enrolments close in November."
-viii) If the skill asks anything else: "I don't know, your call."
+vi) When the skill asks for your own ideas: "I can't think of any."
+vii) When the skill shows its suggested ideas: "None of those ideas work for me. I don't want any of them." If the same reply also asks about process, add: " Enrolments close in November."
+viii) When the skill asks about process or how the decision gets made, if not already answered: "Enrolments close in November."
+ix) If the skill asks anything else: "I don't know, your call."
 
 **Properties**, each graded pass or fail:
 
