@@ -35,6 +35,8 @@ Write one self-contained SVG. Save it as a file or artifact if you can; otherwis
 
 - No `<script>`, no attribute starting with `on` (such as `onclick`), no `<foreignObject>`,
   no `<image>`, no `<a>`, no `<style>` with `@import`.
+- No `javascript:` URL anywhere in the file, including inside an attribute that is not an
+  `href` (a rejected `<a>` is not the only place one can hide).
 - No external reference of any kind: no `http` or `https` URL, no remote font. The `xmlns`
   declaration is the one URL allowed. Use `font-family="sans-serif"`.
 - Insert user text as text. Escape `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`, `"` as
@@ -77,15 +79,16 @@ Visual spec
 
 ## Rung: Mermaid flowchart (diagram ladder)
 
-Use the user's words for node labels. Remove `"`, `|`, `[`, `]`, `(`, `)`, `{` and `}` from a
-label (skill rule). A condition goes on the edge label (S34).
+Use the user's words for node labels. Quote every label, `A["{{STEP_1}}"]`, so punctuation such
+as `(legal)` survives (skill rule). Inside a quoted label, escape `"` as `#quot;`. A condition
+goes on the edge label, quoted the same way (S34).
 
 ```mermaid
 flowchart LR
-  A[{{STEP_1}}] --> B[{{STEP_2}}]
-  B --> C{ {{DECISION}} }
-  C -->|{{CONDITION_YES}}| D[{{STEP_3}}]
-  C -->|{{CONDITION_NO}}| E[{{STEP_4}}]
+  A["{{STEP_1}}"] --> B["{{STEP_2}}"]
+  B --> C{ "{{DECISION}}" }
+  C -->|"{{CONDITION_YES}}"| D["{{STEP_3}}"]
+  C -->|"{{CONDITION_NO}}"| E["{{STEP_4}}"]
   D --> E
 ```
 

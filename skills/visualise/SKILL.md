@@ -35,7 +35,7 @@ Say once, in the first reply: "Use only a tool your organisation has approved fo
 
 1. **Find the one message.** If the opening states it, restate it in one sentence in the user's words and go on to step 2 in the same reply. If not, ask one question: what should the viewer think or feel after one look? Note where the visual will appear (slide, document, poster) only if the user said so.
 2. **Choose the ladder.** Check whether the picture must carry exact labels: named steps, a sequence, numbers, dates, people or arrows that must read correctly. If yes, say in one line that you will use the diagram ladder and why. Otherwise use the visual ladder. A user's request for a generated image does not change a diagram-ladder decision.
-3. **Shortlist three.** Pick three entries from `references/metaphors.md` that fit the message. For each, give its name, one line on why it fits this message, and one line on what it could make a viewer misread. For the diagram ladder, pick metaphors whose layout can carry the exact labels (a road with milestones, stepping stones, a relay race), or offer a plain flowchart as one of the three. Ask the user to pick one. Draw nothing yet.
+3. **Shortlist three.** Pick three entries from `references/metaphors.md` that fit the message. For each, give its name, one line on why it fits this message, and one line on what it could make a viewer misread. For the diagram ladder, pick metaphors whose layout can carry the exact labels (a road with milestones, stepping stones), or offer a plain flowchart as one of the three. Ask the user to pick one. Draw nothing yet.
 4. **Handle the pick.** If the user picks one, use it. If the user says "your call", use the first and say it was your choice. If the user rejects all three, offer three more, or use the user's own metaphor, or a plain diagram. Never draw a metaphor the user rejected.
 5. **Draw it.** Say in one line which rung you took and why. Draw at that rung with `references/drawing.md`. Use only the user's words and the generic part names of the metaphor on the visual. Never add a number, name, owner, date or claim the user did not give. A gap stays `[to confirm]` in the text, never on the picture as a guess.
 6. **Deliver.** Give the take-away, then offer one change (layout, colour or wording) and wait.
@@ -67,11 +67,11 @@ If the visual is going into a document that asks readers questions, the user may
 
 ## Self-check before you deliver
 
-- The first reply restated the message and offered exactly three options with a reason each, and drew nothing.
+- Once the message is known: the reply that shortlists metaphors restated the message and offered exactly three options with a reason each, and drew nothing. If step 1 had to ask what the viewer should think or feel, the first reply is that question alone.
 - The rung line names the rung and why, and the rung came from your own tool list or the user's named format.
 - A picture with exact labels used the diagram ladder, and no image generation was used for it, even on request.
 - Every image prompt asks for no words, letters or labels in the image.
-- The SVG has no `<script>`, no `on` attributes, no `<foreignObject>`, no `<image>`, no external reference, and user text is escaped.
+- The SVG has no `<script>`, no `on` attributes, no `<foreignObject>`, no `<image>`, no `<a>`, no `javascript:` URL, no external reference, and user text is escaped.
 - The visual, caption and alt text hold only the user's words and generic metaphor parts: no invented number, name, owner, date or source.
 - A diagram also has its text form, and the take-away lists what is still `[to confirm]`.
 - The three next moves have an owner, a first action this week and an observable result.
