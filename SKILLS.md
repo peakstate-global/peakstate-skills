@@ -24,6 +24,7 @@ CLI and anything else that reads the format.
 | [causal-layered-analysis](skills/causal-layered-analysis/) | Runs Sohail Inayatullah's Causal Layered Analysis: litany, systemic, worldview and myth layers with contrasting perspectives, then alternative futures built back up from new metaphors, in interactive or auto mode | **Yes.** Markdown only |
 | [six-perspectives](skills/six-perspectives/) | Looks at a decision in six modes, one at a time (facts, feelings, risks, benefits, ideas, process), asks for your view in each before adding suggestions, keeps every item in its mode, and ends with a synthesis that never decides for you. Based on Edward de Bono's parallel thinking method | **Yes.** Markdown only |
 | [visualise](skills/visualise/) | Turns one message into a picture: shortlists three visual metaphors with a reason each, lets you pick, then draws it at the best rung your host supports (generated image, SVG, or a written spec with an image prompt). Uses a diagram, never image generation, when labels must be exact | **Yes.** Markdown only |
+| [prototype](skills/prototype/) | Builds a throwaway prototype that answers one design question: picks the fidelity (paper sketch, clickable HTML or working slice) and one of 16 UI archetypes, builds one self-contained HTML file with made-up data and a "Prototype, not for production use" banner that makes no network request, and writes a five-user test script | **Yes.** Markdown only |
 
 ## Conventions every skill here follows
 
