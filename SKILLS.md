@@ -20,6 +20,8 @@ CLI and anything else that reads the format.
 | [hard-conversation-prep](skills/hard-conversation-prep/) | Prepares a difficult conversation: confirms the situation, turns judgements into observable behaviour, and ends with an opening line, situation, behaviour and impact (SBI), one request the other person could decline, and likely replies with answers | **Yes.** Markdown only |
 | [meeting-to-actions](skills/meeting-to-actions/) | Turns meeting notes or a transcript into decisions, actions with owners and dates, open questions and risks in one pass. Takes every item from the notes and marks a gap as [NO OWNER] or [NO DATE] rather than inventing one | **Yes.** Markdown only |
 | [stakeholder-map](skills/stakeholder-map/) | Builds a power and interest grid for a change: who is affected, ratings marked as yours or suggested, what each stakeholder cares about and one message each, as a diagram and a text table. Warns that ratings of named people are sensitive | **Yes.** Markdown only |
+| [systems-map](skills/systems-map/) | Maps the causal loops behind a problem that keeps coming back: variables, links with polarity marked as yours or suggested, reinforcing and balancing loops, the system archetype that fits (if one does) and one leverage point to test, as text notation and a diagram | **Yes.** Markdown only |
+| [causal-layered-analysis](skills/causal-layered-analysis/) | Runs Sohail Inayatullah's Causal Layered Analysis: litany, systemic, worldview and myth layers with contrasting perspectives, then alternative futures built back up from new metaphors, in interactive or auto mode | **Yes.** Markdown only |
 
 ## Conventions every skill here follows
 
