@@ -36,6 +36,7 @@ Record a decision only when it shaped the result a reader will see. Skip routine
   - **Holds:** the region where it is still true.
   - **Fails:** the region where it breaks, with the evidence.
   - **Instead:** what is true in the failing region.
+- A claim you cannot ground or test either way is **unresolved**. Keep it in the ledger with what would settle it, and do not use it to support the final position.
 
 ## Integration moves (S1)
 
@@ -48,10 +49,11 @@ Record a decision only when it shaped the result a reader will see. Skip routine
 ## Provenance block (S1, S4)
 
     Attribution:  Who wrote it, and that an AI assistant helped, in one sentence.
-    Accountable:  The named person who answers for it, or "[name to confirm]".
+    Accountable:  The person the user named as accountable, or "[name to confirm]".
     Limitations:  What is not backed, and how far each claim is from its source.
     References:   The sources, full APA 7 entries, alphabetical.
 
 - **Decision test:** keep a Limitations sentence only if a reader would decide differently knowing it. "None material." is a complete line.
 - Never add a "Verified:" label. A review adds accountability, not accuracy.
 - A reference lists only sources retrieved in this session. RECALLED facts go in Limitations, not References.
+- If a full APA 7 entry is not possible, such as for a pasted internal extract with no author, title or date, write a descriptive entry and state each unknown field, for example: "Internal survey summary, n = 212 [pasted in this session; author, title and date not given]."

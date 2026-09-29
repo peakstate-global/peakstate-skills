@@ -11,6 +11,7 @@ Fill every part. Keep the order. Entries follow the method library (S1).
     | C1 | ... | SOURCED | "<quote or precise paraphrase>" (<URL>, <section>) | Holds |
     | C2 | ... | RECALLED | Recalled, not checked in this session. Search: <terms> | Holds in part |
     | C3 | ... | INFERRED | From C1 and C2 | Fails |
+    | C4 | ... | RECALLED | Recalled, not checked in this session. Search: <terms> | Unresolved |
 
     ## Decision record
     | Decision | Options considered | Evidence | Chosen | Rejected, and why | Uncertainty |
@@ -23,6 +24,7 @@ Fill every part. Keep the order. Entries follow the method library (S1).
     - C1 would be false if: ...
     - C2 holds in part. Holds: ... Fails: ... Instead: ...
     - C3 fails. Holds: ... Fails: ... Instead: ...
+    - C4 unresolved. Would be settled by: ... (not used in the final position)
 
     ## Provenance
     Attribution:  ...

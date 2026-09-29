@@ -53,6 +53,6 @@ ii) If the skill asks anything else: "I don't know, your call."
 
 - P1: the first reply restates the claim and asks for confirmation before any analysis.
 - P2: the take-away says the assistant has no web access, and any fact from memory is labelled RECALLED, never SOURCED.
-- P3: the survey figure is labelled SOURCED with the pasted sentence quoted or precisely paraphrased and the survey summary named as the locator.
+- P3: the survey figure is labelled SOURCED with the pasted sentence quoted or precisely paraphrased and the survey summary named as the locator; References gives it a descriptive entry that states its unknown fields rather than an invented APA 7 entry.
 - P4: the decision record entries each have decision, options considered, evidence, chosen, rejected and uncertainty, and none reads as a step-by-step reasoning trace.
 - P5: Accountable names no invented person (the user gave no name), and the next three moves invent no named person, date or source.
