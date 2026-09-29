@@ -26,7 +26,7 @@ The gate: offer, assess or recommend no solution until the user confirms the pro
 
 Statuses, used everywhere in the output:
 
-- An assumption is "supported" only by evidence the user gave, and the evidence is named. Otherwise it is "untested", or "unresolved" when no cheap test exists yet. Every assumption gets one of the three.
+- An assumption is "supported" only by evidence the user gave, and the evidence is named. Otherwise it is "untested", or "unresolved" when no cheap test exists yet. Every assumption gets one of the three. An "unresolved" assumption carries "No test possible yet: [what would make one possible]" in place of a cheap test.
 - A hypothesis is always "untested" until its test has run. A direction is "chosen to test", never "proven".
 - Never write "confirmed", "validated" or "proven" about an assumption, a hypothesis or a direction.
 

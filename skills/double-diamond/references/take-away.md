@@ -34,7 +34,7 @@ Recommended: O[n], because [one line]. The user chose: O[n] | my recommendation 
 
 | # | Assumption | Dependence | Status | Cheap test |
 |---|---|---|---|---|
-| A1 | ... | high | supported ([the evidence]) / untested / unresolved | [action within a week; the result that counts against it] |
+| A1 | ... | high | supported ([the evidence]) / untested / unresolved | [action within a week; the result that counts against it] — or, if unresolved: "No test possible yet: [what would make one possible]" |
 
 ### Hypotheses (thresholds set before the test; do not change them after the results)
 
@@ -87,7 +87,7 @@ Rewrite the tracking email, chosen to test.
 
 | # | Assumption | Dependence | Status | Cheap test |
 |---|---|---|---|---|
-| A1 | Most calls ask only for a delivery date | high | supported (call log sample of 50) | |
+| A1 | Most calls ask only for a delivery date | high | supported (call log sample of 50) | Not needed: already supported by the call log sample |
 | A2 | Callers opened the tracking email first | high | untested | Ask the next 20 callers; fewer than 10 opening it counts against |
 
 ### Hypotheses (thresholds set before the test; do not change them after the results)

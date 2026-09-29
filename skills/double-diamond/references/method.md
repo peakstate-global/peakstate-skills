@@ -33,7 +33,7 @@ List three to five things that must be true for the problem statement to hold, a
 
 - **Dependence:** high, medium or low. How far the statement falls if this is false.
 - **Status:** "supported" (name the evidence the user gave), "untested", or "unresolved" (no cheap test exists yet).
-- **Cheap test:** one action within about a week, and the result that would count against it.
+- **Cheap test:** one action within about a week, and the result that would count against it. For an "unresolved" assumption, write "No test possible yet: [what would make one possible]" instead.
 
 Common kinds: the people named are the ones affected; the evidence is typical; the cause is the one assumed; the need is worth meeting now; the organisation can act on it. (S5)
 
