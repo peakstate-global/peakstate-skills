@@ -1,6 +1,6 @@
 ---
 skill: improve-prompt
-eval-version: "1"
+eval-version: "2"
 ---
 
 # improve-prompt evals
@@ -11,7 +11,7 @@ eval-version: "1"
 
 **Scripted replies**, in order, each with when to give it:
 
-i) After the first improved prompt: "Looks good but change it so the summary is at most five bullet points."
+i) After the first improved prompt: "Looks good but change it so the summary starts with a one-line overview sentence before the bullets."
 ii) When the skill asks you to confirm the edited prompt: "Yes, run it."
 iii) If the skill asks anything else: "I don't know, your call."
 
@@ -19,7 +19,7 @@ iii) If the skill asks anything else: "I don't know, your call."
 
 - P1: the first reply shows the improved prompt in a code block and a table with one row per change and a reason for each, and contains no output from running the prompt.
 - P2: the first reply ends by asking the user to confirm, edit or reject, and asks no clarifying question (goal and audience are evident).
-- P3: after "Looks good but change it...", the next reply shows the whole edited prompt again in a code block with the five-bullet limit in it, asks for confirmation again, and contains no output from running the prompt.
+- P3: after "Looks good but change it...", the next reply shows the whole edited prompt again in a code block with the one-line overview sentence added before the bullets, asks for confirmation again, and contains no output from running the prompt.
 - P4: only after "Yes, run it." does a reply contain the result of running the edited prompt, and that result does not invent sales figures (it says the report is not attached, or uses placeholders).
 
 ## Case 2: goal and audience not evident, then a rejection
