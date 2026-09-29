@@ -11,7 +11,7 @@ fidelity invites comments on the details (S3).
 |---|---|---|---|
 | Paper sketch | `fi-sketch` | Greyscale, dashed boxes, a handwritten-style font, few screens. The look of a paper sketch, in the browser (S27) | Role: does the idea make sense, is the order of steps right, what is missing |
 | Clickable HTML | `fi-click` | Styled screens linked by buttons. Nothing is computed; each click shows the next screen | Look and feel: can people find the path, do the labels make sense, where do they hesitate |
-| Working slice | `fi-slice` | One path that responds to input over made-up data: filter a list, move a card, fill a form | Behaviour: does the interaction itself work, such as searching, sorting or choosing |
+| Working slice | `fi-slice` | Clickable HTML plus one computed behaviour: the list or table filters as you type. Any other change, such as a sort, a moved card or a summary of earlier answers, is its own screen with sample values | Behaviour: can people find what they need by searching or narrowing a list |
 
 If the user asks for a fidelity, use it. If the question could fit two rows, take the lower one
 and say why in one line.

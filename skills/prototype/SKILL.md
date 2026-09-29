@@ -55,7 +55,7 @@ In this order:
 - The five-user test script (`references/test-script.md`).
 - What is still `[to confirm]`, or "Nothing to confirm."
 
-Any fact from memory is labelled RECALLED. Never invent a number, an owner, a date or a source.
+Any fact from memory is labelled RECALLED. Never invent a fact about the user's situation: a number of users, a test date, a budget, a threshold, an owner or a source. Made-up records inside the file are allowed, because they are sample data and the banner marks them as made up.
 
 ## Next
 

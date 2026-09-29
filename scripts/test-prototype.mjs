@@ -3,7 +3,7 @@
 //   mkdir -p /tmp/pw && cd /tmp/pw && npm init -y && npm install playwright
 //   node <repo>/scripts/test-prototype.mjs file.html [shot.png]   (exit 0 = safe and working)
 // Checks: the banner shows, no request leaves file:/data:, no page error, no dialog, every
-// data-go control leaves exactly one screen visible, and the static rules below are clean.
+// data-go control and data-next form shows exactly its own target screen, and the static rules are clean.
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import fs from 'fs';
@@ -30,10 +30,14 @@ const banner = await p.evaluate(() => { const e = document.getElementById('proto
   const r = e.getBoundingClientRect(), s = getComputedStyle(e);
   return { text: e.textContent.trim(), visible: r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && r.top < innerHeight }; });
 const bannerOk = !!banner && banner.visible && banner.text.includes('Prototype, not for production use');
-const nav = await p.evaluate(() => { const out = { controls: 0, broken: [] };
-  document.querySelectorAll('[data-go]').forEach(el => { out.controls++; el.click();
-    const shown = [...document.querySelectorAll('.screen')].filter(s => !s.hidden).length;
-    if (shown !== 1) out.broken.push(el.getAttribute('data-go')); }); return out; });
+// Each data-go click and each data-next submit must show exactly its own target screen.
+const nav = await p.evaluate(() => { const out = { controls: 0, forms: 0, broken: [] };
+  const check = (kind, t) => { const shown = [...document.querySelectorAll('.screen')].filter(s => !s.hidden);
+    if (shown.length !== 1 || shown[0].id !== t) out.broken.push(kind + ':' + t); };
+  document.querySelectorAll('[data-go]').forEach(el => { out.controls++; el.click(); check('go', el.getAttribute('data-go')); });
+  document.querySelectorAll('form[data-next]').forEach(f => { out.forms++;
+    f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); check('next', f.getAttribute('data-next')); });
+  return out; });
 await p.goto(url); await p.screenshot({ path: shot }); await b.close();
 const ok = bannerOk && !errs.length && !reqs.length && !dialogs.length && !bad.length && !nav.broken.length;
 console.log(JSON.stringify({ file: f, screenshot: shot, banner, pageErrors: errs, externalRequests: reqs, dialogs, nav, static: bad.length ? bad : 'clean' }));
