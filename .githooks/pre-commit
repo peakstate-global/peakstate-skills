@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
-# Public-repo leak guard. Enable with:  git config core.hooksPath .githooks
+# Public-repo leak guard and skill contract. Enable with:  git config core.hooksPath .githooks
+# ponytail: the contract check reads the working tree, not the index. The full
+# hand-off gate is scripts/release-check.sh, because hooks can be skipped.
 set -euo pipefail
-exec python3 "$(git rev-parse --show-toplevel)/scripts/check-no-leaks.py"
+root="$(git rev-parse --show-toplevel)"
+python3 "$root/scripts/check-no-leaks.py"
+exec python3 "$root/scripts/check-skill-contract.py"
