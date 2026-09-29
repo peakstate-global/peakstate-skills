@@ -16,6 +16,8 @@ CLI and anything else that reads the format.
 | [improve-prompt](skills/improve-prompt/) | Shows an improved version of a prompt you paste, with a table of each change and the reason for it, asks at most two clarifying questions, and runs the prompt only after an explicit yes. An edit is shown again before anything runs | **Yes.** Markdown only |
 | [pyramid-rewrite](skills/pyramid-rewrite/) | Rewrites a document answer-first: the answer, then the situation, complication and question behind it (SCQA), with point headings. Keeps every fact, adds none, and never picks a recommendation the writer did not make | **Yes.** Markdown only |
 | [plain-english](skills/plain-english/) | Rewrites text to the core Simplified Technical English rules and flags each jargon word, passive verb and long sentence with the rule behind it. Keeps every fact and never guesses who did something | **Yes.** Markdown only |
+| [pre-mortem](skills/pre-mortem/) | Confirms the plan, asks you to imagine it has failed 12 months from now and say why, adds likely causes from a library of failure prompts, and ends with a ranked risk register (risk, likelihood, impact, early warning sign, owner, mitigation) that marks which causes were yours. Never invents an owner or a date | **Yes.** Markdown only |
+| [hard-conversation-prep](skills/hard-conversation-prep/) | Prepares a difficult conversation: confirms the situation, turns judgements into observable behaviour, and ends with an opening line, situation, behaviour and impact (SBI), one request the other person could decline, and likely replies with answers | **Yes.** Markdown only |
 
 ## Conventions every skill here follows
 
