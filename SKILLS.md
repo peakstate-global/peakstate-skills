@@ -12,6 +12,7 @@ CLI and anything else that reads the format.
 | [brief-lite](skills/brief-lite/) | Builds one self-contained HTML brief that opens with the answer, asks numbered questions with answer boxes, takes simple comments on selected text, footnotes its sources, and exports the responses with Copy or Download in the same JSON shape as peakstate-brief | **Yes.** Markdown only |
 | [blind-spots](skills/blind-spots/) | Confirms its reading of an argument, then ranks the unstated assumptions with a cheap test for the top three, and names possible cognitive biases and logical fallacies, each with the quoted passage, the most generous reading, a confidence and a checking question | **Yes.** Markdown only |
 | [root-cause](skills/root-cause/) | Guides a team from a symptom to a problem statement, containment, a 5 Whys, fishbone or Pareto analysis drawn as a diagram and a text tree, two or three suspected causes with confirming evidence, and a first fix with reach, reversal and a rollback trigger | **Yes.** Markdown only |
+| [double-diamond](skills/double-diamond/) | Takes a fuzzy challenge through Discover, Define, Develop and Deliver, holds back every solution until you confirm the problem statement, and ends with the options, a chosen direction, an assumptions table, hypotheses with thresholds set before the test, and the next test with its owner and date | **Yes.** Markdown only |
 
 ## Conventions every skill here follows
 
