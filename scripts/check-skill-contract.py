@@ -124,6 +124,8 @@ def sections(body):
 def check_skill(skill, snippet=None):
     """Every breach of the contract in one skill folder, as strings."""
     errs, skill = [], Path(skill)
+    if skill.is_symlink():
+        return [f"{skill.name}: the skill folder is a symlink, symlinks are not allowed"]
     snippet = norm(SNIPPET.read_text(encoding="utf-8") if snippet is None else snippet)
     name = skill.name
     if not NAME_RE.match(name):
@@ -245,7 +247,8 @@ def check_skill(skill, snippet=None):
 
 def contract_skills(root=ROOT):
     d = root / "skills"
-    return sorted(p for p in d.iterdir() if p.is_dir() and not p.name.startswith(".")
+    return sorted(p for p in d.iterdir() if (p.is_dir() or p.is_symlink())
+                  and not p.name.startswith(".")
                   and p.name not in EXEMPT)
 
 
@@ -334,6 +337,16 @@ def selftest():
     run("no SOURCES.md", nosrc, "SOURCES.md is missing")
     run("symlink", good_skill(), "symlinks are not allowed",
         extra=lambda s: (s / "references" / "link.md").symlink_to(s / "SOURCES.md"))
+    with tempfile.TemporaryDirectory() as t:
+        real = Path(t) / "real-skill"
+        for rel, content in good_skill().items():
+            (real / rel).parent.mkdir(parents=True, exist_ok=True)
+            (real / rel).write_text(content)
+        link = Path(t) / "demo-skill"
+        link.symlink_to(real, target_is_directory=True)
+        errs = check_skill(link, GOOD_SNIPPET)
+        if not any("skill folder is a symlink" in e for e in errs):
+            fails.append(f"symlinked skill folder: expected rejection, got {errs or 'pass'}")
 
     # 3.2 front matter
     run("no front matter", edit("---\nname", "name"), "does not open with")
