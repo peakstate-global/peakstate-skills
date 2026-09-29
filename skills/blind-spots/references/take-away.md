@@ -20,15 +20,16 @@ Why A1 is first: [one line].
 
 ### Possible biases and fallacies
 
-[Either one block per finding, highest confidence first:]
+[If no finding is medium or high confidence, open with this line, then any low-confidence blocks:]
+No clear bias or fallacy found. [One line on why the reasoning holds together.]
+
+[One block per finding, highest confidence first:]
 
 **[Name] (bias | fallacy), [high | medium | low] confidence**
 - Passage: "[exact quote from the user's text]"
 - Generous reading: [what the author most plausibly meant, and when that would be sound]
 - Concern: this passage may [the pattern, in plain words].
 - Checking question: [the question from the library, fitted to the passage]
-
-[Or the single line:] No clear bias or fallacy found. [One line on why the reasoning holds together.]
 
 ### What would change this reading
 
@@ -53,6 +54,8 @@ Argument: "We should move the monthly report to a dashboard. The report takes tw
 Why A1 is first: the saving is worthless if the dashboard goes unread.
 
 ### Possible biases and fallacies
+
+No clear bias or fallacy found. The saving and the reader count are stated, and the conclusion follows if the assumptions above hold.
 
 **Hasty generalisation (fallacy), low confidence**
 - Passage: "three of five managers said they only read the summary page"
