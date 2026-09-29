@@ -10,6 +10,7 @@ CLI and anything else that reads the format.
 | [peakstate-retro](skills/peakstate-retro/) | Reads your own coding-agent session history (Claude Code, Codex or pi) and reports how you actually work: repeated requests, correction loops, skill and hook candidates, and tooling you built but do not use. User-triggered only | **No.** It reads local transcript files and runs its own scripts, so it needs a developer machine |
 | [sourced-lite](skills/sourced-lite/) | Restates an idea or claim in its strongest form and waits for you to confirm it, then labels each claim by where it came from, records the decisions that shaped the result, argues the case against it, and ends with a final position and a provenance block. A cut-down version of the SOURCED method | **Yes.** Markdown only |
 | [brief-lite](skills/brief-lite/) | Builds one self-contained HTML brief that opens with the answer, asks numbered questions with answer boxes, takes simple comments on selected text, footnotes its sources, and exports the responses with Copy or Download in the same JSON shape as peakstate-brief | **Yes.** Markdown only |
+| [blind-spots](skills/blind-spots/) | Confirms its reading of an argument, then ranks the unstated assumptions with a cheap test for the top three, and names possible cognitive biases and logical fallacies, each with the quoted passage, the most generous reading, a confidence and a checking question | **Yes.** Markdown only |
 
 ## Conventions every skill here follows
 
