@@ -23,18 +23,19 @@ Record a decision only when it shaped the result a reader will see. Skip routine
 |---|---|
 | Decision | The question that had to be settled, in one line |
 | Options considered | Two or three real options |
-| Evidence | The ledger rows or facts that bore on it |
+| Evidence | The ledger ids that bore on it, and nothing else |
 | Chosen | The option taken |
-| Rejected, and why | Each option not taken, with the reason in one clause |
+| Rejected, and why | Each option not taken, with the reason in one clause that cites ledger ids, or ends (INFERRED) |
 | Uncertainty | What could still make the choice wrong |
 
 ## Adversarial review (S3)
 
-- Argue against the conclusion first, then against the research: weak or single sources, sources with a stake, missing counter-evidence, and a rival explanation for the same facts.
+- Every finding is one line: `F# [C#] "<exact words from that row>" → <conclusion>`. A conclusion beyond the quoted words ends with (INFERRED). A new fact gets a ledger row before it can appear.
+- Argue against the conclusion first, then against the research: weak or single sources, sources with a stake, missing counter-evidence, and a rival explanation for the same facts. A stake or a rival fact you want to name is a ledger row first.
 - For each claim that survives, write the observation that would make it false. A claim with no such observation is not a claim you can test; say so.
 - A claim that fails, or holds only in part, is not deleted. Record:
   - **Holds:** the region where it is still true.
-  - **Fails:** the region where it breaks, with the evidence.
+  - **Fails:** the region where it breaks, citing the row that shows it.
   - **Instead:** what is true in the failing region.
 - A claim you cannot ground or test either way is **unresolved**. Keep it in the ledger with what would settle it, and do not use it to support the final position.
 
