@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "peakstate-skills",
-  "description": "Portable Agent Skills from Peak State Global — interactive HTML briefs a reader answers in the browser, and slide decks that export to PowerPoint.",
+  "description": "Portable Agent Skills from Peak State Global: interactive HTML briefs a reader answers in the browser, a retro over your own coding-agent sessions, and 17 markdown-only thinking and writing skills for knowledge workers.",
   "owner": {
     "name": "Peak State Global",
     "url": "https://github.com/peakstate-global"
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "peakstate-skills",
-      "description": "peakstate-brief: build an interactive HTML brief with tick-off questions, persisted inline answers, selection comments and one-click Copy/Download responses.",
+      "description": "peakstate-brief and brief-lite (answerable HTML briefs), peakstate-retro, and knowledge-worker skills: sourced-lite, blind-spots, root-cause, double-diamond, improve-prompt, pyramid-rewrite, plain-english, pre-mortem, hard-conversation-prep, meeting-to-actions, stakeholder-map, systems-map, causal-layered-analysis, six-perspectives, visualise and prototype.",
       "source": "./",
       "category": "productivity"
     }

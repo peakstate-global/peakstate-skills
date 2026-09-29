@@ -34,7 +34,7 @@ Recommended: O[n], because [one line]. The user chose: O[n] | my recommendation 
 
 | # | Assumption | Dependence | Status | Cheap test |
 |---|---|---|---|---|
-| A1 | ... | high | supported ([the evidence]) / untested / unresolved | [action within a week; the result that counts against it] — or, if unresolved: "No test possible yet: [what would make one possible]" |
+| A1 | ... | high | supported ([the evidence]) / untested / unresolved | [action within a week; the result that counts against it]; or, if unresolved: "No test possible yet: [what would make one possible]" |
 
 ### Hypotheses (thresholds set before the test; do not change them after the results)
 
