@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" font-family="sans-serif" font-size="16">
+  <title>Flowchart of the approval process: request, then manager check, then finance check. If over the limit, legal check comes next, then sign-off. If not over the limit, it goes straight to sign-off.</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+  </defs>
+  <rect width="800" height="450" fill="#ffffff"/>
+  <text x="400" y="45" text-anchor="middle" font-size="24" font-weight="bold">Our approval process</text>
+  <g>
+    <rect x="20" y="140" width="120" height="70" rx="8" fill="#dbe8f5" stroke="#333"/>
+    <text x="80" y="180" text-anchor="middle">Request</text>
+  </g>
+  <path d="M140,175 L168,175" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <g>
+    <rect x="170" y="140" width="120" height="70" rx="8" fill="#dbe8f5" stroke="#333"/>
+    <text x="230" y="180" text-anchor="middle">Manager check</text>
+  </g>
+  <path d="M290,175 L318,175" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <g>
+    <rect x="320" y="140" width="120" height="70" rx="8" fill="#dbe8f5" stroke="#333"/>
+    <text x="380" y="180" text-anchor="middle">Finance check</text>
+  </g>
+  <path d="M440,175 L468,175" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <g>
+    <path d="M540,115 L610,175 L540,235 L470,175 z" fill="#fdf1d6" stroke="#333"/>
+    <text x="540" y="172" text-anchor="middle">Over the</text>
+    <text x="540" y="192" text-anchor="middle">limit?</text>
+  </g>
+  <path d="M610,175 L658,175" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text x="634" y="165" text-anchor="middle" font-size="14">No</text>
+  <g>
+    <rect x="660" y="140" width="120" height="70" rx="8" fill="#d8efd9" stroke="#333"/>
+    <text x="720" y="180" text-anchor="middle">Sign-off</text>
+  </g>
+  <path d="M540,235 L540,298" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text x="555" y="272" font-size="14">Yes</text>
+  <g>
+    <rect x="480" y="300" width="120" height="70" rx="8" fill="#dbe8f5" stroke="#333"/>
+    <text x="540" y="340" text-anchor="middle">Legal check</text>
+  </g>
+  <path d="M600,335 L720,335 L720,212" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+</svg>

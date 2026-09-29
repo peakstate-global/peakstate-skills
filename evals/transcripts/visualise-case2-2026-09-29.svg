@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" font-family="sans-serif" font-size="18">
+  <title>Three separate silos, one for each team, each fixing its own part of the customer complaint process, with an empty space and a question mark above them where an owner of the whole thing should be.</title>
+  <rect width="800" height="450" fill="#ffffff"/>
+  <text x="400" y="40" text-anchor="middle" font-size="24" font-weight="bold">Nobody owns the whole thing</text>
+  <rect x="200" y="75" width="400" height="70" rx="10" fill="none" stroke="#b0413e" stroke-width="2" stroke-dasharray="10 8"/>
+  <text x="400" y="118" text-anchor="middle" fill="#b0413e" font-size="22">The whole thing ?</text>
+  <g>
+    <path d="M110,200 Q175,160 240,200 L240,380 L110,380 z" fill="#dbe8f5" stroke="#333" stroke-width="2"/>
+    <text x="175" y="275" text-anchor="middle">Team</text>
+    <text x="175" y="300" text-anchor="middle" font-size="15">Own part</text>
+  </g>
+  <g>
+    <path d="M335,200 Q400,160 465,200 L465,380 L335,380 z" fill="#dbe8f5" stroke="#333" stroke-width="2"/>
+    <text x="400" y="275" text-anchor="middle">Team</text>
+    <text x="400" y="300" text-anchor="middle" font-size="15">Own part</text>
+  </g>
+  <g>
+    <path d="M560,200 Q625,160 690,200 L690,380 L560,380 z" fill="#dbe8f5" stroke="#333" stroke-width="2"/>
+    <text x="625" y="275" text-anchor="middle">Team</text>
+    <text x="625" y="300" text-anchor="middle" font-size="15">Own part</text>
+  </g>
+  <line x1="60" y1="380" x2="740" y2="380" stroke="#333" stroke-width="2"/>
+  <text x="400" y="420" text-anchor="middle" font-size="16" fill="#555">Customer complaint process</text>
+</svg>

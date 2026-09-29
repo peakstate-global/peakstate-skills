@@ -23,6 +23,7 @@ CLI and anything else that reads the format.
 | [systems-map](skills/systems-map/) | Maps the causal loops behind a problem that keeps coming back: variables, links with polarity marked as yours or suggested, reinforcing and balancing loops, the system archetype that fits (if one does) and one leverage point to test, as text notation and a diagram | **Yes.** Markdown only |
 | [causal-layered-analysis](skills/causal-layered-analysis/) | Runs Sohail Inayatullah's Causal Layered Analysis: litany, systemic, worldview and myth layers with contrasting perspectives, then alternative futures built back up from new metaphors, in interactive or auto mode | **Yes.** Markdown only |
 | [six-perspectives](skills/six-perspectives/) | Looks at a decision in six modes, one at a time (facts, feelings, risks, benefits, ideas, process), asks for your view in each before adding suggestions, keeps every item in its mode, and ends with a synthesis that never decides for you. Based on Edward de Bono's parallel thinking method | **Yes.** Markdown only |
+| [visualise](skills/visualise/) | Turns one message into a picture: shortlists three visual metaphors with a reason each, lets you pick, then draws it at the best rung your host supports (generated image, SVG, or a written spec with an image prompt). Uses a diagram, never image generation, when labels must be exact | **Yes.** Markdown only |
 
 ## Conventions every skill here follows
 
