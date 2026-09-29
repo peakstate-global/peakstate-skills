@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'">
+<title>Support team open tickets dashboard (prototype)</title>
+<style>
+/* Change these for a named design system. */
+/* GOV.UK Design System look, applied from memory (RECALLED), no GOV.UK files loaded. */
+:root { --font: Arial, "Helvetica Neue", Helvetica, sans-serif; --text: #0b0c0c; --muted: #505a5f;
+  --bg: #ffffff; --panel: #f3f2f1; --line: #b1b4b6; --accent: #00703c; --accent-text: #ffffff; --radius: 0; --gap: 20px;
+  --link: #1d70b8; --focus: #ffdd00; --header: #0b0c0c; --red: #d4351c; --orange: #f47738; }
+/* keep: banner, screens and fidelity */
+#proto-banner { position: sticky; top: 0; z-index: 10; margin: 0; padding: 8px var(--gap); background: #ffe14d; color: #1d1d1f;
+  font: 600 14px/1.4 var(--font); text-align: center; border-bottom: 2px solid #1d1d1f; }
+.screen[hidden] { display: none; }
+body { margin: 0; font: 16px/1.5 var(--font); color: var(--text); background: var(--bg); }
+main { max-width: 1100px; margin: 0 auto; padding: var(--gap); }
+.fi-sketch { --font: "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif; --accent: #1d1d1f; --text: #1d1d1f; --panel: #ffffff; --line: #1d1d1f; }
+.fi-sketch .card, .fi-sketch button, .fi-sketch input, .fi-sketch select, .fi-sketch textarea, .fi-sketch table { border-style: dashed !important; }
+.fi-sketch button { background: #ffffff; color: #1d1d1f; }
+/* layout helpers: change freely */
+h1 { font-size: 2rem; font-weight: 700; margin: 0 0 var(--gap); } h2 { font-size: 1.5rem; font-weight: 700; margin: 30px 0 15px; }
+.row { display: flex; gap: var(--gap); flex-wrap: wrap; align-items: stretch; }
+.card { background: var(--panel); border: 0; border-top: 5px solid var(--link); border-radius: var(--radius); padding: var(--gap); flex: 1 1 200px; }
+.card.urgent { border-top-color: var(--red); }
+.card .big { font-size: 2.5rem; font-weight: 700; line-height: 1.1; display: block; }
+.muted { color: var(--muted); }
+button, .button { font: inherit; font-size: 1.1875rem; padding: 8px 14px; border-radius: var(--radius); border: 2px solid transparent; background: var(--accent); color: var(--accent-text); cursor: pointer; box-shadow: 0 2px 0 #002d18; }
+button.secondary { background: var(--panel); color: var(--text); box-shadow: 0 2px 0 #929191; }
+button.link { background: none; border: 0; box-shadow: none; padding: 0; color: var(--link); text-decoration: underline; font-size: 1rem; }
+input, select, textarea { font: inherit; padding: 8px; border: 2px solid var(--text); border-radius: var(--radius); width: 100%; box-sizing: border-box; }
+label { display: block; font-weight: 700; margin: var(--gap) 0 4px; }
+table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: 10px 20px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 700; }
+nav.tabs { display: flex; gap: 8px; margin-bottom: var(--gap); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 0; box-shadow: 0 -2px var(--focus), 0 4px var(--text); }
+.header { background: var(--header); color: #fff; padding: 10px var(--gap); font-weight: 700; font-size: 1.2rem; border-bottom: 10px solid var(--link); }
+.tag { display: inline-block; padding: 2px 8px; font-weight: 700; font-size: 0.875rem; }
+.tag-red { background: #f6d7d2; color: #2a0b06; } .tag-orange { background: #fcd6c3; color: #6e3619; } .tag-blue { background: #bbd4ea; color: #0c2d4a; }
+dl.summary { margin: 0 0 var(--gap); } dl.summary div { display: flex; border-bottom: 1px solid var(--line); padding: 10px 0; }
+dl.summary dt { font-weight: 700; width: 30%; } dl.summary dd { margin: 0; flex: 1; }
+</style>
+</head>
+<body class="fi-click">
+<p id="proto-banner" role="note">Prototype, not for production use. All data is made up.</p>
+<div class="header">Sample Support Service</div>
+<main>
+
+<section class="screen" id="overview" aria-label="Open tickets overview">
+  <h1>Open tickets</h1>
+  <p class="muted">All numbers are sample values.</p>
+  <div class="row">
+    <div class="card"><span class="big">12</span>Open tickets (sample)</div>
+    <div class="card urgent"><span class="big">3</span>Past target time (sample)</div>
+    <div class="card"><span class="big">5</span>Not yet assigned (sample)</div>
+    <div class="card"><span class="big">4</span>Opened today (sample)</div>
+  </div>
+
+  <h2>Open tickets by type</h2>
+  <svg role="img" aria-label="Bar chart of sample open tickets by type: Payment query 5, Account access 4, Other 3" width="420" height="120" viewBox="0 0 420 120">
+    <text x="0" y="24" font-family="Arial" font-size="14" fill="#0b0c0c">Payment query</text>
+    <rect x="130" y="10" width="200" height="20" fill="#1d70b8"/><text x="338" y="25" font-family="Arial" font-size="14" fill="#0b0c0c">5</text>
+    <text x="0" y="64" font-family="Arial" font-size="14" fill="#0b0c0c">Account access</text>
+    <rect x="130" y="50" width="160" height="20" fill="#1d70b8"/><text x="298" y="65" font-family="Arial" font-size="14" fill="#0b0c0c">4</text>
+    <text x="0" y="104" font-family="Arial" font-size="14" fill="#0b0c0c">Other</text>
+    <rect x="130" y="90" width="120" height="20" fill="#1d70b8"/><text x="258" y="105" font-family="Arial" font-size="14" fill="#0b0c0c">3</text>
+  </svg>
+
+  <h2>Needs attention</h2>
+  <table>
+    <thead><tr><th>Ticket</th><th>Customer</th><th>Issue</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Ticket 0001</td><td>Sample Person 1</td><td>Payment query (sample)</td><td><span class="tag tag-red">Past target</span></td><td><button type="button" class="link" data-go="ticket-0001">View</button></td></tr>
+      <tr><td>Ticket 0002</td><td>Sample Person 2</td><td>Account access (sample)</td><td><span class="tag tag-orange">Unassigned</span></td><td><button type="button" class="link" data-go="ticket-0001">View</button></td></tr>
+      <tr><td>Ticket 0003</td><td>Sample Person 3</td><td>Other (sample)</td><td><span class="tag tag-blue">In progress</span></td><td><button type="button" class="link" data-go="ticket-0001">View</button></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="screen" id="ticket-0001" aria-label="Ticket detail">
+  <p><button type="button" class="link" data-go="overview">Back to open tickets</button></p>
+  <h1>Ticket 0001</h1>
+  <p><span class="tag tag-red">Past target</span></p>
+  <dl class="summary">
+    <div><dt>Customer</dt><dd>Sample Person 1</dd></div>
+    <div><dt>Email</dt><dd>person1@example.test</dd></div>
+    <div><dt>Phone</dt><dd>0400 000 001</dd></div>
+    <div><dt>Issue</dt><dd>Payment query (sample)</dd></div>
+    <div><dt>Opened</dt><dd>Sample date, 3 days ago</dd></div>
+    <div><dt>Assigned to</dt><dd>Nobody yet</dd></div>
+  </dl>
+  <button type="button" data-go="assigned">Assign to me</button>
+  <button type="button" class="secondary" data-go="overview">Back</button>
+</section>
+
+<section class="screen" id="assigned" aria-label="Ticket assigned">
+  <div class="card" style="background:#00703c;color:#fff;border-top:0;text-align:center;">
+    <h1 style="margin:0;">Ticket 0001 assigned to you</h1>
+    <p>This is a prototype, so nothing was saved or sent.</p>
+  </div>
+  <p><button type="button" class="link" data-go="overview">Back to open tickets</button></p>
+</section>
+
+</main>
+<script>
+(function () {
+  'use strict';
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.screen'));
+  function show(id) {
+    var found = false;
+    screens.forEach(function (s) { var on = s.id === id; s.hidden = !on; if (on) { found = true; } });
+    if (!found && screens.length) { screens[0].hidden = false; }
+    window.scrollTo(0, 0);
+  }
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-go]');
+    if (el) { e.preventDefault(); show(el.getAttribute('data-go')); }
+  });
+  document.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var next = e.target.getAttribute('data-next');
+    if (next) { show(next); }
+  });
+  document.addEventListener('input', function (e) {
+    var id = e.target.getAttribute('data-filter');
+    var list = id ? document.getElementById(id) : null;
+    if (!list) { return; }
+    var q = e.target.value.toLowerCase();
+    Array.prototype.forEach.call(list.children, function (item) {
+      item.hidden = q !== '' && item.textContent.toLowerCase().indexOf(q) === -1;
+    });
+  });
+  if (screens.length) { show(screens[0].id); }
+})();
+</script>
+</body>
+</html>
