@@ -59,7 +59,7 @@ Your next three moves. Each has an owner, a first action this week and an observ
 
 1. Put the containment in place, or confirm it is in place, and record that it holds.
 2. Collect the evidence for the top suspected cause and record whether it confirms or rules it out.
-3. Make the first fix at its stated reach and watch the rollback trigger for the stated period.
+3. If step 2 confirmed the cause, make the first fix at its stated reach and watch the rollback trigger for the stated period. If step 2 ruled it out, re-rank the remaining suspected causes, pick the fix for the new top cause, and repeat from step 2.
 
 To check the reasoning for hidden assumptions, the user may also like a skill for finding blind spots, if they have one. Do not run it for them.
 

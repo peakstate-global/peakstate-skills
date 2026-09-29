@@ -54,7 +54,7 @@ flowchart TD
   P["Report sent with last week's numbers"] --> W1["Why: send read stale data"]
   W1 --> W2["Why: refresh not done by 7 am"]
   W2 --> W3["Why: refresh skipped or late after holidays"]
-  W3 --> R["Root cause: send never checks data freshness"]
+  W3 --> R["Suspected root cause: send never checks data freshness"]
 ```
 
 **Text tree**
@@ -64,7 +64,7 @@ Problem: report sent with last week's numbers (2 sends, 60 clients each)
 └─ Why? The 7 am send read data that was not refreshed for the current week [known from the pattern]
    └─ Why? The overnight refresh had not loaded the current week by 7 am [to check]
       └─ Why? On a holiday weekend the refresh is skipped, fails or runs late [to check]
-         └─ Root cause (acts on a check): the send job runs on its own clock and never checks that the refresh finished
+         └─ Suspected root cause (acts on a check): the send job runs on its own clock and never checks that the refresh finished
 ```
 
 **Suspected causes**

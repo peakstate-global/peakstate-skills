@@ -9,17 +9,30 @@ Rules for every rung:
 - Insert user text as text. In SVG, escape `&`, `<`, `>` and `"`. In Mermaid, put each label
   in double quotes and replace any `"` inside it with `'`.
 - No external requests, no remote fonts, no `<script>`, no event-handler attributes.
+- Label the last link "Root cause" only when every why above it is marked "[known]". If any
+  why in the chain is still "[to check]", label the last link "Suspected root cause" instead,
+  so the diagram never claims a cause as confirmed before its evidence is in.
 
 ## Text tree (always)
 
-5 Whys chain:
+5 Whys chain, every link confirmed:
+
+```text
+Problem: {{PROBLEM}}
+└─ Why? {{ANSWER_1}} [known]
+   └─ Why? {{ANSWER_2}} [known]
+      └─ Why? {{ANSWER_3}} [known]
+         └─ Root cause (acts on process): {{ROOT_CAUSE}}
+```
+
+5 Whys chain, a link still unconfirmed:
 
 ```text
 Problem: {{PROBLEM}}
 └─ Why? {{ANSWER_1}} [known]
    └─ Why? {{ANSWER_2}} [known]
       └─ Why? {{ANSWER_3}} [to check]
-         └─ Root cause (acts on process): {{ROOT_CAUSE}}
+         └─ Suspected root cause (acts on process): {{ROOT_CAUSE}}
 ```
 
 Fishbone:
@@ -45,14 +58,14 @@ Pareto table (S4):
 
 ## Mermaid (S8)
 
-5 Whys chain:
+5 Whys chain (use "Root cause" only if every why is confirmed, otherwise "Suspected root cause"):
 
 ```mermaid
 flowchart TD
   P["{{PROBLEM}}"] --> W1["Why: {{ANSWER_1}}"]
   W1 --> W2["Why: {{ANSWER_2}}"]
   W2 --> W3["Why: {{ANSWER_3}}"]
-  W3 --> R["Root cause: {{ROOT_CAUSE}}"]
+  W3 --> R["Suspected root cause: {{ROOT_CAUSE}}"]
 ```
 
 Fishbone (as a left-to-right tree; drop empty branches):

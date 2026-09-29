@@ -59,7 +59,7 @@ Text tree
 Problem: orders sent to old addresses
 └─ Why? Labels printed from the overnight order export [known]
    └─ Why? The export reads the address cached at the last nightly sync [to check]
-      └─ Root cause (acts on process): address changes reach dispatch only after a nightly sync
+      └─ Suspected root cause (acts on process): address changes reach dispatch only after a nightly sync
 
 Suspected causes
 1. The export uses a nightly cached address. Confirms it: all 14 changes fall after the last
