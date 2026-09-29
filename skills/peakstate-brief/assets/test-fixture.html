@@ -8,7 +8,7 @@
 </head>
 <body data-brief-id="test-brief"
       data-addressed="a test comment"
-      data-replies='[{"match":"a test comment","reply":"Agreed, and the wording is fixed in this revision.\nA second line, so line breaks are covered."}]'>
+      data-replies='[{"match":"a test comment","reply":"Agreed, and the wording is fixed in this revision.\nA second line, so line breaks are covered."},{"match":"thumb two reply target","reply":"Image reply from the author."}]'>
 <main>
 <!-- ===================================================================
   {{CONTENT}} — REPLACE the two live sample sections below with your own.
@@ -185,6 +185,8 @@ Another paragraph.
 <!-- image lightbox: two eligible images and one inside a link, which must be skipped -->
 <figure><img id="lbA" alt="alt text A" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600'%3E%3Crect width='800' height='600' fill='%23c33'/%3E%3C/svg%3E"><figcaption>Fixture image A</figcaption></figure>
 <figure><img id="lbB" alt="Fixture image B" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600'%3E%3Crect width='800' height='600' fill='%2336c'/%3E%3C/svg%3E"></figure>
+<!-- inline thumbnails at 31% side by side; T1 and T3 share a src, so they hold separate comments -->
+<p class="thumbs"><img id="lbT1" alt="Thumb one" style="width:31%" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23e90'/%3E%3C/svg%3E"> <img id="lbT2" alt="Thumb two" style="width:31%" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%2309c'/%3E%3C/svg%3E"> <img id="lbT3" alt="Thumb one again" style="width:31%" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23e90'/%3E%3C/svg%3E"></p>
 <p><a href="#lb-link"><img id="lbLinked" alt="linked" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600'%3E%3Crect width='800' height='600' fill='%233c3'/%3E%3C/svg%3E" width="40"></a></p>
 </main>
 <script src="brief.js"></script>

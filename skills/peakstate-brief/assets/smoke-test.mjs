@@ -285,7 +285,7 @@ await page.click('#lbA');
 const lbOpens = await page.locator('.lb.open').isVisible();
 const lbSrcA = (await page.locator('.lb-img').getAttribute('src')) === (await page.locator('#lbA').getAttribute('src'));
 const lbCaption = (await page.locator('.lb-cap').textContent()) === 'Fixture image A';
-const lbCount = (await page.locator('.lb-count').textContent()) === '1 / 2';
+const lbCount = (await page.locator('.lb-count').textContent()) === '1 / 5';
 const fitT = await page.locator('.lb-img').evaluate(e => e.style.transform);
 await page.mouse.move(600, 400); await page.mouse.wheel(0, -400);
 await page.waitForTimeout(50);
@@ -294,7 +294,7 @@ const lbWheelZooms = (await page.locator('.lb-img').evaluate(e => e.style.transf
 await page.keyboard.press('0');
 const lbFitKey = (await page.locator('.lb.zoomed').count()) === 0;
 await page.keyboard.press('ArrowRight');
-const lbSteps = (await page.locator('.lb-count').textContent()) === '2 / 2' &&
+const lbSteps = (await page.locator('.lb-count').textContent()) === '2 / 5' &&
   (await page.locator('.lb-cap').textContent()) === 'Fixture image B';
 await page.keyboard.press('Escape');
 const lbCloses = (await page.locator('.lb.open').count()) === 0;
@@ -309,6 +309,144 @@ const lbNoTitleAttr = await page.evaluate(() => !document.querySelector('.lb [ti
 console.log(JSON.stringify({ lbOpens, lbSrcA, lbCaption, lbCount, lbWheelZooms, lbFitKey, lbSteps,
   lbCloses, lbFocusBack, lbScrollUnlocked, lbKeyboardOpens, lbBackdropCloses, lbLinkedSkipped,
   lbNoTitleAttr, jsErrors: errors }, null, 1));
+
+/* ── image comments: corner icon, lightbox panel, export, persistence ─────
+   The fixture carries two full-width figures and three 31% thumbnails, the
+   first and third sharing a src, so they must hold separate comments. */
+await page.goto(url);
+await page.setViewportSize({ width: 1200, height: 800 });
+await page.waitForTimeout(150);
+const imgIds = ['lbA', 'lbB', 'lbT1', 'lbT2', 'lbT3'];
+const boxes = () => page.evaluate((ids) => ids.map((id) => {
+  const r = document.getElementById(id).getBoundingClientRect();
+  return [r.x + scrollX, r.y + scrollY, r.width, r.height].map(Math.round).join(',');
+}).join('|'), imgIds);
+const withIcons = await boxes();
+const withoutIcons = await page.evaluate(async () => {
+  const st = document.createElement('style'); st.id = 'noicons';
+  st.textContent = '.lb-cmt{display:none!important}';
+  document.head.appendChild(st);
+  const out = ['lbA', 'lbB', 'lbT1', 'lbT2', 'lbT3'].map((id) => {
+    const r = document.getElementById(id).getBoundingClientRect();
+    return [r.x + scrollX, r.y + scrollY, r.width, r.height].map(Math.round).join(',');
+  }).join('|');
+  st.remove();
+  return out;
+});
+const icNoLayoutShift = withIcons === withoutIcons;
+const icOnEveryImage = (await page.locator('.lb-cmt').count()) === 5 &&
+  await page.evaluate(() => !(document.querySelector('#lbLinked').nextElementSibling || {}).classList?.contains('lb-cmt'));
+const icCornerPlaced = await page.evaluate(() => {
+  const ir = document.querySelector('#lbT1').getBoundingClientRect();
+  const br = document.querySelector('#lbT1 + .lb-cmt').getBoundingClientRect();
+  return br.right <= ir.right && br.right > ir.right - 20 && br.top >= ir.top && br.top < ir.top + 20;
+});
+const opacityOf = (sel) => page.locator(sel).evaluate((e) => +getComputedStyle(e).opacity);
+await page.mouse.move(2, 790); await page.waitForTimeout(250);
+const icDimAtRest = (await opacityOf('#lbT1 + .lb-cmt')) < 1;
+await page.hover('#lbT1'); await page.waitForTimeout(250);
+const icFullOnHover = (await opacityOf('#lbT1 + .lb-cmt')) === 1;
+await page.click('#lbT1 + .lb-cmt');
+const icOpensPanel = (await page.locator('.lb.open').count()) === 1 &&
+  await page.locator('.lb-panel').isVisible() &&
+  (await page.locator('.lb-count').textContent()) === '3 / 5' &&
+  await page.evaluate(() => document.activeElement && document.activeElement.id === 'lbCmtText');
+const panelBelowImage = await page.evaluate(() =>
+  document.querySelector('.lb-panel').getBoundingClientRect().top >=
+  document.querySelector('.lb-stage').getBoundingClientRect().bottom - 1);
+await page.keyboard.type('a nice colour on this image');
+await page.keyboard.press('ArrowRight');
+await page.keyboard.press('+');
+const panelKeysContained = (await page.locator('.lb-count').textContent()) === '3 / 5' &&
+  (await page.locator('.lb.zoomed').count()) === 0 && await page.locator('.lb-panel').isVisible();
+await page.click('.lb-panel [data-p="save"]');
+const saveClosesAndRefocuses = await page.locator('.lb-panel').isHidden() &&
+  await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('lb-cmtb'));
+const barFilled = (await page.locator('.lb-cmtb.has').count()) === 1;
+const barTip = await page.locator('.lb-cmtb').getAttribute('data-tip');
+await page.keyboard.press('ArrowRight');
+const stepShowsOwnState = (await page.locator('.lb-count').textContent()) === '4 / 5' &&
+  (await page.locator('.lb-cmtb.has').count()) === 0;
+await page.keyboard.press('c');
+const cKeyOpens = await page.locator('.lb-panel').isVisible() &&
+  (await page.inputValue('#lbCmtText')) === '' && await page.locator('.lb-panel [data-p="del"]').isHidden();
+await page.keyboard.type('thumb two reply target, and more');
+await page.keyboard.press('Control+Enter');
+await page.keyboard.press('c');
+await page.keyboard.press('Escape');
+const escClosesPanelFirst = await page.locator('.lb-panel').isHidden() && (await page.locator('.lb.open').count()) === 1;
+await page.keyboard.press('Escape');
+const secondEscCloses = (await page.locator('.lb.open').count()) === 0;
+await page.mouse.move(2, 790); await page.waitForTimeout(250);
+const icFilledOutside = (await page.locator('#lbT1 + .lb-cmt.has').count()) === 1 &&
+  (await page.locator('#lbT2 + .lb-cmt.has').count()) === 1 &&
+  (await page.locator('#lbT3 + .lb-cmt.has').count()) === 0;
+const icFilledAlwaysVisible = (await opacityOf('#lbT1 + .lb-cmt')) === 1;
+const noShiftAfterComment = (await boxes()) === withIcons;
+// reopen from the icon and edit
+await page.click('#lbT1 + .lb-cmt');
+const reopenShowsText = /* the + typed earlier went into the box, not to the zoom */
+  (await page.inputValue('#lbCmtText')) === 'a nice colour on this image+' &&
+  await page.locator('.lb-panel [data-p="del"]').isVisible();
+await page.fill('#lbCmtText', 'edited image note');
+await page.click('.lb-panel [data-p="save"]');
+await page.keyboard.press('Escape');
+// export: the image comment carries kind and image; a text comment is unchanged
+await page.click('#copyBtn');
+const json5 = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+const imgOut = (json5.comments || []).filter((c) => c.comment === 'edited image note')[0];
+const exportImage = !!imgOut && imgOut.kind === 'image' && imgOut.selected_text === 'Thumb one' &&
+  imgOut.image.alt === 'Thumb one' && /^data:/.test(imgOut.image.src) && 'near_question' in imgOut &&
+  imgOut.highlight === null && imgOut.anchored === true;
+const textOut = (json5.comments || []).filter((c) => c.comment === 'crosses an element boundary')[0];
+const textExportUnchanged = !!textOut &&
+  Object.keys(textOut).join() === 'selected_text,near_question,comment,highlight,anchored';
+// the drawer lists image comments with a thumbnail and opens the lightbox
+await page.click('#cmtBtn');
+await page.waitForSelector('#cdrawer .drow', { timeout: 3000 });
+const drawerListsImages = (await page.locator('#cdrawer .drow.dimg').count()) === 2 &&
+  (await page.locator('#cdrawer .drow.dimg img.dthumb').count()) === 2;
+await page.locator('#cdrawer .drow.dimg', { hasText: 'edited image note' }).locator('[data-d="edit"]').click();
+const drawerOpensLightbox = (await page.locator('.lb-count').textContent()) === '3 / 5' &&
+  await page.locator('.lb-panel').isVisible();
+await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+// persistence across reload, and the author's reply shows in the panel
+await page.reload();
+await page.waitForTimeout(150);
+const imagePersists = (await page.locator('#lbT1 + .lb-cmt.has').count()) === 1 &&
+  (await page.locator('#lbT3 + .lb-cmt.has').count()) === 0;
+await page.mouse.move(2, 790); await page.waitForTimeout(250);
+await page.locator('p.thumbs').screenshot({ path: process.argv[2] + '/shot-thumbs.png' });
+await page.click('#lbT2 + .lb-cmt');
+const imageReplyThread = ((await page.locator('.lb-panel .ctreply .cttext').textContent()) || '')
+  .includes('Image reply from the author.') &&
+  (await page.locator('.lb-plabel').textContent()) === 'Continue the conversation';
+await page.screenshot({ path: process.argv[2] + '/shot-lightbox.png' });
+await page.fill('#lbCmtText', 'image follow up');
+await page.click('.lb-panel [data-p="save"]');
+const imageFollowUp = (await page.locator('.lb-panel .ctmsg').count()) === 3 &&
+  await page.locator('.lb-panel').isVisible();
+await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+// delete
+await page.click('#lbT1 + .lb-cmt');
+await page.click('.lb-panel [data-p="del"]');
+const deleteClears = await page.locator('.lb-panel').isHidden() && (await page.locator('.lb-cmtb.has').count()) === 0;
+await page.keyboard.press('Escape');
+const deleteClearsIcon = (await page.locator('#lbT1 + .lb-cmt.has').count()) === 0;
+await page.click('#copyBtn');
+const json6 = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+const deleteLeavesExport = !(json6.comments || []).some((c) => c.comment === 'edited image note') &&
+  (json6.comments || []).some((c) => c.kind === 'image' && (c.follow_up || [])[0] === 'image follow up');
+const icNoTitleAttr = await page.evaluate(() => !document.querySelector('.lb [title], .lb-cmt[title], #cdrawer [title]'));
+const icNamed = await page.evaluate(() => [...document.querySelectorAll('.lb-cmt, .lb button')]
+  .every((b) => (b.getAttribute('aria-label') || b.textContent).trim().length > 0));
+console.log(JSON.stringify({ icNoLayoutShift, icOnEveryImage, icCornerPlaced, icDimAtRest, icFullOnHover,
+  icOpensPanel, panelBelowImage, panelKeysContained, saveClosesAndRefocuses, barFilled,
+  barTipOk: barTip === 'Comment on this image  ·  C', stepShowsOwnState, cKeyOpens,
+  escClosesPanelFirst, secondEscCloses, icFilledOutside, icFilledAlwaysVisible, noShiftAfterComment,
+  reopenShowsText, exportImage, textExportUnchanged, drawerListsImages, drawerOpensLightbox,
+  imagePersists, imageReplyThread, imageFollowUp, deleteClears, deleteClearsIcon, deleteLeavesExport,
+  icNoTitleAttr, icNamed, jsErrors: errors }, null, 1));
 
 await browser.close();
 

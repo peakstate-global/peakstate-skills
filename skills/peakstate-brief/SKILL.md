@@ -78,6 +78,8 @@ with their locators, each linking to its exact passage in the references.
    `section.q` (not a bare `<h2>`), so it gets one.
 3. **Selection-comment system** — provided by the runtime; requires `brief.js`
    loaded and `<main>` present. Never omit the script.
+   Readers can also comment on a whole image, from its corner icon or the lightbox
+   (`reference/runtime.md`, "Image comments").
 4. **Copy + download icon buttons** — one combo control in the runtime top bar;
    require `brief.js` + `data-brief-id` on `<body>`. Edited documents ride in
    the same payload under `edits`.

@@ -650,8 +650,17 @@
       if (isSent(c)) return;
       var o = { selected_text: c.text, near_question: c.near || null, comment: c.comment };
       if (hasReply(c)) { o.reply = c.reply; o.follow_up = follow; }
-      o.highlight = c.unhl ? null : hlOf(c);
-      o.anchored = !!document.querySelector('mark.cmt[data-cid="' + c.cid + '"]');
+      if (c.kind === 'image') {
+        /* An image carries no highlight; anchored means the image is still in
+           this build of the file. */
+        o.highlight = null;
+        o.anchored = !!imgOf(c);
+        o.kind = 'image';
+        o.image = c.image || { src: c.src, alt: '', caption: '' };
+      } else {
+        o.highlight = c.unhl ? null : hlOf(c);
+        o.anchored = !!document.querySelector('mark.cmt[data-cid="' + c.cid + '"]');
+      }
       out.comments.push(o);
     });
     /* Drafts are comments the reader typed but never saved. They ship in the
@@ -1107,6 +1116,7 @@
   }
 
   function editComment(c) {
+    if (c.kind === 'image') return openImg(c);
     editing = c;
     var mk = document.querySelector('mark.cmt[data-cid="' + c.cid + '"]');
     var r = mk ? mk.getBoundingClientRect() : { left: innerWidth / 2 - 170, width: 0, bottom: 120 };
@@ -1133,7 +1143,9 @@
 
   function reanchor() {
     state.comments.forEach(function (c) {
-      if (isAnchored(c.cid)) return;
+      /* An image comment has no quoted text to find. Searching for its alt
+         text would paint a mark on any caption that happens to repeat it. */
+      if (c.kind === 'image' || isAnchored(c.cid)) return;
       /* A comment whose quoted text is no longer in the document cannot anchor,
          and findRange walks every text node to discover that. Retrying it on
          every drawer open made the first few clicks crawl on a brief carrying
@@ -1149,6 +1161,47 @@
   /* ── comments drawer ──
      Every comment and draft in one list, anchored or not. This is what makes a
      lost highlight a cosmetic problem instead of a lost thought. */
+  /* ── image comments ──
+     A comment on a whole image lives in state.comments like any other, so it
+     persists, syncs, stamps as sent and lists in the drawer with no second
+     path. kind:'image' marks it, and src + nth identify the image, because an
+     image has no quoted text to find again. The lightbox, in a later script
+     block, owns the UI and computes src + nth; the two halves meet on
+     window.__briefImg, and either may load first. */
+  var IMG = window.__briefImg = window.__briefImg || {};
+  function imgOf(c) { return IMG.find ? IMG.find(c.src, c.nth || 0) : null; }
+  function openImg(c) { var im = imgOf(c); if (im && IMG.open) IMG.open(im, true); }
+  IMG.get = function (k) {
+    return state.comments.filter(function (c) {
+      return c.kind === 'image' && c.src === k.src && (c.nth || 0) === k.nth;
+    })[0] || null;
+  };
+  IMG.thread = function (c) { return c && hasReply(c) ? threadHTML(c) : ''; };
+  /* A comment the author has replied to takes the words as a follow-up, the
+     same as the thread in the text popover: editing the original would break
+     the prefix its reply is matched on. */
+  IMG.save = function (k, text) {
+    var c = IMG.get(k), now = new Date().toISOString();
+    if (c && hasReply(c)) {
+      if (!c.thread) c.thread = [];
+      c.thread.push({ by: 'reader', text: text, at: now });
+    } else if (c) { c.comment = text; c.at = now; }
+    else {
+      state.comments.push({
+        cid: 'i' + Date.now() + Math.floor(Math.random() * 1000), kind: 'image',
+        src: k.src, nth: k.nth, text: k.alt || k.caption || '',
+        image: { src: k.src, alt: k.alt || '', caption: k.caption || '' },
+        comment: text, near: k.img ? nearestQ(k.img) : null, at: now
+      });
+    }
+    save(); renderDrawer(); toast(c && hasReply(c) ? 'Reply added' : 'Image comment saved');
+  };
+  IMG.del = function (k) {
+    var c = IMG.get(k); if (!c) return;
+    state.comments = state.comments.filter(function (x) { return x !== c; });
+    save(); renderDrawer(); toast('Comment deleted');
+  };
+
   var drawer = document.createElement('div');
   drawer.id = 'cdrawer'; drawer.hidden = true;
   drawer.setAttribute('role', 'dialog');
@@ -1165,6 +1218,9 @@
     var cmtBtn = document.getElementById('cmtBtn');
     var drafts = state.drafts.filter(function (d) { return (d.comment || '').trim(); });
     var n = state.comments.length;
+    /* Every change to a comment comes through here, so the image icons and
+       the lightbox panel repaint from the same call. */
+    if (IMG.paint) IMG.paint();
     if (cmtBtn) {
       cmtBtn.innerHTML = ICON.comment +
         (n || drafts.length ? '<span class="cbadge' + (drafts.length ? ' hasdraft' : '') + '">' + (n + drafts.length) + '</span>' : '');
@@ -1187,6 +1243,20 @@
     } else {
       html += '<p class="dlabel">Saved</p>';
       state.comments.forEach(function (c) {
+        if (c.kind === 'image') {
+          var im = imgOf(c);
+          html += '<div class="drow dimg" data-cid="' + esc(c.cid) + '">' +
+            '<div class="dq">' + (im ? '<img class="dthumb" alt="" src="' + esc(im.currentSrc || im.src).replace(/"/g, '&quot;') + '">'
+                                     : '<span class="dthumb dglyph" aria-hidden="true">\u25a3</span>') +
+            esc(c.text || (c.image && c.image.src) || 'Image').slice(0, 160) +
+            (hasReply(c) ? '<span class="dbadge done">replied</span>' : '') +
+            (im ? '' : '<span class="dbadge">image not in this version</span>') + '</div>' +
+            '<div class="db">' + esc(c.comment) + '</div>' +
+            '<div class="dacts">' +
+            (im ? '<button class="btn small" data-d="edit" type="button">Show</button>' : '') +
+            '<button class="btn small danger" data-d="del" type="button">Delete</button></div></div>';
+          return;
+        }
         var anchored = isAnchored(c.cid);
         html += '<div class="drow" data-cid="' + esc(c.cid) + '">' +
           '<div class="dq"><span class="ddot"' + (c.unhl ? '' : ' data-hl="' + hlOf(c) + '"') + '></span>“' + esc(c.text).slice(0, 160) + '”' +
@@ -1222,6 +1292,7 @@
     }
     var c = state.comments.filter(function (x) { return x.cid === row.dataset.cid; })[0];
     if (!c) return;
+    if (c.kind === 'image' && act === 'edit') { toggleDrawer(false); return openImg(c); }
     if (act === 'goto') {
       toggleDrawer(false);
       var mk = document.querySelector('mark.cmt[data-cid="' + c.cid + '"]');
@@ -1441,7 +1512,7 @@
       /* htmlToMd walks block children, so the section shells are flattened
          first — otherwise a whole section collapses into one inline run. */
       var clone = summary.cloneNode(true);
-      clone.querySelectorAll('.copybtn, label.tick, .cmt-btn').forEach(function (n) { n.remove(); });
+      clone.querySelectorAll('.copybtn, label.tick, .cmt-btn, .lb-cmt').forEach(function (n) { n.remove(); });
       /* "Part one" is a label, not the first words of the heading. */
       clone.querySelectorAll('.pnum').forEach(function (n) { n.textContent = n.textContent.trim() + ' —'; });
       var shell;
@@ -3089,19 +3160,105 @@ var __briefTip = (() => {
      anything marked data-nolightbox. The controls sit at the top because
      data-tip draws below its element. */
   var LB_SKIP = 'a[href] img,[data-doc] img,.topbar img,[data-nolightbox],[data-nolightbox] img';
+  var BUBBLE = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.8a7.8 7.8 0 0 1-7.8 ' +
+    '7.8H8.4L4 22.3v-4.6a7.8 7.8 0 0 1-.5-2.7v-3.2A7.8 7.8 0 0 1 11.3 4h1.4a7.8 7.8 0 0 1 7.8 7.8Z"/></svg>';
 
   function lightbox() {
     var root = mainEl(); if (!root) return;
     function eligible(img) { return img.tagName === 'IMG' && root.contains(img) && !img.matches(LB_SKIP); }
     function gallery() { return Array.prototype.filter.call(root.querySelectorAll('img'), eligible); }
+    var IMG = window.__briefImg = window.__briefImg || {};
+    /* ── image comments: which image, and the corner icon ──
+       An image is named by its src attribute and which occurrence of that src
+       it is, so one image used twice holds two comments. A data: URI is hashed:
+       the whole URI would bloat the store and the export. The hash is cached on
+       the element, because a portable brief inlines megabytes of them. */
+    function srcKey(img) {
+      var raw = img.getAttribute('src') || '';
+      if (raw.slice(0, 5) !== 'data:') return raw;
+      if (img._lbk && img._lbk[0] === raw) return img._lbk[1];
+      for (var h = 5381, i = 0; i < raw.length; i++) h = ((h * 33) ^ raw.charCodeAt(i)) >>> 0;
+      img._lbk = [raw, 'data:' + h.toString(36) + '.' + raw.length.toString(36)];
+      return img._lbk[1];
+    }
+    function keys() {
+      var seen = {};
+      return gallery().map(function (img) {
+        var k = srcKey(img), n = seen[k] || 0; seen[k] = n + 1;
+        return { img: img, src: k, nth: n };
+      });
+    }
+    function keyOf(img) {
+      var k = keys().filter(function (x) { return x.img === img; })[0] || { img: img, src: srcKey(img), nth: 0 };
+      var fig = img.closest('figure'), fc = fig && fig.querySelector('figcaption');
+      k.alt = img.alt || ''; k.caption = (fc && fc.textContent.trim()) || '';
+      return k;
+    }
+    function commentOn(img) { return IMG.get ? IMG.get(keyOf(img)) : null; }
+    IMG.find = function (src, nth) {
+      var k = keys().filter(function (x) { return x.src === src && x.nth === nth; })[0];
+      return k ? k.img : null;
+    };
+    IMG.open = function (img, withPanel) { open(img, withPanel); };
+
+    /* The corner icon is an absolutely positioned sibling, placed from the two
+       boxes rather than wrapped around the image: a wrapper changes what a
+       percentage width resolves against, so a 31% thumbnail would resize. The
+       offset is corrected by the measured difference, which holds in whatever
+       box the button is positioned against. */
+    var pairs = [];
     gallery().forEach(function (img) {
       img.classList.add('lb-zoomable');
       if (!img.hasAttribute('tabindex')) img.tabIndex = 0;
       img.setAttribute('role', 'button');
       img.setAttribute('aria-label', 'Open image' + (img.alt ? ': ' + img.alt : ''));
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'lb-cmt'; b.innerHTML = BUBBLE;
+      b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); open(img, true, b); });
+      img.insertAdjacentElement('afterend', b);
+      img._lbc = b; pairs.push({ img: img, btn: b });
     });
+    var placing = 0;
+    function place() {
+      placing = 0;
+      var rs = pairs.map(function (p) { return [p.img.getBoundingClientRect(), p.btn.getBoundingClientRect()]; });
+      pairs.forEach(function (p, i) {
+        var ir = rs[i][0], br = rs[i][1], st = p.btn.style;
+        /* Hidden (a collapsed section) or too small to carry an icon. */
+        if (ir.width < 48 || ir.height < 36 || !br.width) { st.visibility = 'hidden'; return; }
+        st.visibility = '';
+        st.left = ((parseFloat(st.left) || 0) + ir.right - 6 - br.width - br.left) + 'px';
+        st.top = ((parseFloat(st.top) || 0) + ir.top + 6 - br.top) + 'px';
+      });
+    }
+    function placeSoon() { if (!placing) placing = requestAnimationFrame(place); }
+    /* The body resizes whenever anything above an image grows or folds, and
+       each image resizes when it loads or its column changes. */
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(placeSoon);
+      ro.observe(document.body);
+      pairs.forEach(function (p) { ro.observe(p.img); });
+    }
+    window.addEventListener('resize', placeSoon);
+    window.addEventListener('load', placeSoon);
+    placeSoon();
+    IMG.paint = function () {
+      keys().forEach(function (k) {
+        var b = k.img._lbc; if (!b) return;
+        var has = !!(IMG.get && IMG.get(k));
+        var lab = has ? 'Edit the comment on this image' : 'Comment on this image';
+        b.classList.toggle('has', has);
+        b.setAttribute('data-tip', lab);
+        b.setAttribute('aria-label', lab + (k.img.alt ? ': ' + k.img.alt : ''));
+      });
+      if (isOpen()) { paintBar(); if (panelOpen() && document.activeElement !== ta) fillPanel(); }
+    };
+    IMG.paint();
 
-    var box = null, stage, pic, cap, count, prevB, nextB, closeB;
+    var box = null, stage, pic, cap, count, prevB, nextB, cmtB, closeB;
+    var panel = null, thread, plabel, ta, delB;
+    var MODK = /Mac|iP(hone|ad|od)/.test(navigator.platform || navigator.userAgent) ? '\u2318' : 'Ctrl+';
     var list = [], at = 0, opener = null;
     var s = 1, fit = 1, tx = 0, ty = 0, nw = 1, nh = 1;
     var ptrs = {}, drag = null, pinch = null, moved = false, fromPic = false;
@@ -3125,8 +3282,29 @@ var __briefTip = (() => {
       count = el('span', 'lb-count', bar);
       prevB = btn('lb-prev', 'Previous image', '←', '‹', bar);
       nextB = btn('lb-next', 'Next image', '→', '›', bar);
+      cmtB = btn('lb-cmtb', 'Comment on this image', 'C', '', bar); cmtB.innerHTML = BUBBLE;
       closeB = btn('lb-close', 'Close', 'Esc', '×', bar);
       stage = el('div', 'lb-stage', box);
+      /* The comment panel docks below the stage as a flex item, so the stage
+         shrinks and the image refits above it rather than being covered. */
+      panel = el('div', 'lb-panel', box); panel.hidden = true;
+      panel.setAttribute('role', 'group'); panel.setAttribute('aria-label', 'Comment on this image');
+      panel.innerHTML = '<div class="lb-thread"></div>' +
+        '<label class="lb-plabel" for="lbCmtText"></label>' +
+        '<textarea id="lbCmtText" rows="3" placeholder="What about this image?"></textarea>' +
+        '<div class="lb-prow"><span class="lb-phint">' + MODK + 'Enter saves \u00b7 Esc closes</span>' +
+        '<button type="button" class="btn small danger" data-p="del">Delete</button>' +
+        '<button type="button" class="btn small" data-p="cancel">Cancel</button>' +
+        '<button type="button" class="btn small primary" data-p="save">Save</button></div>';
+      thread = panel.querySelector('.lb-thread'); plabel = panel.querySelector('.lb-plabel');
+      ta = panel.querySelector('textarea'); delB = panel.querySelector('[data-p="del"]');
+      panel.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('button'), act = b && b.dataset.p;
+        if (act === 'save') savePanel();
+        else if (act === 'cancel') closePanel();
+        else if (act === 'del') { IMG.del(keyOf(list[at])); closePanel(); }
+      });
+      cmtB.onclick = function () { if (panelOpen()) closePanel(); else openPanel(); };
       pic = el('img', 'lb-img', stage); pic.alt = ''; pic.draggable = false;
       prevB.onclick = function () { step(-1); };
       nextB.onclick = function () { step(1); };
@@ -3145,6 +3323,42 @@ var __briefTip = (() => {
       window.addEventListener('resize', function () { if (isOpen()) fitNow(); });
     }
     function isOpen() { return !!box && box.classList.contains('open'); }
+    function panelOpen() { return !!panel && !panel.hidden; }
+    function paintBar() {
+      var has = !!commentOn(list[at]);
+      cmtB.classList.toggle('has', has);
+      cmtB.setAttribute('aria-label', (has ? 'Edit the comment on this image' : 'Comment on this image') + ' (C)');
+    }
+    function fillPanel() {
+      var c = commentOn(list[at]), th = IMG.thread ? IMG.thread(c) : '';
+      thread.innerHTML = th; thread.hidden = !th;
+      plabel.textContent = th ? 'Continue the conversation' : 'Your comment on this image';
+      ta.value = th ? '' : (c ? c.comment : '');
+      delB.hidden = !c;
+    }
+    function openPanel() {
+      /* No store yet: a published brief holds its runtime until the host hands
+         the state over, and the page is inert until then anyway. */
+      if (!IMG.save) return;
+      if (!panelOpen()) {
+        fillPanel(); panel.hidden = false; box.classList.add('commenting'); fitNow();
+      }
+      ta.focus();
+    }
+    function closePanel(back) {
+      if (!panelOpen()) return;
+      panel.hidden = true; box.classList.remove('commenting'); fitNow();
+      if (back !== false) cmtB.focus();
+    }
+    /* Empty on an existing comment means delete it; on a replied one the words
+       are a follow-up, and the panel stays open to show them land. */
+    function savePanel() {
+      var k = keyOf(list[at]), v = ta.value.trim(), c = IMG.get(k), replied = !!IMG.thread(c);
+      if (v) IMG.save(k, v);
+      else if (c && !replied) IMG.del(k);
+      if (v && replied) { fillPanel(); ta.focus(); return; }
+      closePanel();
+    }
     function view() { return { w: stage.clientWidth, h: stage.clientHeight }; }
     function apply() {
       pic.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
@@ -3185,17 +3399,21 @@ var __briefTip = (() => {
       cap.textContent = (fc && fc.textContent.trim()) || src.alt || '';
       count.textContent = list.length > 1 ? (at + 1) + ' / ' + list.length : '';
       prevB.hidden = nextB.hidden = list.length < 2;
+      paintBar();
+      if (panelOpen()) fillPanel();
     }
-    function open(img) {
+    function open(img, withPanel, from) {
       if (!box) build();
-      list = gallery(); opener = img;
+      list = gallery(); opener = from || img;
+      panel.hidden = true; box.classList.remove('commenting');
       box.classList.add('open');
       document.documentElement.classList.add('lb-lock');
       show(Math.max(0, list.indexOf(img)));
-      closeB.focus();
+      if (withPanel) openPanel(); else closeB.focus();
     }
     function close() {
-      box.classList.remove('open', 'zoomed');
+      panel.hidden = true;
+      box.classList.remove('open', 'zoomed', 'commenting');
       document.documentElement.classList.remove('lb-lock');
       pic.removeAttribute('src'); ptrs = {}; drag = pinch = null;
       if (opener && document.contains(opener)) opener.focus();
@@ -3246,7 +3464,9 @@ var __briefTip = (() => {
       zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), p.x, p.y);
     }
     function trap(e) {
-      var f = [prevB, nextB, closeB].filter(function (b) { return !b.hidden; });
+      var f = [prevB, nextB, cmtB, closeB].concat(panelOpen()
+        ? Array.prototype.slice.call(panel.querySelectorAll('textarea, button')) : [])
+        .filter(function (b) { return !b.hidden; });
       var i = f.indexOf(document.activeElement);
       e.preventDefault();
       f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
@@ -3267,8 +3487,19 @@ var __briefTip = (() => {
         }
         return;
       }
+      /* Inside the comment panel the keys are for typing: none of the viewer's
+         shortcuts apply. Esc closes the panel only; a second Esc closes the
+         viewer. */
+      if (panelOpen() && panel.contains(e.target)) {
+        if (e.key === 'Escape') closePanel();
+        else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) savePanel();
+        else if (e.key === 'Tab') { trap(e); return; }
+        else return;
+        e.preventDefault(); e.stopPropagation(); return;
+      }
       var v = view();
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') { if (panelOpen()) closePanel(); else close(); }
+      else if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.altKey) openPanel();
       else if (e.key === 'ArrowRight') step(1);
       else if (e.key === 'ArrowLeft') step(-1);
       else if (e.key === '+' || e.key === '=') zoomAt(1.25, v.w / 2, v.h / 2);

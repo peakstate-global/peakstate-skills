@@ -228,3 +228,30 @@ block (a click there starts the editor), in the topbar, and anything carrying `d
 on the image or on an ancestor. The viewer is dark in both themes, and its controls sit at the top
 because `data-tip` draws below its element. The smoke test covers it.
 
+## Image comments (automatic, no authoring)
+
+**A reader can comment on a whole image, not just on selected text.** Every image the lightbox
+opens carries a speech-bubble icon in its top-right corner: an outline at reduced opacity when the
+image has no comment (full opacity on hover or focus), a filled bubble in the accent colour when it
+has one. The icon is placed from the image's box by the script, so it never changes the image's
+size or the layout around it.
+
+- **Comment:** click the corner icon, or open the lightbox and press `C` or the bubble button in
+  its top bar. A panel docks below the image with Save, Cancel and, once a comment exists, Delete.
+  `Cmd`/`Ctrl`+Enter saves. Saving an empty box on an existing comment deletes it.
+- **Keys:** inside the panel the keys are for typing, so no viewer shortcut fires. Esc closes the
+  panel and a second Esc closes the viewer. Stepping to another image shows that image's own
+  comment.
+- **Storage:** an image comment is an ordinary entry in `state.comments` with `kind: 'image'`, so
+  persistence, the publish sync, the unsent-work marker, build stamping and the drawer all apply
+  unchanged. The image is identified by its `src` attribute plus which occurrence of that `src` it
+  is, so one image used twice holds two comments. A `data:` URI is stored as a short hash of
+  itself, not the whole URI.
+- **Export:** the same object as a text comment, with `selected_text` set to the alt text (or the
+  caption), `highlight: null`, `anchored` true while the image is still in the file, plus
+  `kind: "image"` and `image: {src, alt, caption}`.
+- **Replies:** `data-replies` matches an image comment exactly as it matches a text comment, and
+  the reader sees the thread in the lightbox panel, where further words are saved as a follow-up.
+- **Drawer:** image comments list with a thumbnail and the alt text; Show opens the lightbox on
+  that image with the panel open.
+
