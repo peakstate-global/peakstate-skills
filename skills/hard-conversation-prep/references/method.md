@@ -32,7 +32,7 @@ A hard conversation carries three conversations at once. Prepare for each:
 
 - One action, specific enough that both people would agree whether it happened. "Hand in the roster by Wednesday noon, or tell me by Tuesday if it will be late", not "be more reliable".
 - Positive words: ask for what you want done, not for what to stop.
-- A request can be declined. If a "no" is not acceptable, it is a demand: say so plainly and say what follows, but only if the user stated it.
+- A request can be declined. If a "no" is not acceptable, it is a requirement, not a request. State it as "Requirement: [what must happen]", plainly, and add "Consequence: [what follows]" only if the user stated one. Never write a requirement as if it were an offer the other person could decline.
 - If the user does not want to ask for anything, record "No request beyond being heard" and do not press. Being heard is a legitimate aim.
 
 ## The opening line (S2, S1)

@@ -11,10 +11,11 @@ Fill every line. Keep the order.
 
 - **Situation:** [when and where, from the instance the user gave, or [specific example to confirm]]
 - **Behaviour:** [what a camera would record, no judgement word, or [specific example to confirm]]
-- **Impact:** [the effect on you, the team or the work]
+- **Impact:** [the effect on you, the team or the work, or [impact to confirm] if the user was asked once and still did not say]
 - **Their view (ask):** "[a question about what was going on for them]"
 - **Request:** "[one specific, positive action they could decline]"
   [Or, if the user declined to make one:] No request beyond being heard: [what the user wants them to know].
+  [Or, if the user said a "no" is not an option:] Requirement: [what must happen]. Consequence: [what follows, only if the user stated it].
 - **If they say no:** [only what the user said they will do; otherwise leave this line out]
 
 ### Likely replies
