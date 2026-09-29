@@ -33,7 +33,7 @@ This skill uses the diagram ladder: an SVG file or artifact, then a Mermaid flow
 
 Say once, in the first reply: "Use only a tool your organisation has approved for this information." Then run the steps in order. Ask one question at a time and wait for the answer.
 
-If the user asks to skip the questions, build the whole take-away in one pass from what they gave: every link is "suggested", every unknown is `[to confirm]`, the archetype is "suggested", and the leverage point is a hypothesis. Then offer to confirm the links.
+If the user asks to skip the questions, build the whole take-away in one pass from what they gave: a link the user stated is "you", every link you add is "suggested", every unknown is `[to confirm]`, the archetype is "suggested", and the leverage point is a hypothesis. Then offer to confirm the links.
 
 1. **Describe the pattern.** Ask one question: what keeps happening, how has it changed over time, and what has been tried? A systems map explains a pattern over time, not a single event (S2). If the user describes a one-off failure, say a root-cause method fits better, and carry on only if they want the map.
 2. **List the variables.** Suggest four to eight variables from what the user said. Each is a noun phrase that can go up or down ("backlog size", not "the backlog problem") (S2). Ask the user to confirm or correct the list in one reply. Keep every variable the user adds.

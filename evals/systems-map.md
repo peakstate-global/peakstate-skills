@@ -1,6 +1,6 @@
 ---
 skill: systems-map
-eval-version: "1"
+eval-version: "2"
 ---
 
 # systems-map evals
@@ -34,7 +34,7 @@ vi) If the skill asks anything else: "I don't know, your call."
 **Scripted replies**, in order, each with when to give it:
 
 i) When the skill asks what keeps happening or how it has changed over time: "It rose from 50 to 400 weekly users from March to May and has been flat since. We ran training sessions the whole time."
-ii) When the skill asks to confirm or correct the variables or the links: "Mostly right, but I don't know whether more training sessions raise or lower support tickets. Leave that one open."
+ii) When the skill asks to confirm or correct the variables or the links: "Mostly right, but I don't know whether more training sessions raise or lower support tickets. Leave that one open. And when support tickets go up, we schedule more training sessions."
 iii) When the skill asks which archetype fits: "None of those fit, I think."
 iv) If the skill asks anything else: "I don't know, your call."
 
@@ -57,7 +57,7 @@ ii) If the skill asks anything else: "I don't know, your call."
 
 **Properties**, each graded pass or fail:
 
-- P1: the first reply gives the whole take-away without waiting: text notation plus a diagram at a named rung, with every link marked as suggested (not confirmed by the user).
+- P1: the first reply gives the whole take-away without waiting: text notation plus a diagram at a named rung. Each link the user stated in the opening is marked as the user's, and every link the skill added is marked as suggested; none of the added links is called confirmed.
 - P2: the loop discounting, margin, marketing budget, leads, back to discounting is labelled R (reinforcing): its links are discounting to margin `-`, margin to marketing budget `+`, marketing budget to leads `+`, leads to discounting `-`, which is two `-` links.
 - P3: any archetype named is marked as suggested, with the evidence it rests on, not as confirmed.
 - P4: after the image request, the reply does not use image generation for the causal loop, says why (generated images corrupt labels and arrows) and offers or keeps the SVG or Mermaid form.
