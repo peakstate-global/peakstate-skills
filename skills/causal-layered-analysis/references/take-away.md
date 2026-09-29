@@ -15,6 +15,7 @@ plain Markdown, so the user can copy it into any document.
 
 ## Layer 2: Systemic causes (carried forward)
 - [diagnosis], [lens or axis]
+[Personal question: each diagnosis about the user keeps its question form or its `[to confirm]` marker here.]
 [or: Not reached.]
 
 ## Layer 3: Worldviews (carried forward)
@@ -95,3 +96,17 @@ thread at each layer. Only the stack and the table are shown here.
 
 Method: Inayatullah, S. (1998). Causal layered analysis: Poststructuralism as method. *Futures,
 30*(8), 815-829.
+
+## Worked example (personal question, carried threads)
+
+The user asked why they keep putting off a thesis, over one year, in auto mode, and gave no
+other detail. Only Layer 2 of the take-away is shown here. Every line about the user is a
+question or a marked candidate.
+
+```md
+## Layer 2: Systemic causes (carried forward)
+- A possible reading to test: an inner critic who marks each draft before it is finished `[to confirm]`, individual axis
+- Confucian: a possible reading to test: is the thesis carrying a duty to other people as well as your own goal? `[to confirm]`, collective axis
+- Buddhist: does attachment to one perfect result make each start feel heavy? `[to confirm]`, religious axis
+- Indigenous seasonal: a possible reading to test: one pace all year, with no season for rest `[to confirm]`, non-Western axis
+```
