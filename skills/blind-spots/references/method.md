@@ -51,4 +51,5 @@ Before any concern, write what the author most plausibly meant, in the form that
 - Say "may": "This sentence may treat a sequence as a cause."
 - Name the passage, never the person: "the second sentence", not "the author is biased".
 - A finding without a quote is not a finding. Drop it.
+- A fact that is simply missing (a mechanism, a cost, whether a trend holds) is an assumption, not a fallacy. Put it in the table once.
 - A sound argument can have no findings. Say so rather than reaching.
