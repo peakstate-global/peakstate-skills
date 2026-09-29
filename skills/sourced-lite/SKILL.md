@@ -33,17 +33,18 @@ Run the steps in order. Ask one question at a time and wait for the answer. If t
    Write lines for the strongest case against the conclusion and against the research: source quality, sources with a stake, missing counter-evidence, a rival explanation. A stake is a fact. Before a line says a source has a stake, give the stake its own row, RECALLED if you cannot check it. Then one line per ledger row, none skipped. A row that holds gets "would be false if <observation>", where the observation is something to check, not a new fact. A row that fails or holds only in part gets "Holds: ... Fails: ... Instead: ...". A row you cannot ground or test gets "unresolved. Would be settled by ...". A failed or unresolved row stays in the ledger.
 4. **Integrate.** Write the integration as the last finding line, in this shape: `F# [F2, F5] → Integration, <move>. <conclusion> (INFERRED)`. It cites findings, not rows. Use one or more of the three moves in `references/method.md`: conditional (name the region and the observation that places a case in it), reframe (only when you can name the hidden assumption both sides share), or level shift (name both levels). Then write the final position from what survived. It uses the ledger's words, not the user's, and never rests on an unresolved row. Each sentence ends with the ids that hold its facts: the row each fact comes from and the finding that tests it, such as (C1, F3). Check that each cited id holds the fact. If none does, cut the fact.
 5. **Disclose.** Write the provenance block with four labels: Attribution, Accountable, Limitations, References. A reference gives only what its locator or retrieved page shows, and names an unknown field as unknown. Test each Limitations sentence: would a reader decide differently knowing it? If not, cut it. "None material." is a complete line. Never use a "Verified:" label. Name the decision a person must make, and the row ids they must check first: the rows that carry that decision. Say in Limitations, in one sentence, that the ledger gives each claim's address and the reader checks the cited rows before relying on them. Leave Accountable as "[name to confirm]" unless the user explicitly names the person accountable. A person named only as the audience, a reviewer or an approver is not the accountable person.
-6. **Audit, then deliver.** Draft the whole take-away first. Then read it again as a separate pass, sentence by sentence, starting with the final position, then the findings, the claim cells and the provenance block. For each name, number, date, place, method and scope word, find the row whose evidence cell holds it. If the cited id does not hold it, cite the id that does. If no row holds it, cut the phrase or add a row. Deliver only the audited version.
+6. **Build the evidence check, then deliver.** Draft the whole take-away first. Then list every name, number, date, place, method, source type and scope word in the final position, the finding conclusions and Limitations that the line does not already quote. For each one, copy the exact words from a ledger cell that contain it, and give that row's id. Copy; do not judge. If no cell contains the words, cut the phrase or add a row, and fix any id that points at the wrong row. The table holds only the phrases that survive. Deliver it as the sixth part, after the provenance block.
 
 ## The take-away
 
-Deliver the five parts in this order, using the template in `references/take-away.md`:
+Deliver the six parts in this order, using the template in `references/take-away.md`:
 
 - The final position, answer first, in one to three sentences, citing the rows and findings that hold each fact.
 - The claim ledger: one row per load-bearing claim, with label, evidence and locator, and status (holds, fails, holds in part, or unresolved).
 - The decision record, built from ledger ids.
 - The adversarial findings, one fixed-shape line each, ending with the integration line.
 - The provenance block.
+- The evidence check: one row per checked phrase, with the row id and the copied ledger words that hold it.
 
 ## Next
 
