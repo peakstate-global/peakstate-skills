@@ -1,0 +1,7 @@
+# The portable cut, read by scripts/make-portable.py (legacy mode: flat).
+# Same five files as assets/make-portable.py writes.
+portable/SKILL.md -> SKILL.md
+assets/brief-template.html
+assets/brief.css
+assets/brief.js
+assets/inline-brief.py
