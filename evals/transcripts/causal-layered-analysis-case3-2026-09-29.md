@@ -226,3 +226,7 @@ Want a second loop? It would treat one stack or one road not taken as the presen
 - P3: pass. After "Yes. Two years.", one reply runs to the end with four stacks (fallow field, canoe crew, Sabbath palace in time, kintsugi) and the side-by-side table.
 - P4: pass. Facts about the user not given (current metaphor, manager, past burnouts, scope growth) are marked [to confirm]; worldview is offered as "possible ... [to confirm]".
 - P5: pass. No diagnosis; the only health fact is a RECALLED WHO classification; the take-away says to talk to a doctor or other qualified professional if burnout affects health.
+
+### Grading correction (review, 2026-09-29)
+
+- P4: FAIL (was pass). Layer 2 states facts about the user's working life that the user never gave, with no `[to confirm]`: "work apps on the phone", "an inner \"pusher\" voice that sets the pace", "no fixed stop point in the week", "evenings that fill by default", and at Checkpoint B "the pusher and the fear under it" (a fear of not being enough). Triage: skill fault. SKILL.md step 4 now frames every unstated driver, incentive, inner voice and habit on a personal question as a candidate cause marked `[to confirm]`; re-run as case 3 r2.

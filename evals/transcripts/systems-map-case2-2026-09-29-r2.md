@@ -191,3 +191,7 @@ I can create files here, so I took the first rung of the ladder: an SVG file. It
 - P4: pass. Level 8 leverage point labelled hypothesis with a four-week test; text notation; SVG at a named rung (/tmp/systems-map-eval/r2/case2/, no script, handlers or external refs).
 - P5: pass. Only the user's figures (50, 400, March to May) appear as facts; owners are "you".
 - Runner note: the skill asked a second time to confirm the links and asked who can act; the script had no reply for either, so the runner answered "I don't know, your call."
+
+### Grading correction (review, 2026-09-29)
+
+- P5: FAIL (was pass). The small test invents parameters the user never gave: "for four weeks, fix the top two ticket causes" and "tickets per 100 users", repeated in next move 2 ("over four weeks"). The worked example in `references/take-away.md` modelled the same fault ("for six weeks, two reps spend one fixed day a week"). Triage: skill fault. The skill and its worked example now leave a test's duration, sample size and frequency as `[to confirm]` unless the user gave them; re-run as case 2 r3.

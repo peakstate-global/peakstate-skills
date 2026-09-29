@@ -84,7 +84,8 @@ When the question is about the user's own life, run the same steps with the inne
 | Myth and metaphor | The core story or family myth I run on |
 
 Auto mode picks four inner selves or inner worldviews at each checkpoint. State nothing about
-the user's life that they did not say. Draw no medical conclusion (skill rule).
+the user's life that they did not say. An inner voice, habit, fear or driver the user did not
+name is a candidate to explore, marked `[to confirm]`. Draw no medical conclusion (skill rule).
 
 ## The second loop (skill rule)
 

@@ -22,7 +22,7 @@ Fill every line. Keep the order. In a table cell, escape any `|` in the user's o
 
 **Archetype:** [name, confirmed by you | name, suggested | no standard archetype fits]. Evidence: [the user's words that match its signs, or, when none fits, why the nearest one does not].
 
-**Leverage point (hypothesis):** [what to change]. Level [n] on Meadows' list: [place to intervene]. Why: [which loop it weakens or strengthens]. Small test: [what to try, for how long, and what result would show it works].
+**Leverage point (hypothesis):** [what to change]. Level [n] on Meadows' list: [place to intervene]. Why: [which loop it weakens or strengthens]. Small test: [what to try, for how long, and what result would show it works; any duration, sample size or frequency the user did not give is `[to confirm]`].
 
 **What you do not know yet:** [each ? link, each suggested link and each [to confirm] item, or "Nothing: you confirmed every link."]
 ```
@@ -81,7 +81,9 @@ sales team" and "the older product keeps winning, so the team spends more time o
 
 **Leverage point (hypothesis):** give the newer product its own protected selling hours. Level
 5 on Meadows' list: the rules of the system. Why: it cuts the link that lets R1 drain R2. Small
-test: for six weeks, two reps spend one fixed day a week on the newer product only; it works if
-their newer-product pipeline grows while their older-product wins hold steady.
+test: for a period `[to confirm]`, a small group of reps `[to confirm]` spend fixed hours on the
+newer product only, at a frequency `[to confirm]`; it works if their newer-product pipeline grows
+while their older-product wins hold steady.
 
-**What you do not know yet:** Nothing: you confirmed every link.
+**What you do not know yet:** every link is confirmed. Still `[to confirm]`: the test's length,
+how many reps take part, and how often they get the protected hours.
