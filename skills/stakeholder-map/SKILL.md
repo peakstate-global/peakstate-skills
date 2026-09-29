@@ -42,7 +42,7 @@ If the user asks to skip the questions, build the whole take-away in one pass fr
 5. **Write one message each.** One or two sentences per stakeholder, aimed at what they care about and fitted to their quadrant (S2). Use `references/method.md`. When the concern is `[to confirm]`, write the message from the change itself and mark it "[depends on: concern to confirm]".
 6. **Draw the grid.** Place each stakeholder on the grid at the best rung of the ladder, and give the text table. Say in one line which rung you took.
 
-If the user plans to share the map widely, say that ratings of named people should stay with the people who need them, and offer a version safe to share: the messages and the plan without the ratings, or roles without names. See `references/method.md`.
+If the user plans to share the map widely, say that ratings of named people should stay with the people who need them, and offer a version safe to share: the messages and the plan without the ratings. A role-only version (roles without names, ratings kept) is safe only when each role is held by several people; when a role is unique in the organisation (a CIO, a named director's title), say the rating still identifies that person, and offer to drop the ratings instead. See `references/method.md`.
 
 ## The take-away
 

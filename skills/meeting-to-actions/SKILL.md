@@ -22,6 +22,7 @@ The notes or transcript are the input. If they hold names with personal detail (
    - **Actions:** a task someone must do.
    - **Open questions:** a question raised and not answered, or parked.
    - **Risks:** a worry about what could go wrong, as the notes say it.
+   - **Updates noted:** a status, fact or figure the notes report that is not a decision, an action, a question or a risk (such as "Q3 spend is 8% over"). Keep it in the notes' words. Nothing in the input is dropped.
 3. **Fill owner and date from the notes only.** The owner is the person, role or team the notes say will do it (S2, S3). If nobody is named, or the notes say "someone" or "nobody has picked it up", write `[NO OWNER]`. The date is the timing the notes give, in their words ("by Thursday", "before the start date"). If there is none, write `[NO DATE]`. Never turn a relative timing into a calendar date. If the notes name two owners, keep both and add an open question: "Who leads this?" (S4).
 4. **Keep the words.** Every name, number, date and place stays as written. Add no item, owner, date, reason or risk. A list with no items says so in words, such as "No decisions recorded in the notes." Anything you know from memory rather than the notes is labelled RECALLED and kept out of the four lists.
 5. **Show it.** Give the four lists in the order above, using `references/take-away.md`, then the Next step line.
@@ -29,7 +30,7 @@ The notes or transcript are the input. If they hold names with personal detail (
 
 ## The take-away
 
-Four sections in this order: Decisions, Actions (a table with action, owner, date and where it came from), Open questions, Risks. Every section is present, with "None recorded in the notes." when empty. The template and a worked example are in `references/take-away.md`.
+Five sections in this order: Decisions, Actions (a table with action, owner, date and where it came from), Open questions, Risks, Updates noted. Every section is present, with "None recorded in the notes." when empty. The template and a worked example are in `references/take-away.md`.
 
 ## Next
 
@@ -41,7 +42,7 @@ Next step: one line at the end of every reply. Name the one gap that most needs 
 - Every decision was agreed in the notes; tentative items sit in open questions, marked "Proposed, not agreed".
 - Every action has an owner and a date from the notes or the chat, or `[NO OWNER]` or `[NO DATE]`.
 - No relative timing became a calendar date, and no item, owner, date or risk was added.
-- Every one of the four sections is present, with "None recorded in the notes." when it has no items.
+- Every one of the five sections is present, with "None recorded in the notes." when it has no items.
 - A follow-up shows the whole output again and marks what the user added.
 - The reply ends with one Next step line, not three moves.
 

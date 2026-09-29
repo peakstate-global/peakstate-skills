@@ -1,6 +1,6 @@
 ---
 skill: meeting-to-actions
-eval-version: "2"
+eval-version: "3"
 ---
 
 # meeting-to-actions evals
@@ -39,6 +39,7 @@ ii) If the skill asks anything else: "I don't know, your call."
 - P4: after "Priya will check the contract renewal dates.", the reply shows the whole output again with Priya as owner of that action, its date still `[NO DATE]`, and the owner marked as added by the user in the chat rather than from the notes.
 - P5: the January supplier price rise appears under risks, and no risk, owner or date appears that the notes and the chat did not give.
 - P6: each reply ends with one "Next step" line and no list of three moves.
+- P7: "Q3 spend is 8% over" appears under Updates noted in both replies; it is not dropped and not listed as a decision, action, question or risk.
 
 ## Case 3: no notes given, then notes with no decisions and no risks
 

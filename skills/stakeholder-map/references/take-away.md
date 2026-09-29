@@ -1,6 +1,7 @@
 # Take-away template
 
-Fill every line. Keep the order.
+Fill every line. Keep the order. In a table cell, escape any `|` in the user's own text as
+`\|` and replace a line break with a space or `<br>`, so the table still renders.
 
 ```md
 Power and interest ratings about named people are sensitive. Share this map only with the people who need it.
@@ -31,9 +32,9 @@ operations manager.
 
 | Stakeholder | Power | Interest | Rated by | Quadrant | Cares about | Message |
 |---|---|---|---|---|---|---|
-| Operations manager | high | high | you | Manage closely | Fewer empty desks | "Can we agree the two weekly reports that show desk use, so you can judge the app on empty desks?" |
-| Facilities manager | high | low | you | Keep satisfied | [to confirm]: "What would make this change easy for your team?" | "The app goes live at the end of the quarter and needs no change to the floor plan." [depends on: concern to confirm] |
-| Staff | low | high | you | Keep informed | Getting a desk near their team | "From next quarter you can book a desk near your team a week ahead. We will update you each fortnight, and you can raise a concern at any time." |
+| Operations manager | high | high | you | Manage closely | Fewer empty desks | "Desk booking moves to the new app by the end of the quarter, to cut empty desks." |
+| Facilities manager | high | low | you | Keep satisfied | [to confirm]: "What would make this change easy for your team?" | "The app goes live at the end of the quarter." [depends on: concern to confirm] |
+| Staff | low | high | you | Keep informed | Getting a desk near their team | "Desk booking moves to the new app by the end of the quarter, so you can book a desk near your team." |
 
 There is no file tool here, so the grid is a Mermaid block.
 
