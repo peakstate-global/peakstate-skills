@@ -9,9 +9,13 @@ Rules for filling it in:
 - Insert user text as text. Escape `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;` and `"` as
   `&quot;` in anything you paste in (S4).
 - `{{BRIEF_ID}}` is a kebab-case slug plus the build date, such as
-  `rostering-options-2026-09-29`. Keep the same id if you rebuild the brief, so saved answers
-  come back.
-- Question ids are `q1`, `q2` and so on, in page order. Section ids are `s1`, `s2`.
+  `rostering-options-2026-09-29`. Keep the same id and the same file path if you rebuild the
+  brief, so saved answers come back.
+- `{{QUESTION_ID}}` is `q-` plus a short slug of what the question asks, such as
+  `q-default-roster`, and `{{SECTION_ID}}` is `s-` plus a slug of its point, such as
+  `s-friday-cover`. Saved answers and comments are stored against these ids. Write each id
+  once and keep it on every rebuild, even when the question moves or its Q number changes.
+  Never renumber an id, and never give a new question an old question's id.
 - Footnote `n` links to `#ref-n`, and reference `n` links back to `#fn-n`. Use `fn-n-2` for a
   second citation of the same reference.
 - Do not add a `<link>`, a remote font, an image URL or any other external request. Do not
@@ -83,17 +87,17 @@ aside h2 { margin-top: 0; }
   <p class="answer">{{ONE_SENTENCE_ANSWER}}</p>
 
   <!-- Repeat per section, in pyramid order. The heading states the point. -->
-  <section class="sec" data-sec="s1">
+  <section class="sec" data-sec="{{SECTION_ID}}">
     <h2>{{SECTION_POINT}}</h2>
     <p>{{SUPPORTING_TEXT}}<sup><a href="#ref-1" id="fn-1">1</a></sup></p>
   </section>
 
   <!-- Repeat per question. -->
-  <section class="q" data-q="q1">
+  <section class="q" data-q="{{QUESTION_ID}}">
     <h2>Q1. {{QUESTION}}</h2>
     <p class="assume">My assumption: {{ASSUMPTION}} If wrong: {{WHAT_CHANGES}}</p>
-    <label class="sr" for="a-q1">Your answer to question 1</label>
-    <textarea id="a-q1" data-answer="q1"></textarea>
+    <label class="sr" for="a-{{QUESTION_ID}}">Your answer</label>
+    <textarea id="a-{{QUESTION_ID}}" data-answer="{{QUESTION_ID}}"></textarea>
   </section>
 
   <section class="refs" id="references">
@@ -169,33 +173,39 @@ aside h2 { margin-top: 0; }
     var s = el && el.closest('section.q, section.sec');
     return s ? (s.dataset.q || s.dataset.sec) : null;
   }
-  function wrap(range, cid) {
-    try {
-      var m = document.createElement('mark');
-      m.className = 'cmt'; m.dataset.cid = cid;
-      range.surroundContents(m);
-      return true;
-    } catch (e) { return false; }
+  function scopeOf(near) {
+    var s = near && doc.querySelector('[data-q="' + CSS.escape(near) + '"], [data-sec="' + CSS.escape(near) + '"]');
+    return s || doc;
   }
+  function marked(cid) { return !!document.querySelector('mark[data-cid="' + CSS.escape(cid) + '"]'); }
+  /* Finds the quote in its saved section, at the occurrence nearest its saved offset, and
+     marks it one text node at a time, so a quote that crosses elements still highlights. */
   function anchor(c) {
-    if (document.querySelector('mark[data-cid="' + c.id + '"]')) return;
-    var walk = document.createTreeWalker(doc, NodeFilter.SHOW_TEXT);
-    var node;
-    while ((node = walk.nextNode())) {
-      if (node.parentElement.closest('textarea, mark')) continue;
-      var at = node.nodeValue.indexOf(c.text);
-      if (at < 0) continue;
-      var r = document.createRange();
-      r.setStart(node, at); r.setEnd(node, at + c.text.length);
-      wrap(r, c.id);
-      return;
+    if (!c.text || marked(c.id)) return;
+    var scope = scopeOf(c.near), full = scope.textContent, want = c.at || 0, at = -1, i = -1;
+    while ((i = full.indexOf(c.text, i + 1)) >= 0) {
+      if (at < 0 || Math.abs(i - want) < Math.abs(at - want)) at = i;
     }
+    if (at < 0) return;
+    var end = at + c.text.length, pos = 0, parts = [], n;
+    var walk = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+    while ((n = walk.nextNode()) && pos < end) {
+      var s = Math.max(at - pos, 0), e = Math.min(end - pos, n.nodeValue.length);
+      if (s < e && n.nodeValue.slice(s, e).trim() && !n.parentElement.closest('textarea')) parts.push([n, s, e]);
+      pos += n.nodeValue.length;
+    }
+    parts.forEach(function (p) {
+      var r = document.createRange(), m = document.createElement('mark');
+      r.setStart(p[0], p[1]); r.setEnd(p[0], p[2]);
+      m.className = 'cmt'; m.dataset.cid = c.id;
+      r.surroundContents(m);
+    });
   }
   function unwrap(cid) {
-    var m = document.querySelector('mark[data-cid="' + cid + '"]');
-    if (!m) return;
-    while (m.firstChild) m.parentNode.insertBefore(m.firstChild, m);
-    m.remove();
+    document.querySelectorAll('mark[data-cid="' + CSS.escape(cid) + '"]').forEach(function (m) {
+      while (m.firstChild) m.parentNode.insertBefore(m.firstChild, m);
+      m.remove();
+    });
   }
   function renderComments() {
     var list = byId('bl-clist');
@@ -206,6 +216,7 @@ aside h2 { margin-top: 0; }
       q.textContent = c.text;
       var p = document.createElement('p');
       p.textContent = c.comment;
+      if (!marked(c.id)) q.append(' (not highlighted: this text is no longer in the brief)');
       var del = document.createElement('button');
       del.type = 'button'; del.textContent = 'Delete comment';
       del.addEventListener('click', function () {
@@ -222,10 +233,12 @@ aside h2 { margin-top: 0; }
     var a = document.activeElement;
     if (a && a.tagName === 'TEXTAREA') return;
     var sel = window.getSelection();
-    var text = sel && !sel.isCollapsed ? sel.toString().trim() : '';
-    if (!text || !doc.contains(sel.anchorNode)) return;
-    var range = sel.getRangeAt(0);
-    pending = { range: range.cloneRange(), text: text };
+    if (!sel || sel.isCollapsed || !doc.contains(sel.anchorNode)) return;
+    var range = sel.getRangeAt(0), raw = range.toString(), text = raw.trim();
+    if (!text) return;
+    var near = nearest(range.commonAncestorContainer), pre = document.createRange();
+    pre.setStart(scopeOf(near), 0); pre.setEnd(range.startContainer, range.startOffset);
+    pending = { text: text, near: near, at: pre.toString().length + raw.search(/\S/) };
     var box = range.getBoundingClientRect(), pop = byId('bl-pop');
     pop.style.top = Math.min(box.bottom + 8, window.innerHeight - 160) + 'px';
     pop.style.left = Math.max(8, Math.min(box.left, window.innerWidth - 340)) + 'px';
@@ -234,12 +247,12 @@ aside h2 { margin-top: 0; }
   function saveComment() {
     var note = byId('bl-ctext').value.trim();
     if (!pending || !note) return;
-    var c = { id: 'c' + Date.now().toString(36), text: pending.text,
-              near: nearest(pending.range.startContainer), comment: note };
-    wrap(pending.range, c.id);
+    var c = { id: 'c' + Date.now().toString(36), text: pending.text, near: pending.near,
+              at: pending.at, comment: note };
+    window.getSelection().removeAllRanges();
+    anchor(c);
     state.comments.push(c);
     save(); renderComments(); closePop();
-    window.getSelection().removeAllRanges();
   }
 
   /* Responses, in the same shape as peakstate-brief */
@@ -253,7 +266,7 @@ aside h2 { margin-top: 0; }
       }),
       comments: state.comments.map(function (c) {
         return { selected_text: c.text, near_question: c.near || null, comment: c.comment,
-                 highlight: 'yellow', anchored: !!document.querySelector('mark[data-cid="' + c.id + '"]') };
+                 highlight: 'yellow', anchored: marked(c.id) };
       }),
       notes: [], edits: [], drafts: []
     }, null, 2);

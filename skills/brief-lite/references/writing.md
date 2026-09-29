@@ -21,6 +21,9 @@
 
 - Number them Q1, Q2 and so on, in the order the reader should answer them. Two to eight
   questions is a good range. Put the question that blocks the most first.
+- The Q number is only a label. Each question also has an id, `q-` plus a short slug such as
+  `q-default-roster`, and saved answers are stored against it. Keep the id on every rebuild,
+  even when the question moves. Never renumber ids.
 - Lead with the plain ask. Then one line that starts "My assumption:" and ends with "If
   wrong:" and what would change. The reader can answer "yes" to the assumption quickly.
 - Ask only what the reader can answer. Never ask a reader to look up a fact you could find.
@@ -52,9 +55,12 @@ The reader clicks Copy responses and pastes the JSON to you, or sends the downlo
 |---|---|
 | `brief` | The brief id from `data-brief-id` |
 | `title`, `exported` | The page title and the export time |
-| `answers[]` | `id` (such as `q1`), `question` (its heading text), `resolved` (true when answered), `ticked` (always false here), `answer` |
+| `answers[]` | `id` (such as `q-default-roster`), `question` (its heading text), `resolved` (true when answered), `ticked` (always false here), `answer` |
 | `comments[]` | `selected_text`, `near_question` (the `q` or `s` id it sits in, or null), `comment`, `highlight` (always `"yellow"`), `anchored` (true when the text is still marked on the page) |
 | `notes`, `edits`, `drafts` | Always empty arrays, kept so tools that read the fuller brief format read this one too |
 
 Read the answers by id, act on each comment where it sits, and say what changed. Rebuild
-with the same brief id so the reader's saved answers come back.
+with the same brief id, the same question ids and the same file path, and overwrite the old
+file. Some browsers keep a local file's saved answers against its exact path, so a rebuild
+saved under a new name opens empty. The responses you already have are the record: if the
+reader needs to see an earlier answer again, quote it in the rebuilt brief.

@@ -35,7 +35,7 @@ If the input may be sensitive, say once: "Use only a tool your organisation has 
 
 1. **Intake.** Ask at most four questions, one at a time, and only the ones the opening message does not already answer: what you need from the readers (a decision, sign-off or input), who reads it, the facts and sources to include, and the questions you want answered. If the user says "just build it", build now with what you have. Show every missing fact as "[to confirm]". Never invent an owner, a date, an amount or a source.
 2. **Write the answer first.** Write one sentence that says what you recommend or what the readers must decide. Then write the sections in pyramid order: each heading states its point, and the text under it supports that point (S1, see `references/writing.md`).
-3. **Write the questions.** Number them Q1, Q2 and so on. Each leads with the plain ask, then one line: "My assumption: ... If wrong: ...". Ask only what the reader can answer.
+3. **Write the questions.** Number them Q1, Q2 and so on, and give each a stable id such as `q-default-roster` that no rebuild changes. Each leads with the plain ask, then one line: "My assumption: ... If wrong: ...". Ask only what the reader can answer.
 4. **Footnote the facts.** Every fact from a source gets a numbered footnote that links to a numbered entry in References. Only list sources the user gave you or that you opened in this session. Label a fact from memory "[RECALLED]", with no footnote.
 5. **Build the file.** Copy the block in `references/template.md`, fill the placeholders, and repeat the section, question and reference blocks as needed. Insert user text as text: escape `&`, `<`, `>` and `"`. Copy the style and script byte for byte. Name the file after the brief id, such as `rostering-options-2026-09-29.html`.
 6. **Deliver.** Give the file by the rung you took. Tell the user how to open it, that answers and comments save in that browser, and how responses come back: Copy responses, or Download responses when copy fails or the storage banner shows.
@@ -62,7 +62,7 @@ If the brief needs a deeper check of its claims, the user may also like a skill 
 - Every footnote links to a References entry, and every entry links back.
 - The script and style are copied byte for byte, and user text is escaped.
 - The file has no `<link>`, remote font, external image or `on...=` attribute.
-- The body carries a `data-brief-id`, and a rebuilt brief keeps the same id.
+- The body carries a `data-brief-id`. A rebuilt brief keeps that id, every question and section id, and the file path.
 - You told the user which ladder rung you took and how responses come back.
 
 ## Read this when

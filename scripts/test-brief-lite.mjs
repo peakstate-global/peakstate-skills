@@ -33,7 +33,8 @@ if (file) {
   const fill = {
     TITLE: 'Rostering options &amp; the Friday gap', BRIEF_ID: 'brief-lite-test-2026-09-29',
     ONE_SENTENCE_ANSWER: 'Adopt the four-day roster from next quarter.',
-    SECTION_POINT: 'The four-day roster cut overtime', SUPPORTING_TEXT: 'The trial cut overtime, but cover drops on Fridays.',
+    SECTION_POINT: 'The four-day roster cut overtime', SECTION_ID: 's-overtime', QUESTION_ID: 'q-default-roster',
+    SUPPORTING_TEXT: 'The trial cut overtime, but cover drops on Fridays. Overtime <em>fell by a third</em> in the trial, and cover drops on Fridays again.',
     QUESTION: 'Do you accept the four-day roster as the default?', ASSUMPTION: 'You accept it.',
     WHAT_CHANGES: 'We keep five days.', APA_7_REFERENCE: 'Support team. (2026). Roster trial notes [Unpublished internal report].',
   };
@@ -133,7 +134,43 @@ check(existsSync(file + '.answers.json') && /1 filed/.test(filed), 'peakstate-br
 check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
 await ctx.close();
 
-// 2. Storage blocked, clipboard refused
+// 2. Anchoring, template only: a repeated quote re-anchors at the occurrence the reader
+// picked, and a selection that crosses an inline element is marked and survives reload.
+if (!process.argv[2]) {
+  const actx = await browser.newContext();
+  ({ page, errors } = await open(actx));
+  const comment = async (pick, note) => {
+    await page.evaluate(pick);
+    await page.evaluate(() => document.getElementById('bl-doc').dispatchEvent(new MouseEvent('mouseup', { bubbles: true })));
+    await page.waitForSelector('#bl-pop:not([hidden])');
+    await page.fill('#bl-ctext', note);
+    await page.click('#bl-csave');
+  };
+  const nodeWith = (needle) => `(() => { const w = document.createTreeWalker(document.querySelector('#bl-doc section.sec'), NodeFilter.SHOW_TEXT);
+    let n; while ((n = w.nextNode())) if (n.nodeValue.includes(${JSON.stringify(needle)})) return n; })()`;
+  await comment(`(() => { const n = ${nodeWith('Fridays again')}, at = n.nodeValue.indexOf('cover drops on Fridays'), r = document.createRange();
+    r.setStart(n, at); r.setEnd(n, at + 22); getSelection().removeAllRanges(); getSelection().addRange(r); })()`, 'second one');
+  await comment(`(() => { const a = ${nodeWith('Overtime ')}, b = document.querySelector('#bl-doc section.sec em').firstChild, r = document.createRange();
+    r.setStart(a, a.nodeValue.indexOf('Overtime ')); r.setEnd(b, 'fell by'.length); getSelection().removeAllRanges(); getSelection().addRange(r); })()`, 'crosses the em');
+  const where = () => page.evaluate(() => {
+    const ids = [...new Set([...document.querySelectorAll('mark.cmt')].map(m => m.dataset.cid))];
+    return ids.map(id => { const ms = [...document.querySelectorAll(`mark[data-cid="${id}"]`)];
+      return { text: ms.map(m => m.textContent).join(''), parts: ms.length, after: (ms.at(-1).nextSibling || {}).nodeValue || '' }; });
+  });
+  for (const when of ['on save', 'after reload']) {
+    if (when === 'after reload') await page.reload();
+    const w = await where();
+    const rep = w.find(x => x.text === 'cover drops on Fridays');
+    check(w.length === 2 && rep && rep.after.startsWith(' again'), `repeated quote marks the occurrence the reader picked, ${when}`);
+    const cross = w.find(x => x.text === 'Overtime fell by');
+    check(cross && cross.parts === 2, `selection across an inline element is marked, ${when}`);
+  }
+  check(await page.locator('#bl-clist li').count() === 2 && !(await page.locator('#bl-clist').textContent()).includes('not highlighted'), 'both comments listed and highlighted');
+  check(!errors.length, 'no page errors while anchoring' + (errors.length ? ': ' + errors.join('; ') : ''));
+  await actx.close();
+}
+
+// 3. Storage blocked, clipboard refused
 const blocked = await browser.newContext({ acceptDownloads: true });
 await blocked.addInitScript(() => {
   Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('blocked', 'SecurityError'); } });
