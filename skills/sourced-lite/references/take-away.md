@@ -33,7 +33,7 @@ Fill every part. Keep the order. Entries follow the method library (S1).
     Limitations:  ...
     References:   ...
 
-    Decision for a person: <the decision>, after checking <what>.
+    Decision for a person: <the decision>, after checking rows <C#, C#>, the rows that carry it.
 
 Words in quotation marks are verbatim source words from a SOURCED row's evidence cell. Words from a claim cell carry no quotation marks. The findings hold nothing but these lines, and the integration line, citing findings, is always the last one. Every claim cell and every Limitations sentence says only what its row or the ledger shows.
 
