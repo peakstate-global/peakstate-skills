@@ -32,7 +32,7 @@ Record a decision only when it shaped the result a reader will see. Skip routine
 
 - Argue against the conclusion first, then against the research: weak or single sources, sources with a stake, missing counter-evidence, and a rival explanation for the same facts.
 - For each claim that survives, write the observation that would make it false. A claim with no such observation is not a claim you can test; say so.
-- A claim that fails is not deleted. Record:
+- A claim that fails, or holds only in part, is not deleted. Record:
   - **Holds:** the region where it is still true.
   - **Fails:** the region where it breaks, with the evidence.
   - **Instead:** what is true in the failing region.
