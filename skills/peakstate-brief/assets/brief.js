@@ -3078,7 +3078,209 @@ var __briefTip = (() => {
     mark(); check();
   }
 
-  function start() { rail(); idle(defLinks); }
+  /* ── image lightbox ──────────────────────────────────────────────────────
+     Click any image in the document, or focus it and press Enter, to open it
+     over the page. Click the image to toggle between fitted and actual size,
+     drag to pan, wheel or pinch to zoom about the pointer, + and - to zoom,
+     0 to fit, left and right arrows to step through every image in the brief,
+     Esc or the backdrop to close. Focus returns to the image that opened it.
+     Skipped: an image inside a link (the link wins), inside an editable
+     [data-doc] block (a click there starts the editor), in the topbar, and
+     anything marked data-nolightbox. The controls sit at the top because
+     data-tip draws below its element. */
+  var LB_SKIP = 'a[href] img,[data-doc] img,.topbar img,[data-nolightbox],[data-nolightbox] img';
+
+  function lightbox() {
+    var root = mainEl(); if (!root) return;
+    function eligible(img) { return img.tagName === 'IMG' && root.contains(img) && !img.matches(LB_SKIP); }
+    function gallery() { return Array.prototype.filter.call(root.querySelectorAll('img'), eligible); }
+    gallery().forEach(function (img) {
+      img.classList.add('lb-zoomable');
+      if (!img.hasAttribute('tabindex')) img.tabIndex = 0;
+      img.setAttribute('role', 'button');
+      img.setAttribute('aria-label', 'Open image' + (img.alt ? ': ' + img.alt : ''));
+    });
+
+    var box = null, stage, pic, cap, count, prevB, nextB, closeB;
+    var list = [], at = 0, opener = null;
+    var s = 1, fit = 1, tx = 0, ty = 0, nw = 1, nh = 1;
+    var ptrs = {}, drag = null, pinch = null, moved = false, fromPic = false;
+
+    function el(tag, cls, parent) {
+      var e = document.createElement(tag); if (cls) e.className = cls;
+      if (parent) parent.appendChild(e); return e;
+    }
+    function btn(cls, label, key, glyph, parent) {
+      var b = el('button', 'lb-btn ' + cls, parent); b.type = 'button'; b.textContent = glyph;
+      b.setAttribute('data-tip', label + '  ·  ' + key);
+      b.setAttribute('aria-label', label + ' (' + key + ')');
+      return b;
+    }
+    function build() {
+      box = el('div', 'lb', document.body);
+      box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+      box.setAttribute('aria-label', 'Image viewer');
+      var bar = el('div', 'lb-bar', box);
+      cap = el('div', 'lb-cap', bar);
+      count = el('span', 'lb-count', bar);
+      prevB = btn('lb-prev', 'Previous image', '←', '‹', bar);
+      nextB = btn('lb-next', 'Next image', '→', '›', bar);
+      closeB = btn('lb-close', 'Close', 'Esc', '×', bar);
+      stage = el('div', 'lb-stage', box);
+      pic = el('img', 'lb-img', stage); pic.alt = ''; pic.draggable = false;
+      prevB.onclick = function () { step(-1); };
+      nextB.onclick = function () { step(1); };
+      closeB.onclick = close;
+      stage.addEventListener('pointerdown', down);
+      stage.addEventListener('pointermove', move);
+      stage.addEventListener('pointerup', up);
+      stage.addEventListener('pointercancel', up);
+      stage.addEventListener('wheel', wheel, { passive: false });
+      /* Pointer capture retargets the click after a drag to the stage, so a
+         drag that ends off the image must not read as a backdrop click. */
+      stage.addEventListener('click', function (e) {
+        if (e.target === stage && !fromPic) close();
+        fromPic = false;
+      });
+      window.addEventListener('resize', function () { if (isOpen()) fitNow(); });
+    }
+    function isOpen() { return !!box && box.classList.contains('open'); }
+    function view() { return { w: stage.clientWidth, h: stage.clientHeight }; }
+    function apply() {
+      pic.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+      box.classList.toggle('zoomed', s > fit * 1.01);
+    }
+    function clampPan() {
+      var v = view(), w = nw * s, h = nh * s;
+      tx = w <= v.w ? (v.w - w) / 2 : Math.min(0, Math.max(v.w - w, tx));
+      ty = h <= v.h ? (v.h - h) / 2 : Math.min(0, Math.max(v.h - h, ty));
+    }
+    function fitNow() {
+      var v = view();
+      fit = Math.min(v.w * 0.96 / nw, v.h * 0.96 / nh, 1);
+      s = fit; clampPan(); apply();
+    }
+    /* ponytail: zoom ceiling is 6x fit or 3x actual size, whichever is larger;
+       raise it if a brief ever carries images that need closer inspection. */
+    function zoomAt(f, cx, cy) {
+      var ns = Math.min(Math.max(s * f, fit), Math.max(fit * 6, 3));
+      if (ns === s) return;
+      tx = cx - (cx - tx) * ns / s; ty = cy - (cy - ty) * ns / s; s = ns;
+      clampPan(); apply();
+    }
+    function local(e) { var r = stage.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+    function show(i) {
+      at = (i + list.length) % list.length;
+      var src = list[at];
+      pic.style.visibility = 'hidden';
+      pic.onload = function () {
+        nw = pic.naturalWidth || 1; nh = pic.naturalHeight || 1;
+        pic.style.width = nw + 'px'; pic.style.height = nh + 'px';
+        fitNow(); pic.style.visibility = '';
+      };
+      pic.src = src.currentSrc || src.src;
+      if (pic.complete && pic.naturalWidth) pic.onload();
+      var fig = src.closest('figure'), fc = fig && fig.querySelector('figcaption');
+      cap.textContent = (fc && fc.textContent.trim()) || src.alt || '';
+      count.textContent = list.length > 1 ? (at + 1) + ' / ' + list.length : '';
+      prevB.hidden = nextB.hidden = list.length < 2;
+    }
+    function open(img) {
+      if (!box) build();
+      list = gallery(); opener = img;
+      box.classList.add('open');
+      document.documentElement.classList.add('lb-lock');
+      show(Math.max(0, list.indexOf(img)));
+      closeB.focus();
+    }
+    function close() {
+      box.classList.remove('open', 'zoomed');
+      document.documentElement.classList.remove('lb-lock');
+      pic.removeAttribute('src'); ptrs = {}; drag = pinch = null;
+      if (opener && document.contains(opener)) opener.focus();
+    }
+    function step(d) { if (list.length > 1) show(at + d); }
+
+    function down(e) {
+      if (!Object.keys(ptrs).length && e.target !== pic) return;
+      fromPic = true;
+      stage.setPointerCapture(e.pointerId);
+      ptrs[e.pointerId] = local(e); moved = false;
+      var ids = Object.keys(ptrs);
+      if (ids.length === 2) {
+        var a = ptrs[ids[0]], b = ptrs[ids[1]];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: s }; drag = null;
+      } else {
+        drag = { x: ptrs[e.pointerId].x, y: ptrs[e.pointerId].y, tx: tx, ty: ty };
+      }
+      e.preventDefault();
+    }
+    function move(e) {
+      if (!(e.pointerId in ptrs)) return;
+      var p = local(e); ptrs[e.pointerId] = p;
+      var ids = Object.keys(ptrs);
+      if (pinch && ids.length === 2) {
+        var a = ptrs[ids[0]], b = ptrs[ids[1]];
+        zoomAt(pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d / s, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        moved = true; return;
+      }
+      if (!drag) return;
+      var dx = p.x - drag.x, dy = p.y - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+      if (s > fit * 1.01) { tx = drag.tx + dx; ty = drag.ty + dy; clampPan(); apply(); }
+    }
+    function up(e) {
+      if (!(e.pointerId in ptrs)) return;
+      delete ptrs[e.pointerId];
+      if (Object.keys(ptrs).length) { pinch = drag = null; return; }
+      var wasPinch = !!pinch; pinch = drag = null;
+      if (moved || wasPinch || e.type === 'pointercancel') return;
+      var p = local(e);
+      if (s > fit * 1.01) fitNow();
+      else zoomAt(Math.max(1, fit * 2.5) / s, p.x, p.y);
+    }
+    function wheel(e) {
+      e.preventDefault();
+      var p = local(e);
+      zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), p.x, p.y);
+    }
+    function trap(e) {
+      var f = [prevB, nextB, closeB].filter(function (b) { return !b.hidden; });
+      var i = f.indexOf(document.activeElement);
+      e.preventDefault();
+      f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+    }
+
+    root.addEventListener('click', function (e) {
+      var img = e.target;
+      if (img.tagName !== 'IMG' || !eligible(img) || String(getSelection())) return;
+      e.preventDefault(); open(img);
+    });
+    /* Capture phase, so while the viewer is open its keys never reach the
+       comment popover or the tooltip engine, which both also listen for Esc. */
+    document.addEventListener('keydown', function (e) {
+      if (!isOpen()) {
+        var t = e.target;
+        if ((e.key === 'Enter' || e.key === ' ') && t && t.classList && t.classList.contains('lb-zoomable')) {
+          e.preventDefault(); open(t);
+        }
+        return;
+      }
+      var v = view();
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowRight') step(1);
+      else if (e.key === 'ArrowLeft') step(-1);
+      else if (e.key === '+' || e.key === '=') zoomAt(1.25, v.w / 2, v.h / 2);
+      else if (e.key === '-' || e.key === '_') zoomAt(0.8, v.w / 2, v.h / 2);
+      else if (e.key === '0') fitNow();
+      else if (e.key === 'Tab') { trap(e); return; }
+      else return;
+      e.preventDefault(); e.stopPropagation();
+    }, true);
+  }
+
+  function start() { rail(); idle(defLinks); lightbox(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();

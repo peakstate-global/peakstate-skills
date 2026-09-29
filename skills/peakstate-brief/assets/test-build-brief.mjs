@@ -371,7 +371,10 @@ const oPublished = render(ORIGIN_SRC, { publish: true });
 assert.ok(oOrdinary.includes('A copy of a talk'), 'the ordinary render still shows the library entry');
 assert.ok(oOrdinary.includes('library.example/artefact/a-talk'), 'and its URL');
 assert.ok(!oOrdinary.includes('The talk itself'), 'the ordinary render does not swap');
-assert.ok(!oOrdinary.includes('origin:'), 'the origin directive never prints as prose');
+/* Prose only: the inlined runtime legitimately carries CSS such as
+   transform-origin, which is not the front-matter directive leaking. */
+const proseOnly = h => h.replace(/<(style|script)\b[\s\S]*?<\/\1>/g, '');
+assert.ok(!proseOnly(oOrdinary).includes('origin:'), 'the origin directive never prints as prose');
 
 assert.ok(oPublished.includes('The talk itself'), 'the publish render shows the origin entry');
 assert.ok(!oPublished.includes('library.example'), 'and carries no library URL at all');

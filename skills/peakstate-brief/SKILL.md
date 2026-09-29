@@ -392,7 +392,7 @@ true, and confirm you opened each one.
 opening one. The five above are stated in full under "Writing the brief"; these three
 come from the runtime files:
 
-- **Never reimplement what the runtime provides** — tick-off, answer boxes, the comments
+- **Never reimplement what the runtime provides** — tick-off, answer boxes, the image lightbox, the comments
   drawer, the copy and download buttons, per-item notes, code-block copy, theme and width
   toggles are all injected for you. Write the sections; the apparatus arrives with them.
 - **Never use the `title` attribute.** Tooltips come from `data-tip`, which carries the

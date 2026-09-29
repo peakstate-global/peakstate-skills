@@ -278,6 +278,38 @@ console.log(JSON.stringify({ contentsAboveSummary, definitionsInsideSummary, led
   summaryHasRefs, refNumbers, refsOnlyCited, uncitedAbsent, evidenceDropped,
   summaryHasVerdict, summaryHasDefinitions }, null, 1));
 
+/* image lightbox: fresh load, then drive it the way a reader does */
+await page.goto(url);
+await page.setViewportSize({ width: 1200, height: 800 });
+await page.click('#lbA');
+const lbOpens = await page.locator('.lb.open').isVisible();
+const lbSrcA = (await page.locator('.lb-img').getAttribute('src')) === (await page.locator('#lbA').getAttribute('src'));
+const lbCaption = (await page.locator('.lb-cap').textContent()) === 'Fixture image A';
+const lbCount = (await page.locator('.lb-count').textContent()) === '1 / 2';
+const fitT = await page.locator('.lb-img').evaluate(e => e.style.transform);
+await page.mouse.move(600, 400); await page.mouse.wheel(0, -400);
+await page.waitForTimeout(50);
+const lbWheelZooms = (await page.locator('.lb-img').evaluate(e => e.style.transform)) !== fitT &&
+  (await page.locator('.lb.zoomed').count()) === 1;
+await page.keyboard.press('0');
+const lbFitKey = (await page.locator('.lb.zoomed').count()) === 0;
+await page.keyboard.press('ArrowRight');
+const lbSteps = (await page.locator('.lb-count').textContent()) === '2 / 2' &&
+  (await page.locator('.lb-cap').textContent()) === 'Fixture image B';
+await page.keyboard.press('Escape');
+const lbCloses = (await page.locator('.lb.open').count()) === 0;
+const lbFocusBack = await page.evaluate(() => document.activeElement && document.activeElement.id === 'lbA');
+const lbScrollUnlocked = await page.evaluate(() => !document.documentElement.classList.contains('lb-lock'));
+await page.focus('#lbB'); await page.keyboard.press('Enter');
+const lbKeyboardOpens = (await page.locator('.lb.open').count()) === 1;
+await page.locator('.lb-stage').click({ position: { x: 5, y: 5 } });
+const lbBackdropCloses = (await page.locator('.lb.open').count()) === 0;
+const lbLinkedSkipped = await page.evaluate(() => !document.querySelector('#lbLinked').classList.contains('lb-zoomable'));
+const lbNoTitleAttr = await page.evaluate(() => !document.querySelector('.lb [title]'));
+console.log(JSON.stringify({ lbOpens, lbSrcA, lbCaption, lbCount, lbWheelZooms, lbFitKey, lbSteps,
+  lbCloses, lbFocusBack, lbScrollUnlocked, lbKeyboardOpens, lbBackdropCloses, lbLinkedSkipped,
+  lbNoTitleAttr, jsErrors: errors }, null, 1));
+
 await browser.close();
 
 /* ── two devices carry the same comment on: the merge keeps both ──────────

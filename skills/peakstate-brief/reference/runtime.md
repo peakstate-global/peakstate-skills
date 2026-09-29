@@ -206,3 +206,25 @@ beyond a normal Definitions block and normal headings.
     `3.5rem`, so the content hangs right rather than sliding under the rail.
   - Motion respects `prefers-reduced-motion`.
 
+## Image lightbox (automatic, no authoring)
+
+**Every image in the document opens in a zoomable viewer when clicked**, so a brief that shows
+renders, mockups, charts or screenshots needs no markup for it. Put the image in the page as an
+ordinary `<img>`, ideally inside a `<figure>` with a `<figcaption>`, and the runtime does the rest.
+
+- **Open:** click the image, or tab to it and press Enter. The cursor shows zoom-in over it.
+- **Zoom:** click the image to toggle between fitted and actual size, anchored where you clicked.
+  Wheel or trackpad pinch zooms about the pointer; on touch, pinch with two fingers. `+` and `-`
+  zoom, `0` fits.
+- **Pan:** drag while zoomed.
+- **Step:** the left and right arrows, or the arrow buttons, move through every eligible image in
+  the brief in document order, with a counter.
+- **Close:** Esc, the close button, or a click on the backdrop. Focus returns to the image that
+  opened it.
+- **Caption:** the figure's `<figcaption>`, falling back to the image's `alt` text.
+
+Skipped, deliberately: an image inside a link (the link wins), inside an editable `[data-doc]`
+block (a click there starts the editor), in the topbar, and anything carrying `data-nolightbox`,
+on the image or on an ancestor. The viewer is dark in both themes, and its controls sit at the top
+because `data-tip` draws below its element. The smoke test covers it.
+
