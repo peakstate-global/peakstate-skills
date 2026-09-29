@@ -57,4 +57,4 @@ Record a decision only when it shaped the result a reader will see. Skip routine
 - **Decision test:** keep a Limitations sentence only if a reader would decide differently knowing it. "None material." is a complete line.
 - Never add a "Verified:" label. A review adds accountability, not accuracy.
 - A reference lists only sources retrieved in this session. RECALLED facts go in Limitations, not References.
-- If a full APA 7 entry is not possible, such as for a pasted internal extract with no author, title or date, write a descriptive entry and state each unknown field, for example: "Internal survey summary, n = 212 [pasted in this session; author, title and date not given]."
+- If a full APA 7 entry is not possible, such as for a pasted internal extract with no author, title or date, write a descriptive entry and state each unknown field, for example: "Internal staff survey summary [pasted in this session; author, title, date and sample size not given]." Give a sample size only if the source states it.
