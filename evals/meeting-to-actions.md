@@ -1,6 +1,6 @@
 ---
 skill: meeting-to-actions
-eval-version: "1"
+eval-version: "2"
 ---
 
 # meeting-to-actions evals
@@ -46,7 +46,7 @@ ii) If the skill asks anything else: "I don't know, your call."
 
 **Scripted replies**, in order, each with when to give it:
 
-i) When the skill asks for the notes or transcript: "Here: we went through the new starter checklist. Jo will draft the welcome email. Ahmed will set up the laptops before the start date. We did not agree whether the buddy should be from the same team. We will meet again next week."
+i) When the skill asks for the notes or transcript: "Here: we went through the new starter checklist. Jo will draft the welcome email. Ahmed will set up the laptops before the start date. We did not agree whether the buddy should be from the same team. That was it."
 ii) If the skill asks anything else: "I don't know, your call."
 
 **Properties**, each graded pass or fail:
