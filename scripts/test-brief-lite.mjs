@@ -92,6 +92,7 @@ check((await page.locator('#bl-progress').textContent()).startsWith('1 of'), 'pr
 const box = await page.evaluate(() => {
   const w = document.createTreeWalker(document.querySelector('#bl-doc section.sec'), NodeFilter.SHOW_TEXT);
   let n; while ((n = w.nextNode())) if (n.nodeValue.trim().length >= 12) break;
+  n.parentElement.scrollIntoView({ block: 'center' });
   const at = n.nodeValue.search(/\S/), r = document.createRange();
   r.setStart(n, at); r.setEnd(n, at + 12);
   const b = r.getClientRects()[0];
