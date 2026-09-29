@@ -4,3 +4,4 @@
 # instances) belongs in claude-config, not here.
 peakstate-brief
 peakstate-retro
+sourced-lite
