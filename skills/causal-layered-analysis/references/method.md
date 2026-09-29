@@ -85,7 +85,8 @@ When the question is about the user's own life, run the same steps with the inne
 
 Auto mode picks four inner selves or inner worldviews at each checkpoint. State nothing about
 the user's life that they did not say. An inner voice, habit, fear or driver the user did not
-name is a candidate to explore, marked `[to confirm]`. Draw no medical conclusion (skill rule).
+name is a candidate to explore, marked `[to confirm]`. Never assume the user's gender, family
+or history; write headlines about the user with "I" or "you". Draw no medical conclusion (skill rule).
 
 ## The second loop (skill rule)
 

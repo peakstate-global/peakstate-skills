@@ -38,7 +38,7 @@ CLA does not predict. It opens up alternatives (S2). Move down through the layer
 
 - Headlines at the litany layer, and all new litanies, are illustrative. Never present one as a real quote.
 - A number or fact from memory is labelled RECALLED. If you do not know it, write `[to confirm]`. Never invent a statistic, a source, an owner or a date.
-- On a personal question, state nothing about the user's life that they did not tell you. This includes drivers, incentives, inner voices, habits and fears: each one the user did not give is a candidate, marked `[to confirm]`. Put gaps as `[to confirm]` or as questions. Draw no medical, legal or financial conclusion. If burnout, stress or health is in the question, say to talk to a doctor or other qualified professional if it affects their health.
+- On a personal question, state nothing about the user's life that they did not tell you. This includes drivers, incentives, inner voices, habits and fears: each one the user did not give is a candidate, marked `[to confirm]`. Do not assume the user's gender, role, family or history, or how often something happens to them. Write headlines and litanies about the user with "I" or "you", never "he" or "she". Put gaps as `[to confirm]` or as questions. Draw no medical, legal or financial conclusion. If burnout, stress or health is in the question, say to talk to a doctor or other qualified professional if it affects their health.
 
 ## The take-away
 
