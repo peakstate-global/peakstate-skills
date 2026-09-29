@@ -8,6 +8,8 @@ Rules:
 
 - Every task traces to the design question. A task that does not is cut.
 - Every task has a success criterion someone can observe: what the tester does or says.
+- Every task works in the file as built. A paper sketch or clickable file does not remember
+  what the tester types or picks, so never ask the tester to check a value they changed.
 - The decision rule says what result answers the design question. Use the user's threshold. If
   the user gave none, write the rule with `[to confirm]` in place of the number.
 - Facilitator, dates, place, incentives and recording: use what the user said, or `[to confirm]`.
