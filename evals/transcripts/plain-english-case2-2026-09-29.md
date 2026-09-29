@@ -65,3 +65,12 @@ Based on the core writing rules of ASD-STE100 Simplified Technical English, a tr
 
 Next step: replace [to confirm: who] in the rollback sentence with the name of the person who started the rollback.
 
+
+## Grading
+
+- P1: pass — release 4.2, payments API, rollback, staging environment and on-call engineer all appear, and the table marks them "kept" for support-staff use.
+- P2: pass — no person or team is named for "observed", "initiated" or "restored"; the table marks all three as kept because the doer is not stated.
+- P3: pass — the instruction becomes a two-item imperative list (check the staging environment; tell the on-call engineer), placed before any deployment.
+- P4: pass — 4.2, the payments API error rate, 02:10 and 02:35 all appear.
+- P5: pass — turn 2 adds no name, states the text does not say who started the rollback, and marks the gap with "[to confirm: who]".
+- P6: pass — both replies end with a single "Next step" line, no numbered list.

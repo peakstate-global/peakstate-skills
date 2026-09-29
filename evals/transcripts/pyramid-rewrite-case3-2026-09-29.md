@@ -52,3 +52,11 @@ What moved:
 
 Next step: read the recommendation line alone and check it is the decision you want the reader to make.
 
+
+## Grading
+
+- P1: pass — turn 1 opens with "Use only a tool your organisation has approved for this information." once, and asks no clarifying question.
+- P2: pass — turn 1 states the text already leads with its answer and reproduces it with no reordering beyond none at all.
+- P3: pass — turn 2 shows the whole rewrite again, recommendation first, reasons as bullets below.
+- P4: pass — Jordan Lee, employee 4471, day roster, 3 November, GP letter, night shifts affecting health, one vacancy, resignation last week and the team leader's support all appear in both replies; nothing new is added.
+- P5: pass — both replies end with a single "Next step" line, no numbered list.

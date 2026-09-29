@@ -50,3 +50,12 @@ Under the revised procurement framework, all business units are asked to use the
 Based on the core writing rules of ASD-STE100 Simplified Technical English, a trademark of ASD, adapted for general writing. This skill does not apply the STE dictionary.
 
 Next step: check who makes the request and who reimburses; if you know, name them so both passives can become active.
+
+## Grading
+
+- P1: pass — no clarifying question is asked, and no sentence in either rewrite exceeds 25 words.
+- P2: pass — the flag table carries a long-sentence row, complex-word rows and passive-kept rows, each with a rule id or "Skill rule".
+- P3: pass — the revised procurement framework, all business units, the approved supplier panel, over $5,000, prior written authorisation from the CFO, not reimbursed, previous arrangements and 1 July 2026 all appear.
+- P4: pass — neither reply names a doer for "will not be reimbursed" / "are reimbursed"; both keep the passive.
+- P5: pass — the shorter version in turn 2 still holds every P3 fact.
+- P6: pass — both replies end with a single "Next step" line, no numbered list.

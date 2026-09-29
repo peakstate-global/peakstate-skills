@@ -73,3 +73,11 @@ What moved:
 
 Next step: replace [to confirm: approver] with the name of the person who approves the change.
 
+
+## Grading
+
+- P1: pass — first reply asks no clarifying question, and the recommendation ("approve the three-queue change by Friday 10 October") is the first substantive sentence after the salutation.
+- P2: pass — turn 1's table shows situation, complication, question and answer with source quotes.
+- P3: pass — July, 4 hours, 9 hours, one queue, Maria's team, August, three queues by topic, 3 hours, $12,000, two weeks, Friday 10 October and the November sales peak all appear; no added number, date or name.
+- P4: pass — turn 2 adds no approver name, uses "[to confirm: approver]" and asks "Who should approve it?"
+- P5: pass — both replies end with a single "Next step" line, no numbered list of moves.

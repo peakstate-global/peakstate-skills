@@ -47,3 +47,11 @@ What moved:
 - I added no totals or comparisons. The text gives none, and a figure such as the yearly allowance cost would only appear labelled "calculated from the text".
 
 Next step: when you decide, tell me your option and I will put it in the first sentence in place of the `[No recommendation in the source]` lead.
+
+## Grading
+
+- P1: pass — turn 1 asks exactly one clarifying question ("What is the one thing you want the reader to know or do?") and gives no rewrite.
+- P2: pass — turn 2 leads with "[No recommendation in the source] We need to choose one of three options ... before ... 31 March next year" and favours no option.
+- P3: pass — $420, $390, $60,000, $1,500 per person per year, 40 staff and 31 March all appear; no new total or option detail is added.
+- P4: pass — the lead is marked "[No recommendation in the source]".
+- P5: pass — the final reply ends with a single "Next step" line, no numbered list.

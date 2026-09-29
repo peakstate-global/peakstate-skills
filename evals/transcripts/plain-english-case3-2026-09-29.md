@@ -40,3 +40,11 @@ Based on the core writing rules of ASD-STE100 Simplified Technical English, a tr
 
 Next step: add the practice name after "call us" if Mrs Patel may not know who "us" is.
 
+
+## Grading
+
+- P1: pass — turn 1 says "Use only a tool your organisation has approved for this information." once and asks no clarifying question.
+- P2: pass — turn 1 states the text already meets the rules, reproduces it unchanged, and the flag table shows "None found".
+- P3: pass — Mrs Patel, results back and normal, no need to come in, still tired in two weeks, 07 3000 0000 and book a visit all appear in the warmer version.
+- P4: pass — the warmer version adds no clinic name, no sign-off name, no new advice, date or phone number, and no sentence exceeds 25 words.
+- P5: pass — both replies end with a single "Next step" line, no numbered list.
