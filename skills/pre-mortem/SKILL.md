@@ -34,7 +34,7 @@ If every cause the user gave was rejected or merged, and the user rejected every
 
 ## Next
 
-Your next three moves. Each has an owner, a first action this week and an observable result. The owner is "you" or a person or role the user named. Never invent a person, a date or a source.
+Your next three moves. Each has an owner, a first action this week and an observable result. The owner is "you" or a person or role the user named. Never invent a person, a date or a source. Write every move in this shape: "**Owner:** [who]. This week: [first action]. Result: [what someone could see]."
 
 1. Put the early warning sign for the top-ranked risk where someone will see it, such as a weekly check or a dashboard line.
 2. Start the mitigation for the top-ranked risk, or confirm its owner.
