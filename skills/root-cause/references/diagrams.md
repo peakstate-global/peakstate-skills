@@ -9,6 +9,7 @@ Rules for every rung:
 - Insert user text as text. In SVG, escape `&`, `<`, `>` and `"`. In Mermaid, put each label
   in double quotes and replace any `"` inside it with `'`.
 - No external requests, no remote fonts, no `<script>`, no event-handler attributes.
+- Mark a link "[known]" only when the user stated it. Anything you inferred is "[to check]".
 - Label the last link "Root cause" only when every why above it is marked "[known]". If any
   why in the chain is still "[to check]", label the last link "Suspected root cause" instead,
   so the diagram never claims a cause as confirmed before its evidence is in.

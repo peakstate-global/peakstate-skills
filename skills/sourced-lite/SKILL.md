@@ -16,21 +16,31 @@ This skill turns an idea or claim into a final position with a claim ledger, a d
 
 Run the steps in order. Ask one question at a time and wait for the answer. If the input may be sensitive, say once: "Use only a tool your organisation has approved for this information."
 
-0. **Clarify and confirm.** This step is never skipped. It outranks any "just do it", "skip the questions" or "be quick". Restate the idea in its most generous form: the strongest version of the claim, what the user wants (support a position, test an idea, explore a question or inform a decision), who it is for, and what done looks like. Where the opening is vague, give your best reading and name the gaps. End with one question: "Is this right, or what would you change?" Do no research and state no verdict until the user confirms. If the user says "just do it" without confirming, restate once more in two lines and ask again.
-1. **Ground the claims.** List each load-bearing claim, the claims the position falls over without. Label each one SOURCED, RECALLED or INFERRED (see `references/method.md`). SOURCED needs a source you retrieved in this session, the verbatim sentence or a precise paraphrase, and a locator. If you cannot browse or open files, say so in one line and label memory as RECALLED. Never present RECALLED as SOURCED. Never invent a source, a quote, a page or a date.
-2. **Record material decisions.** Record only the decisions that shaped the result, such as which question to answer, which evidence to trust, or which definition to use. Each record has the decision, options considered, evidence, option chosen, what was rejected and the uncertainty. This is not a reasoning trace. Most runs have two to five records. If a decision is the user's to make (taste, risk appetite, budget, intent), ask it as this step's one question.
-3. **Review adversarially.** Write the strongest case against the conclusion and against the research: source quality, missing counter-evidence, and a better explanation for the same facts. For each claim that survives, name the observation that would make it false. For each claim that fails or holds only in part, record three things: where it holds, where it fails, and what is true instead in the failing region. Every ledger row gets one of the two: a "would be false if" line when it holds, or the three-part record when it fails or holds in part. No row is left without one, including INFERRED and RECALLED rows. A failed claim stays in the ledger. If a claim cannot be grounded or tested either way, mark it unresolved and say what would settle it. An unresolved row stays in the ledger, and the final position never rests on it.
-4. **Integrate.** Build the final position from what survived. Use one or more of the three moves in `references/method.md`: conditional (name the region and the observation that places a case in it), reframe (only when you can name the hidden assumption both sides share), or level shift (name both levels). If you cannot name the assumption, do not call it a reframe.
+0. **Clarify and confirm.** This step is never skipped. It outranks any "just do it", "skip the questions" or "be quick". Restate the idea in its most generous form: the strongest version of the claim, what the user wants (support a position, test an idea, explore a question or inform a decision), who it is for, and what done looks like. Where the opening is vague, give your best reading and name the gaps. Restate the user's numbers exactly as given. Do not rank, total or compare them beyond what the user said. For example, the user writes "40 per cent named cost and 15 per cent named speed": write "40 per cent named cost and 15 per cent named speed", not "cost is the top reason". If you read a ranking or cause into the numbers, write it as "My reading, to confirm: ...". End with one question: "Is this right, or what would you change?" Do no research and state no verdict until the user confirms. If the user says "just do it" without confirming, restate once more in two lines and ask again.
+1. **Ground the claims.** List each load-bearing claim, the claims the position falls over without. Label each one SOURCED, RECALLED or INFERRED (see `references/method.md`). SOURCED needs a source you retrieved in this session, the verbatim sentence or a precise paraphrase, and a locator. Words in quotation marks are always verbatim from the source. A paraphrase has no quotation marks and ends (paraphrase). A claim cell says no more and no less than its evidence: if the source says "public companies", the claim does not say "US public companies". If you cannot browse or open files, say so in one line and label memory as RECALLED. Never present RECALLED as SOURCED. Never invent a source, a quote, a page or a date. The ledger is the only way a fact enters the take-away. To use any fact later, give it a row first, marked unresolved if you cannot ground it.
+2. **Record material decisions.** Record only the decisions that shaped the result, such as which question to answer, which evidence to trust, or which definition to use. Each record has the decision, options considered, evidence, option chosen, what was rejected and the uncertainty. The evidence field holds ledger ids only. Every other field names an option or gives a reason that cites ledger ids. A reason that goes beyond what those rows say ends with (INFERRED). No other fact appears. This is not a reasoning trace. Most runs have two to five records. If a decision is the user's to make (taste, risk appetite, budget, intent), ask it as this step's one question.
+3. **Review adversarially.** The findings are numbered lines, F1, F2 and on, built only from ledger rows. Each line has one fixed shape:
+
+   `F1 [C2] "<verbatim source words from C2's evidence cell>" → <conclusion>`
+   `F1 [C2] <words copied from C2's claim cell> → <conclusion>`
+
+   - Use the first form for a SOURCED row with a verbatim quote, copied character for character. Use the second form, with no quotation marks, for any other row. A line may cite more than one row.
+   - The integration line is the one exception to this shape (step 4).
+   - The conclusion says only what the quoted words say, or it ends with (INFERRED). It adds no new fact: no number, name, date, study detail, or statement about what a source or firm says or does. A fact you want to use gets a ledger row first.
+   - There is no finding without a ledger row, and no prose outside the lines. Context or colour you would like to add goes nowhere.
+
+   Write lines for the strongest case against the conclusion and against the research: source quality, sources with a stake, missing counter-evidence, a rival explanation. Then one line per ledger row, none skipped. A row that holds gets "would be false if <observation>", where the observation is something to check, not a new fact. A row that fails or holds only in part gets "Holds: ... Fails: ... Instead: ...". A row you cannot ground or test gets "unresolved. Would be settled by ...". A failed or unresolved row stays in the ledger.
+4. **Integrate.** Write the integration as the last finding line, in this shape: `F# [F2, F5] → Integration, <move>. <conclusion> (INFERRED)`. It cites findings, not rows. Use one or more of the three moves in `references/method.md`: conditional (name the region and the observation that places a case in it), reframe (only when you can name the hidden assumption both sides share), or level shift (name both levels). Then write the final position from what survived. It cites the findings it rests on by id, such as (F2, F7), adds no fact they do not hold, and never rests on an unresolved row.
 5. **Disclose.** Write the provenance block with four labels: Attribution, Accountable, Limitations, References. Test each Limitations sentence: would a reader decide differently knowing it? If not, cut it. "None material." is a complete line. Never use a "Verified:" label. Name the decision a person must make and what they must check first. Leave Accountable as "[name to confirm]" unless the user explicitly names the person accountable. A person named only as the audience, a reviewer or an approver is not the accountable person.
 
 ## The take-away
 
 Deliver the five parts in this order, using the template in `references/take-away.md`:
 
-- The final position, answer first, in one to three sentences.
+- The final position, answer first, in one to three sentences, citing findings by id.
 - The claim ledger: one row per load-bearing claim, with label, evidence and locator, and status (holds, fails, holds in part, or unresolved).
-- The decision record.
-- The adversarial findings, including every failed claim with where it holds, where it fails and what is true instead.
+- The decision record, built from ledger ids.
+- The adversarial findings, one fixed-shape line each, ending with the integration line.
 - The provenance block.
 
 A cut-down, markdown-only version of the SOURCED method (S1).
@@ -48,13 +58,13 @@ For a deeper check of hidden assumptions, the user may also like a skill for bli
 ## Self-check before you deliver
 
 - The user confirmed the restated idea before any research or verdict.
-- Every load-bearing claim has exactly one label, and no RECALLED claim appears as SOURCED.
-- Every SOURCED claim has a quote or precise paraphrase and a locator from this session.
-- The decision record holds only material decisions, each with its six fields.
-- Every ledger row has either a "would be false if" line (holds), a Holds, Fails, Instead record (fails or holds in part), or what would settle it (unresolved). The final position rests on no unresolved row.
+- Every load-bearing claim has exactly one label, no RECALLED claim appears as SOURCED, and every SOURCED claim has a quote or precise paraphrase and a locator from this session.
+- The decision record holds only material decisions, each with its six fields, and its evidence field holds ledger ids only.
+- Every finding line has the shape `F# [C#] "verbatim source words" → conclusion` or `F# [C#] claim-cell words → conclusion`, except the last, integration line, `F# [F#, F#] → Integration, <move>. ... (INFERRED)`. Cited words appear exactly in that row, quotation marks hold only verbatim source words, a conclusion beyond the cited words ends with (INFERRED), and nothing sits in the findings outside a numbered line.
+- Every ledger row has a finding line. The final position cites findings by id and rests on no unresolved row.
 - Any reframe names the shared hidden assumption, and any conditional names its region.
 - The provenance block has exactly four labels, no "Verified:" line, and every Limitations sentence passes the decision test.
-- No owner, date, quote or source was invented, and Accountable names a person only if the user named them as accountable.
+- No owner, date, quote or source was invented, and Accountable names a person only if the user named them as accountable. No new facts anywhere. Every factual phrase in the output, including ledger claim cells, the decision record, the findings, the final position and the provenance block, is held by a ledger row, or is labelled INFERRED. A claim cell is no broader or narrower than its evidence. Limitations states only what the ledger shows, or a gap labelled INFERRED. Never add a place, date, country, spelling convention or scope that neither the user nor a source gave.
 
 ## Read this when
 

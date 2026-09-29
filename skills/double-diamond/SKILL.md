@@ -43,7 +43,7 @@ Deliver the six parts in this order, using the template in `references/take-away
 
 End with the credit line: "Method: the Double Diamond, from the Design Council (S1)."
 
-If you cannot browse or open files, say so in one line. Any fact from memory is labelled RECALLED. Never invent a study, author, year, statistic, quote or URL.
+If you cannot browse or open files, say so in one line. Any fact from memory is labelled RECALLED. Never invent a study, author, year, statistic, quote or URL. Never assume the user's country, season, holidays or local rules: if one matters, mark it [to confirm].
 
 ## Next
 
@@ -63,7 +63,7 @@ To check the assumptions or the case against in more depth, the user may also li
 - The strongest case against ran before the hypotheses, and says what survived or what changed.
 - Every hypothesis has a measure, a threshold, a time frame or sample, and status "untested"; the thresholds were written before any result.
 - Nothing is labelled confirmed, validated or proven.
-- The owner and date came from the user, or read "[to confirm]"; no source, statistic, person or date was invented, and memory is labelled RECALLED.
+- The owner and date came from the user, or read "[to confirm]"; no source, statistic, person, date or local fact (country, season, holidays) was invented, and memory is labelled RECALLED.
 - The take-away ends with the Design Council credit line.
 
 ## Read this when

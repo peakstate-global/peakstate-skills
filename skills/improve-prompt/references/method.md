@@ -19,7 +19,7 @@ A prompt can hold four parts: the goal, the context, the expectations and the so
 |---|---|---|
 | Say what to do, not what to avoid | The prompt is a list of "do not" rules | (S1) |
 | Separate instructions from material | Pasted text sits in the middle of the instructions. Put the material after the instructions, between clear markers such as tags or headings | (S1, S2) |
-| Give a role | The task needs a point of view or a register, such as a ward manager writing to staff. One line: "You are helping a..." | (S1) |
+| Give a role | The task needs a point of view or a register, such as a ward manager writing to staff. One line: "You are helping a...". Use only a role the user gave; if they did not say who writes or sends it, leave the role out or write [to confirm: who sends this] | (S1) |
 | Add an example | The output must follow a pattern the words do not make clear. One short example of the shape, never of invented content | (S3) |
 | Split the task | The prompt asks for several outputs at once. Number the parts in the order they should come | (S3) |
 | Add a constraint | A limit matters (length, what to leave out, what to use only) and is not stated | (S3) |

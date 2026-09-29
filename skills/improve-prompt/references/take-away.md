@@ -34,7 +34,7 @@ The reply:
 
     This prompt asks for a report summary for managers.
 
-    Summarise the report below for the regional managers. They will use it to decide what to focus on next quarter.
+    Summarise the report below for the managers. They will use it to [to confirm: what the managers will decide with it].
 
     Write at most five bullet points, most important first, in plain English. Use only the report. If a number is missing, write [to confirm].
 
@@ -46,7 +46,7 @@ The reply:
 
     | Change | Why |
     |---|---|
-    | Named the managers and what they will do with it | Context lets the model choose what matters (S1) |
+    | Added a placeholder for what the managers will do with it | Context lets the model choose what matters, and the purpose was not given (S1) |
     | Added length, order and style | Stated expectations shape the output (S3) |
     | Put the report between markers, after the instructions | Separates the material from the instructions (S1) |
     | Added "use only the report" and a placeholder rule | Names the source and stops invented numbers (S4) |

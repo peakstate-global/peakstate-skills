@@ -95,7 +95,7 @@ the error hard to repeat (a check, a lock, a default) over a reminder or more tr
 
 - **Reach:** what the change touches and who it affects. Start small where you can: one team,
   one run, one site (S7).
-- **Reversal:** exactly how to undo it, and how long that takes.
+- **Reversal:** exactly how to undo it, and how long that takes. Mark the time "[to confirm]" unless the user gave it.
 - **Rollback trigger:** the result that shows it failed, with a number and a period where you
   can, such as "any duplicate payment in the next two runs" or "error rate above 2% in the
   first hour". If it fires, reverse the fix and keep the containment (S7).
