@@ -88,3 +88,5 @@ For a deeper check of hidden assumptions, you may also like a skill for blind sp
 - P3 pass: F11 "C7 holds in part. Holds: possibly, where the move brings together people who now sit on other floors or sites ... Fails: in moves like those in C1 ... Instead: expect less face-to-face interaction and more electronic interaction (C1)."
 - P4 pass: each row with status Holds (C1, C2, C3, C4) has a "would be false if" line (F5, F6, F7, F8).
 - P5 pass: C1 to C4 are SOURCED with quotes and locators (PMC abstract and methods; Wong p. 470). The grader found every quote at its source (PMC page fetched; the OUP page confirmed both Wong sentences and the Richardson attribution). C5, seen only in a search summary, is RECALLED, not SOURCED. Strict check: all finding quotes appear in their rows (0 misses), and the findings hold only numbered lines.
+
+Void (2026-09-29): this run read a corrupted references/take-away.md (1MB of one repeated line, commit 1e361d8); result withdrawn.

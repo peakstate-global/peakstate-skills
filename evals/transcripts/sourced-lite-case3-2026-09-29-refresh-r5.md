@@ -101,3 +101,5 @@ For a deeper check of hidden assumptions, you may also like a skill for blind sp
 - P3 pass: C1 SOURCED with "Of 212 customers who cancelled in the first 90 days, 61 per cent named setup time as a reason" (survey summary pasted in this chat, first clause). References: "Internal survey summary of customers who cancelled in the first 90 days, n = 212 [pasted in this session; author, title and date not given]".
 - P4 pass: three records, each with decision, options considered, evidence (ids only), chosen, rejected and uncertainty; none is a step-by-step trace.
 - P5 pass: "Accountable:  [name to confirm]". The next moves name only "you", with no invented person, date or source. Strict check: all finding quotes appear in their rows (0 misses); every number in the take-away is the user's.
+
+Void (2026-09-29): this run read a corrupted references/take-away.md (1MB of one repeated line, commit 1e361d8); result withdrawn.
