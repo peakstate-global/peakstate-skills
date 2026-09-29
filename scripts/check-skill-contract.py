@@ -27,6 +27,9 @@ SNIPPET = Path(__file__).resolve().parent / "host-snippet.md"
 EXEMPT = {"peakstate-brief", "peakstate-retro"}
 
 MAX_LINES, MAX_BYTES, MAX_COMPANIONS = 500, 20 * 1024, 8
+# Any one file in the skill. A reference file once shipped as 1MB of one
+# repeated line and passed every other gate.
+MAX_FILE_BYTES = 64 * 1024
 TOP_KEYS = ["name", "description", "license", "metadata"]
 META_KEYS = ["author", "source", "version", "profile", "output"]
 META_FIXED = {"author": "Peak State Global",
@@ -145,6 +148,8 @@ def check_skill(skill, snippet=None):
             if rel != "references":
                 errs.append(f"{rel}/: the only folder allowed is references/")
             continue
+        if p.stat().st_size > MAX_FILE_BYTES:
+            errs.append(f"{rel}: {p.stat().st_size} bytes, the cap for any file is {MAX_FILE_BYTES}")
         if p.suffix != ".md":
             errs.append(f"{rel}: only .md files are allowed")
         elif rel == "SKILL.md":
@@ -324,7 +329,11 @@ def selftest():
     fat = good_skill()
     fat["SKILL.md"] = fat["SKILL.md"].replace(FINAL, "y" * 21000 + "\n" + FINAL)
     run("over 20KB", fat, "bytes, the cap is 20480")
-    run("non-md file", {**good_skill(), "references/t.html": "<p>"}, "only .md files")
+    run("reference file just under 64KB passes",
+        {**good_skill(), "references/lib.md": "z" * (64 * 1024)}, None)
+    run("reference file over 64KB",
+        {**good_skill(), "references/lib.md": "z" * (64 * 1024 + 1)}, "the cap for any file is 65536")
+    run("non-md file",{**good_skill(), "references/t.html": "<p>"}, "only .md files")
     run("hidden file", {**good_skill(), ".DS_Store": "x"}, "hidden files")
     run("stray folder", {**good_skill(), "assets/x.md": "x"}, "only folder allowed")
     run("md outside the layout", {**good_skill(), "NOTES.md": "x"}, "not SKILL.md, SOURCES.md")
