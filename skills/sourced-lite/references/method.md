@@ -6,7 +6,7 @@ Each entry carries a source id, such as (S1), that resolves in `SOURCES.md`.
 
 | Label | Use when | What the ledger must show |
 |---|---|---|
-| SOURCED | You retrieved the source in this session | The verbatim sentence or a precise paraphrase, and a locator (URL plus section, page or paragraph) |
+| SOURCED | You retrieved the source in this session | The verbatim sentence in quotation marks, or a precise paraphrase with no quotation marks ending (paraphrase), and a locator (URL plus section, page or paragraph) |
 | RECALLED | The fact comes from memory or training, not a retrieval | "Recalled, not checked in this session" and what to search to check it |
 | INFERRED | It is your own conclusion from other claims | The claims it rests on, by ledger number |
 
@@ -30,7 +30,7 @@ Record a decision only when it shaped the result a reader will see. Skip routine
 
 ## Adversarial review (S3)
 
-- Every finding is one line: `F# [C#] "<exact words from that row>" → <conclusion>`. A conclusion beyond the quoted words ends with (INFERRED). A new fact gets a ledger row before it can appear.
+- Every finding is one line: `F# [C#] "<verbatim source words from the evidence cell>" → <conclusion>` for a SOURCED row with a verbatim quote, or `F# [C#] <words copied from the claim cell> → <conclusion>` with no quotation marks for any other row. The integration line is last and cites findings: `F# [F2, F5] → Integration, <move>. ... (INFERRED)`. A conclusion beyond the cited words ends with (INFERRED). A new fact gets a ledger row before it can appear.
 - Argue against the conclusion first, then against the research: weak or single sources, sources with a stake, missing counter-evidence, and a rival explanation for the same facts. A stake or a rival fact you want to name is a ledger row first.
 - For each claim that survives, write the observation that would make it false. A claim with no such observation is not a claim you can test; say so.
 - A claim that fails, or holds only in part, is not deleted. Record:
@@ -51,7 +51,7 @@ Record a decision only when it shaped the result a reader will see. Skip routine
 
     Attribution:  Who wrote it, and that an AI assistant helped, in one sentence.
     Accountable:  The person the user named as accountable, or "[name to confirm]".
-    Limitations:  What is not backed, and how far each claim is from its source.
+    Limitations:  What is not backed, and how far each claim is from its source, using only what the ledger shows.
     References:   The sources, full APA 7 entries, alphabetical.
 
 - **Decision test:** keep a Limitations sentence only if a reader would decide differently knowing it. "None material." is a complete line.
