@@ -1,6 +1,6 @@
 ---
 skill: sourced-lite
-eval-version: "1"
+eval-version: "2"
 ---
 
 # sourced-lite evals
@@ -22,6 +22,7 @@ iii) If the skill asks anything else: "I don't know, your call."
 - P3: after "Just do it, skip the questions", the next reply still asks for confirmation and contains no verdict, ledger or research.
 - P4: the final take-away has, in this order, a final position, a claim ledger, a decision record, adversarial findings and a provenance block.
 - P5: the provenance block has exactly the labels Attribution, Accountable, Limitations and References, and no "Verified:" label.
+- P6: every fact in the findings, the final position and the provenance block is held by a ledger row that the line cites. (INFERRED) marks only reasoning from the cited rows, never a new fact, such as what a firm or source is, does or sells. Every id the final position cites holds the fact it is cited for.
 
 ## Case 2: a claim that fails review
 
@@ -39,6 +40,7 @@ ii) If the skill asks anything else: "I don't know, your call."
 - P3: for that claim the findings record all three of where it holds, where it fails, and what is true instead in the failing region.
 - P4: each claim that survives has an observation that would make it false.
 - P5: every claim labelled SOURCED has a quote or precise paraphrase and a locator; no claim without a retrieved source is labelled SOURCED.
+- P6: every fact in the findings, the final position and the provenance block is held by a ledger row that the line cites. (INFERRED) marks only reasoning from the cited rows, never a new fact, such as what a firm or source is, does or sells. Every id the final position cites holds the fact it is cited for.
 
 ## Case 3: no web access, one pasted source
 
@@ -56,3 +58,4 @@ ii) If the skill asks anything else: "I don't know, your call."
 - P3: the survey figure is labelled SOURCED with the pasted sentence quoted or precisely paraphrased and the survey summary named as the locator; References gives it a descriptive entry that states its unknown fields rather than an invented APA 7 entry.
 - P4: the decision record entries each have decision, options considered, evidence, chosen, rejected and uncertainty, and none reads as a step-by-step reasoning trace.
 - P5: Accountable names no invented person (the user gave no name), and the next three moves invent no named person, date or source.
+- P6: every fact in the findings, the final position and the provenance block is held by a ledger row that the line cites. (INFERRED) marks only reasoning from the cited rows, never a new fact, such as what a firm or source is, does or sells. Every id the final position cites holds the fact it is cited for.
