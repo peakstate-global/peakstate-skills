@@ -24,6 +24,7 @@ The topic, any draft and any notes on the audience are the input. If they hold n
 6. **Test the spine.** Read only the premises, top to bottom: they must read as the argument of the whole piece. Check that every starting belief is answered by a named section, and that no section moves nobody. Cut or merge any section that fails.
 7. **Get the spine approved before building.** Show the arc sheet and ask for sign-off. Nothing is drafted until the spine is agreed.
 8. **Build to the spine.** For a deck, the slides carry the claims, and the speaker notes carry the narrative: each note says what its slide claims and gives the line that carries the audience from the last slide into this one and on to the next. The first slide of each section names the belief it answers. For an article, the headings state each section's premise, and the first sentence of each section links from the last one. Only add text that adds value.
+9. **Score the draft.** `/draft-eval` is the bar for an article draft: it scores every section against the rubric before anyone reviews it.
 
 ## The take-away
 
