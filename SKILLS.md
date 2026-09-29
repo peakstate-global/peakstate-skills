@@ -18,6 +18,8 @@ CLI and anything else that reads the format.
 | [plain-english](skills/plain-english/) | Rewrites text to the core Simplified Technical English rules and flags each jargon word, passive verb and long sentence with the rule behind it. Keeps every fact and never guesses who did something | **Yes.** Markdown only |
 | [pre-mortem](skills/pre-mortem/) | Confirms the plan, asks you to imagine it has failed 12 months from now and say why, adds likely causes from a library of failure prompts, and ends with a ranked risk register (risk, likelihood, impact, early warning sign, owner, mitigation) that marks which causes were yours. Never invents an owner or a date | **Yes.** Markdown only |
 | [hard-conversation-prep](skills/hard-conversation-prep/) | Prepares a difficult conversation: confirms the situation, turns judgements into observable behaviour, and ends with an opening line, situation, behaviour and impact (SBI), one request the other person could decline, and likely replies with answers | **Yes.** Markdown only |
+| [meeting-to-actions](skills/meeting-to-actions/) | Turns meeting notes or a transcript into decisions, actions with owners and dates, open questions and risks in one pass. Takes every item from the notes and marks a gap as [NO OWNER] or [NO DATE] rather than inventing one | **Yes.** Markdown only |
+| [stakeholder-map](skills/stakeholder-map/) | Builds a power and interest grid for a change: who is affected, ratings marked as yours or suggested, what each stakeholder cares about and one message each, as a diagram and a text table. Warns that ratings of named people are sensitive | **Yes.** Markdown only |
 
 ## Conventions every skill here follows
 
