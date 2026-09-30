@@ -99,6 +99,14 @@ so its marker lands on the entry itself[^3].
 a) Ship both, side by side.
 b) Ship the HTML only, keep the markdown in the repo.
 
+## Gallery :: a :::gallery block
+
+:::gallery
+![Slide 1, *before*](https://example.com/one-before.png)
+![Slide 1, after](https://example.com/one-after.png)
+<figure><img src="shots/hand.png" alt="hand"><figcaption>Written by hand</figcaption></figure>
+:::
+
 ## Q2 Is a generated contents list acceptable?
 
 My assumption: yes, generated from the part and section headings.

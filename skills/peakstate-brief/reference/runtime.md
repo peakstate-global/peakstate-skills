@@ -218,7 +218,10 @@ ordinary `<img>`, ideally inside a `<figure>` with a `<figcaption>`, and the run
   zoom, `0` fits.
 - **Pan:** drag while zoomed.
 - **Step:** the left and right arrows, or the arrow buttons, move through every eligible image in
-  the brief in document order, with a counter.
+  the brief in document order, with a counter. Opened from a `:::gallery` block, they step through
+  that gallery only.
+- **Fit:** in the page, every image is capped at the width of its column (`main img` in
+  `brief.css`), so no image runs off the edge in either width.
 - **Close:** Esc, the close button, or a click on the backdrop. Focus returns to the image that
   opened it.
 - **Caption:** the figure's `<figcaption>`, falling back to the image's `alt` text.

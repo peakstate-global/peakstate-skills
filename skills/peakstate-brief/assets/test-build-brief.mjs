@@ -64,6 +64,17 @@ has('<dl class="provblock">', 'provenance renders as one four-label block');
 assert.equal((main.match(/<dl class="provblock">/g) || []).length, 1,
   'the provenance terms are one list, not four');
 
+/* ── images: fit mode and the gallery ──────────────────────────────────── */
+
+assert.ok(html.includes('main img { max-width: 100%; height: auto; }'),
+  'fit mode: every image is capped at its column');
+has('<div class="gallery">\n<figure><img src="https://example.com/one-before.png" alt="Slide 1, *before*">' +
+  '<figcaption>Slide 1, <em>before</em></figcaption></figure>', 'a gallery line becomes a captioned figure');
+has('<figure><img src="shots/hand.png" alt="hand"><figcaption>Written by hand</figcaption></figure>\n</div>',
+  'a hand-written figure passes through inside the gallery');
+assert.throws(() => render('---\ntitle: G\n---\n\n## S\n\n:::gallery\nnot an image\n:::\n'),
+  /gallery: expected/, 'a gallery line that is not an image fails the build');
+
 /* ── the answers block ───────────────────────────────────────────────────
    The digest a reader who reads nothing else still leaves with. It renders
    under the standfirst and ABOVE the contents, so it is hoisted out of

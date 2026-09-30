@@ -3153,7 +3153,8 @@ var __briefTip = (() => {
      Click any image in the document, or focus it and press Enter, to open it
      over the page. Click the image to toggle between fitted and actual size,
      drag to pan, wheel or pinch to zoom about the pointer, + and - to zoom,
-     0 to fit, left and right arrows to step through every image in the brief,
+     0 to fit, left and right arrows to step through every image in the brief
+     (or through its own gallery, when opened from a :::gallery block),
      Esc or the backdrop to close. Focus returns to the image that opened it.
      Skipped: an image inside a link (the link wins), inside an editable
      [data-doc] block (a click there starts the editor), in the topbar, and
@@ -3404,7 +3405,11 @@ var __briefTip = (() => {
     }
     function open(img, withPanel, from) {
       if (!box) build();
-      list = gallery(); opener = from || img;
+      /* Opened from a :::gallery block, the arrows step through that gallery
+         only; anywhere else, through every image in the brief. */
+      var g = img.closest('.gallery');
+      list = gallery().filter(function (x) { return !g || g.contains(x); });
+      opener = from || img;
       panel.hidden = true; box.classList.remove('commenting');
       box.classList.add('open');
       document.documentElement.classList.add('lb-lock');

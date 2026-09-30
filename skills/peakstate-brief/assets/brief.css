@@ -803,6 +803,26 @@ figure > :first-child { margin-top: 0; }
 figcaption { font: 400 12.5px/1.5 var(--font-ui); color: var(--muted); margin: .6rem 0 .8rem; }
 .cap { font: 400 12.5px/1.5 var(--font-ui); color: var(--muted); margin: .3rem 0 1.2rem; }
 
+/* Fit mode, the default for every image. An image in the page is capped at the
+   width of the box it sits in, so a large screenshot or slide shrinks to its
+   column in normal and full width instead of running off the right edge. The
+   lightbox shows it at full size. The viewer's own image is a child of the body,
+   not of the main column, so this never touches it. */
+main img { max-width: 100%; height: auto; }
+
+/* Gallery mode: a `:::gallery` block renders as a grid of thumbnail figures,
+   three across on a desktop, two on a tablet, one on a phone, and as many
+   15rem columns as fit once full width lets it bleed. Clicking a thumbnail opens
+   the lightbox, which then steps through this gallery only. */
+.gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+           gap: .9rem; align-items: start; margin: 1.1rem 0 1.3rem; }
+.gallery > figure { margin: 0; padding: .6rem .6rem 0; }
+.gallery > figure img { display: block; width: 100%; border-radius: 6px; }
+.gallery > figure figcaption { margin: .45rem 0 .6rem; }
+@media (max-width: 58rem) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 34rem) { .gallery { grid-template-columns: minmax(0, 1fr); } }
+body.fullwidth .gallery { grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr)); }
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    v4 — THE PYRAMID, AND THE SIX REQUESTS
@@ -1169,6 +1189,7 @@ body.fullwidth .sec-body, body.fullwidth .q-body {
 body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap,
 body.fullwidth .sec-body > pre, body.fullwidth .q-body > pre,
 body.fullwidth .sec-body > figure, body.fullwidth .q-body > figure,
+body.fullwidth .sec-body > .gallery, body.fullwidth .q-body > .gallery,
 body.fullwidth .sec-body > table, body.fullwidth .q-body > table,
 body.fullwidth .sec-body > .diag, body.fullwidth .q-body > .diag,
 /* A `:::html` block arrives as a plain wrapper div, so a table inside one was

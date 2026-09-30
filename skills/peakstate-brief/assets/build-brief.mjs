@@ -344,6 +344,19 @@ function renderBlock(lines, ctx) {
   if (c) {
     const inner = lines.slice(1, lines[lines.length - 1].trim() === ':::' ? -1 : undefined);
     if (c[1] === 'html' || c[1] === '') return inner.join('\n');
+    /* A gallery holds one image per line, `![caption](src)`, each becoming a
+       captioned figure in a thumbnail grid. A line starting with `<` is a
+       figure written by hand and passes through verbatim. */
+    if (c[1] === 'gallery') {
+      const items = inner.map((l) => l.trim()).filter(Boolean).map((l) => {
+        if (l.startsWith('<')) return l;
+        const m = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(l);
+        if (!m) throw new Error('gallery: expected ![caption](src) or a <figure>, got: ' + l);
+        return '<figure><img src="' + escAttr(m[2]) + '" alt="' + escAttr(m[1]) + '">' +
+          (m[1] ? '<figcaption>' + inline(m[1], refs) + '</figcaption>' : '') + '</figure>';
+      });
+      return '<div class="gallery">\n' + items.join('\n') + '\n</div>';
+    }
     const cls = c[1] + (c[2] ? ' ' + c[2] : '');
     return '<div class="' + cls + '">\n' + renderBody(inner, ctx) + '\n</div>';
   }
