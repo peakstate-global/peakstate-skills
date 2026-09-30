@@ -22,9 +22,10 @@ The topic, any draft and any notes on the audience are the input. If they hold n
 4. **Name the shift.** One sentence: from what they would say now to what they can say at the end. The audience is the hero and the piece is the mentor (S1). Then say the one action they take after it: where to start.
 5. **Build the spine.** Order the sections so each one corrects one starting belief or builds a capability the next section needs. For every section write three things: its premise in one sentence, what the audience says on the way in, and what they can say on the way out. The way out of one section is the way in to the next. Teach the vocabulary before you apply it. End on where to start, not on a method. Use the template in `references/arc-sheet.md`.
 6. **Test the spine.** Read only the premises, top to bottom: they must read as the argument of the whole piece. Check that every starting belief is answered by a named section, and that no section moves nobody. Cut or merge any section that fails.
-7. **Get the spine approved before building.** Show the arc sheet and ask for sign-off. Nothing is drafted until the spine is agreed.
-8. **Build to the spine.** For a deck, the slides carry the claims, and the speaker notes carry the narrative: each note says what its slide claims and gives the line that carries the audience from the last slide into this one and on to the next. The first slide of each section names the belief it answers. For an article, the headings state each section's premise, and the first sentence of each section links from the last one. Only add text that adds value.
-9. **Score the draft.** `/draft-eval` is the bar for an article draft: it scores every section against the rubric before anyone reviews it.
+7. **Write the terms sheet.** List every term the piece will use that is not plain English, and decide for each one: keep it, or replace it with plain words. Keep a term only if it earns its place. For each kept term, write what it means here and where the piece introduces it: early, visually, with a metaphor or an example, before its first use. An id such as D1 is fine when its letter means something and the id is reused wherever that item appears. List the replaced terms too, each with the plain words used instead. In a deck, the sheet becomes the hidden terms slide (the peakstate-deck skill says how).
+8. **Get the spine and the terms sheet approved before building.** Show the arc sheet and the terms sheet, and ask for sign-off. Nothing is drafted until both are agreed.
+9. **Build to the spine.** For a deck, the slides carry the claims, and the speaker notes carry the narrative: each note says what its slide claims and gives the line that carries the audience from the last slide into this one and on to the next. The first slide of each section names the belief it answers. For an article, the headings state each section's premise, and the first sentence of each section links from the last one. Only add text that adds value.
+10. **Score the draft.** `/draft-eval` is the bar for an article draft: it scores every section against the rubric before anyone reviews it.
 
 ## The take-away
 
@@ -46,6 +47,7 @@ Your next three moves:
 - Every section has a premise, a from and a to, and each section's to is the next one's from.
 - Read alone, the premises make the argument of the whole piece.
 - The spine ends on where to start, and nothing is drafted before the user approves it.
+- The terms sheet lists every term that is not plain English, kept or replaced, and each kept term has a slide or section that introduces it before its first use.
 - In the built piece, deck notes carry the linking narrative and every slide's text adds value.
 
 ## Read this when
