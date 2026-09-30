@@ -68,7 +68,7 @@ assert.equal((main.match(/<dl class="provblock">/g) || []).length, 1,
 
 assert.ok(html.includes('main img { max-width: 100%; height: auto; }'),
   'fit mode: every image is capped at its column');
-has('<div class="gallery">\n<figure><img src="https://example.com/one-before.png" alt="Slide 1, *before*">' +
+has('<div class="gallery pairs">\n<figure><img src="https://example.com/one-before.png" alt="Slide 1, *before*">' +
   '<figcaption>Slide 1, <em>before</em></figcaption></figure>', 'a gallery line becomes a captioned figure');
 has('<figure><img src="shots/hand.png" alt="hand"><figcaption>Written by hand</figcaption></figure>\n</div>',
   'a hand-written figure passes through inside the gallery');

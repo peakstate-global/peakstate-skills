@@ -346,7 +346,8 @@ function renderBlock(lines, ctx) {
     if (c[1] === 'html' || c[1] === '') return inner.join('\n');
     /* A gallery holds one image per line, `![caption](src)`, each becoming a
        captioned figure in a thumbnail grid. A line starting with `<` is a
-       figure written by hand and passes through verbatim. */
+       figure written by hand and passes through verbatim. `:::gallery pairs`
+       adds the class that keeps a before-and-after pair on one row. */
     if (c[1] === 'gallery') {
       const items = inner.map((l) => l.trim()).filter(Boolean).map((l) => {
         if (l.startsWith('<')) return l;
@@ -355,7 +356,7 @@ function renderBlock(lines, ctx) {
         return '<figure><img src="' + escAttr(m[2]) + '" alt="' + escAttr(m[1]) + '">' +
           (m[1] ? '<figcaption>' + inline(m[1], refs) + '</figcaption>' : '') + '</figure>';
       });
-      return '<div class="gallery">\n' + items.join('\n') + '\n</div>';
+      return '<div class="gallery' + (c[2] ? ' ' + escAttr(c[2]) : '') + '">\n' + items.join('\n') + '\n</div>';
     }
     const cls = c[1] + (c[2] ? ' ' + c[2] : '');
     return '<div class="' + cls + '">\n' + renderBody(inner, ctx) + '\n</div>';

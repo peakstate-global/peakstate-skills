@@ -822,6 +822,12 @@ main img { max-width: 100%; height: auto; }
 @media (max-width: 58rem) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 34rem) { .gallery { grid-template-columns: minmax(0, 1fr); } }
 body.fullwidth .gallery { grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr)); }
+/* `:::gallery pairs`: an even column count, so each before-and-after pair
+   shares a row. Two across, four in full width, one on a phone. */
+.gallery.pairs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.fullwidth .gallery.pairs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 58rem) { body.fullwidth .gallery.pairs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 34rem) { .gallery.pairs, body.fullwidth .gallery.pairs { grid-template-columns: minmax(0, 1fr); } }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════

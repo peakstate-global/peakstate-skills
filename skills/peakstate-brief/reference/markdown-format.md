@@ -42,7 +42,7 @@ still accepted, and becomes `data-addressed`: the same matching with no words.
 | `[^3]` where source 3 has no quote | `#ref3`, the entry itself. A marker pointing at a quote that does not exist is a build error. |
 | `:::verdict` … `:::` | `<div class="verdict">` with markdown rendered inside |
 | `:::html` … `:::` | passed through verbatim |
-| `:::gallery` … `:::`, one `![caption](src)` per line | `<div class="gallery">` of captioned `<figure>` thumbnails, 3 across on a desktop, 2 on a tablet, 1 on a phone, more in full width. The lightbox steps through that gallery only. A line starting with `<` (a hand-written `<figure>`) passes through; any other line fails the build |
+| `:::gallery` … `:::`, one `![caption](src)` per line | `<div class="gallery">` of captioned `<figure>` thumbnails, 3 across on a desktop, 2 on a tablet, 1 on a phone, more in full width. `:::gallery pairs` holds two across (four in full width) so a before-and-after pair shares a row. The lightbox steps through that gallery only. A line starting with `<` (a hand-written `<figure>`) passes through; any other line fails the build |
 | a block starting with `<` | passed through verbatim |
 | inline `<span class="hl-warn">…</span>` | passed through, in prose, a list item or a table cell. Allowlist: `span b i em strong s del ins sub sup kbd abbr mark small wbr br`, carrying at most a `class`. Anything else escapes to visible text |
 

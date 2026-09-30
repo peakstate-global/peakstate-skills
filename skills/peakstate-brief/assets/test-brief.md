@@ -101,7 +101,7 @@ b) Ship the HTML only, keep the markdown in the repo.
 
 ## Gallery :: a :::gallery block
 
-:::gallery
+:::gallery pairs
 ![Slide 1, *before*](https://example.com/one-before.png)
 ![Slide 1, after](https://example.com/one-after.png)
 <figure><img src="shots/hand.png" alt="hand"><figcaption>Written by hand</figcaption></figure>
