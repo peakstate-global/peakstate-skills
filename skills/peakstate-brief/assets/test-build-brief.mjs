@@ -483,6 +483,15 @@ assert.ok(pub.includes('data-visibility="private"'), 'and carries the publish at
 assert.notEqual(join(tmp, 'x.html'), join(tmp, 'x.publish.html'));
 rmSync(tmp, { recursive: true, force: true });
 
+/* ── a main tag outside the body cannot blank the page ─────────────────── */
+
+{
+  const tpl = readFileSync(join(HERE, 'brief-template.html'), 'utf8').replace('</head>', '<!-- <main> in a comment -->\n</head>');
+  const out = render('---\ntitle: M\n---\n\n## S\n\nBody text costs $& and $\' here.\n', { template: tpl });
+  assert.ok(out.includes('<!-- <main> in a comment -->') && out.includes('</head>'), 'the head comment survives the fill');
+  assert.ok(out.includes("Body text costs $&amp; and $' here."), 'the body lands, and $& in the text is not expanded');
+}
+
 /* ── reproducibility ─────────────────────────────────────────────────────── */
 
 assert.equal(render(src), html, 'rendering is deterministic');

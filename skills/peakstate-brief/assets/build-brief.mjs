@@ -848,7 +848,10 @@ export function render(source, opts = {}) {
   if (dark.length) throw new Error(dark.join('\n'));
   checkAnchors(out.join('\n'));
 
-  const template = inlineRuntime(opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8'), opts);
+  /* The page is filled BEFORE the runtime is inlined. Filling after meant the
+     greedy <main> match below could start inside brief.css or brief.js: one
+     literal main tag in an asset comment silently blanked every brief. */
+  const template = opts.template || readFileSync(join(HERE, 'brief-template.html'), 'utf8');
   const addressed = meta.addressed ? ' data-addressed="' + escAttr(meta.addressed) + '"' : '';
   /* What the author has already replied to, and what they said. A JSON array of
      {match, reply}: `match` is the first forty characters of the reader's own
@@ -872,11 +875,13 @@ export function render(source, opts = {}) {
     ? ' data-publish-slug="' + escAttr(meta['publish-slug'] || slug(meta.title || 'brief')) + '"' +
       ' data-visibility="' + escAttr(meta.visibility || 'private') + '"'
     : '';
-  return template
+  return inlineRuntime(template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
       escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + build + pub + '>')
-    .replace(/<main>[\s\S]*<\/main>/, '<main>\n\n' + out.join('\n\n') + '\n\n</main>');
+    /* The LAST <main> in the template is the body. A function, so a `$&` or
+       `$'` in the brief's own text is not expanded. */
+    .replace(/<main>(?![\s\S]*<main>)[\s\S]*<\/main>/, () => '<main>\n\n' + out.join('\n\n') + '\n\n</main>'), opts);
 }
 
 /* Compare real paths, not the raw argv path: ~/.claude/skills is symlinked into
