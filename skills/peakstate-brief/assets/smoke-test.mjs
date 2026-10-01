@@ -223,17 +223,24 @@ await page.click('#cpop [data-act="save"]');
 await page.waitForTimeout(200);
 const threadMsgs = await page.locator('#cpop .ctmsg').count();
 const threadBoxCleared = (await page.inputValue('#cpop textarea')) === '';
+// an unanswered follow-up edits in place, and the export carries the new words
+await page.click('#cpop .ctedit');
+await page.fill('#cpop .cteditbox', 'an edited follow up from the reader');
+await page.click('#cpop .ctedit');
+await page.waitForTimeout(100);
+const followUpEdited = (await page.locator('#cpop .ctmsg').count()) === threadMsgs
+  && (await page.locator('#cpop .ctmsg .cttext').last().textContent()) === 'an edited follow up from the reader';
 await page.keyboard.press('Escape');
 await page.click('#copyBtn');
 const json3 = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
 const repliedOut = (json3.comments || []).filter(c => c.comment === 'a test comment')[0];
-const followUpInJSON = !!repliedOut && repliedOut.follow_up[0] === 'a follow up from the reader'
+const followUpInJSON = !!repliedOut && repliedOut.follow_up[0] === 'an edited follow up from the reader'
   && typeof repliedOut.reply === 'string' && repliedOut.reply.length > 0;
 const unrepliedUntouched = (json3.comments || [])
   .some(c => c.comment === 'crosses an element boundary' && !('reply' in c));
 console.log(JSON.stringify({ repliedMarks, noLineThrough, repliedTip, repliedBadge, dimmedRows,
   rowNotStruck, threadWho, threadOriginal, threadShowsReply, writtenReplyBeatsAddressed,
-  threadMsgs, threadBoxCleared,
+  threadMsgs, threadBoxCleared, followUpEdited,
   followUpInJSON, unrepliedUntouched, jsErrors: errors }, null, 1));
 
 // ── summary page: placement, and "Copy summary as markdown" ─────────────

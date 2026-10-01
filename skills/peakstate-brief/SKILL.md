@@ -297,7 +297,9 @@ deleted. The mark gains a small ↩ glyph, the drawer badges the row **replied**
 one opens the thread: the quoted passage, the reader's own comment under a **You** label, your
 answer under a **Response** label, then a box headed **Continue the conversation**. Follow-ups
 stack in the order they were written. An **Edit original** link is there if the reader wants to
-change what they first said.
+change what they first said. Every follow-up you have not yet answered carries its own **Edit** link, so a
+typo can be fixed in place; the export carries the new words in `follow_up[]` with no edit marker.
+A follow-up counts as answered once the reader has copied it and a rebuilt file has come back.
 
 A replied comment leaves the exported JSON **only if the reader has followed it up**. When it does
 travel it carries `reply` and `follow_up: [texts]` beside the original comment, so you read the

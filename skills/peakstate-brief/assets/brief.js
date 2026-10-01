@@ -249,7 +249,7 @@
      recomputes the same answer and a single keystroke changes it. */
   function sig() {
     return JSON.stringify([state.ticks, state.answers, state.notes, state.edits,
-      state.comments.map(function (c) { return [c.cid, c.comment, c.hl, c.unhl, (c.thread || []).length]; }),
+      state.comments.map(function (c) { return [c.cid, c.comment, c.hl, c.unhl, (c.thread || []).map(function (m) { return m.text; })]; }),
       state.drafts.map(function (d) { return [d.key, d.comment]; })]);
   }
   function hasWork() {
@@ -896,7 +896,7 @@
     pop.id = 'cpop'; pop.className = 'thread';
     pop.innerHTML =
       '<div class="quote">“' + esc(String(quote)).slice(0, 180) + '”</div>' +
-      threadHTML(c) +
+      threadHTML(c, true) +
       '<label class="ctlabel" for="ctreply">Continue the conversation</label>' +
       '<textarea id="ctreply" placeholder="Reply to this response"></textarea>' +
       '<div class="row">' +
@@ -915,6 +915,11 @@
     setTimeout(function () { ta.focus(); }, 10);
     ta.addEventListener('input', function () { putDraft(key, quote, ta.value, c.near || null, c.cid); });
 
+    function repaint() {
+      var box = document.createElement('div');
+      box.innerHTML = threadHTML(c, true);
+      pop.replaceChild(box.firstChild, pop.querySelector('.cthread'));
+    }
     function commit() {
       var val = ta.value.trim();
       if (!val) { dropDraft(key); closePop(); return; }
@@ -923,22 +928,41 @@
       dropDraft(key); save(); renderDrawer();
       /* Stay open and repaint: the reader sees their follow-up land in the
          thread, which is the whole reason for showing the conversation. */
-      var box = document.createElement('div');
-      box.innerHTML = threadHTML(c);
-      pop.replaceChild(box.firstChild, pop.querySelector('.cthread'));
+      repaint();
       ta.value = ''; ta.focus();
       toast('Reply added');
+    }
+    /* Edit swaps an unanswered follow-up for a box; Save edit writes it back
+       into the same message, keeping its `at`, so the export and a sync merge
+       both see one message with new words. */
+    function editFollowUp(btn) {
+      var i = +btn.dataset.i, msg = btn.closest('.ctmsg'), box = msg.querySelector('textarea');
+      if (!box) {
+        box = document.createElement('textarea'); box.className = 'cteditbox';
+        box.value = c.thread[i].text;
+        msg.querySelector('.cttext').replaceWith(box);
+        btn.textContent = 'Save edit'; box.focus();
+        return;
+      }
+      var v = box.value.trim();
+      if (v && v !== c.thread[i].text) { c.thread[i].text = v; save(); renderDrawer(); toast('Reply edited'); }
+      repaint();
     }
 
     pop.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(); return; }
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.stopPropagation(); commit(); }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault(); e.stopPropagation();
+        var eb = e.target.closest && e.target.closest('.ctmsg');
+        if (eb && eb.querySelector('.ctedit')) editFollowUp(eb.querySelector('.ctedit')); else commit();
+      }
     }, true);
     pop.addEventListener('mousedown', function (e) { e.stopPropagation(); });
     pop.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('button');
       var act = btn && btn.dataset.act;
       if (!act) return;
+      if (act === 'editfu') { editFollowUp(btn); return; }
       if (act === 'cancel') { dropDraft(key); closePop(); return; }
       if (act === 'editorig') { dropDraft(key); editing = c; openPop(x, y, quote, c, null, true); return; }
       if (act === 'save') commit();
@@ -948,19 +972,29 @@
   /* The conversation on one comment: what the reader wrote, what the author
      said back, then every follow-up in the order they were written. Line breaks
      survive through CSS (white-space: pre-wrap), so the text itself is escaped
-     and never parsed. */
-  function threadHTML(c) {
+     and never parsed. With `editable`, every follow-up the author has not yet
+     answered carries an Edit button. */
+  function threadHTML(c, editable) {
+    var done = editable ? answeredCount(c) : Infinity;
     var h = '<div class="cthread">' +
       '<div class="ctmsg"><span class="ctwho">You</span>' +
       '<div class="cttext">' + esc(c.comment) + '</div></div>' +
       '<div class="ctmsg ctreply"><span class="ctwho">Response</span><div class="cttext">' +
       (c.reply ? esc(c.reply) : '<em class="ctnone">Marked as addressed, with no written response.</em>') +
       '</div></div>';
-    (c.thread || []).forEach(function (m) {
+    (c.thread || []).forEach(function (m, i) {
       h += '<div class="ctmsg"><span class="ctwho">You</span>' +
-        '<div class="cttext">' + esc(m && m.text) + '</div></div>';
+        '<div class="cttext">' + esc(m && m.text) + '</div>' +
+        (i >= done ? '<button class="ctedit" data-act="editfu" data-i="' + i + '" type="button">Edit</button>' : '') +
+        '</div>';
     });
     return h + '</div>';
+  }
+  /* How many follow-ups the author has already answered: the thread length
+     when the comment was last sent, once a rebuild has come back since. */
+  function answeredCount(c) {
+    if (!(c.sent && buildTok() && c.sent.tok !== buildTok())) return 0;
+    try { return JSON.parse(c.sent.sig)[3] || 0; } catch (e) { return 0; }
   }
 
   /* `plain` forces the ordinary editor onto a comment that HAS a reply, which is
@@ -2127,13 +2161,14 @@
   }
   /* Two devices can each carry the same comment on, so neither thread is a
      prefix of the other and taking the longer array silently drops one side's
-     follow-ups. Merge by identity instead: the same (at, text) is the same
-     message, and the order is the order they were written in. */
+     follow-ups. Merge by identity instead: the same `at` is the same message,
+     whose words may since have been edited, so the newer blob's words win
+     (it is concatenated first). The order is the order they were written in. */
   function mergeThreads(a, b) {
     var seen = {}, out = [];
     (a || []).concat(b || []).forEach(function (m) {
       if (!m) return;
-      var k = (m.at || '') + '\u0000' + (m.text || '');
+      var k = m.at || '\u0000' + (m.text || '');
       if (k in seen) return;
       seen[k] = 1; out.push(m);
     });
