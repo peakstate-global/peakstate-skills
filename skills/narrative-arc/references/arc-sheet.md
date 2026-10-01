@@ -18,13 +18,15 @@ Fill this in before any slide or paragraph is written, and get it approved.
 
 **The shift:** from "[what they would say now]" to "[what they can say at the end]".
 
+**The emotional journey:** they arrive feeling [wary, cynical, anxious…] and leave feeling [hopeful, resolved…]. The understanding moment, where their concerns are stated fairly before any promise, is section [n].
+
 **Where to start:** the one action they take afterwards.
 
 **The spine:**
 
-| Section | Its premise, in one sentence | Moves them from saying | To saying |
-|---|---|---|---|
-| 1 | … | … | … |
+| Section | Its premise, in one sentence | Moves them from saying | To saying | They feel |
+|---|---|---|---|---|
+| 1 | … | … | … | … |
 
 Rules for the spine:
 
@@ -32,6 +34,7 @@ Rules for the spine:
 - Vocabulary comes before application: teach the options before the audience applies them to its own case.
 - The last section answers "where do I start?", not "what is the method?".
 - Read the premises alone, top to bottom. If they do not make the argument, the spine is not finished.
+- Read the feelings alone, top to bottom. If the room is asked to hope before it feels understood, move the understanding section earlier.
 
 ## Worked example: a 90 minute workshop on where AI belongs in the work
 
