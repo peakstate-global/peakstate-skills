@@ -1,6 +1,6 @@
 ---
 name: blind-spots
-description: Reads an argument, plan or recommendation and finds what it quietly depends on. It confirms its reading of the argument first, then ranks the unstated assumptions with a cheap test for the top three, and names possible cognitive biases and logical fallacies, each with the quoted passage, the most generous reading, a confidence and a question that would check it. Use when someone says "find the holes in this", "what am I missing", "check my assumptions", "is there a fallacy here", "what are my blind spots", "poke holes in my argument", "is this biased", or before an argument goes to someone who will decide on it.
+description: Arguments fail on what they never say out loud. This skill finds the hidden assumptions and reasoning traps before a decision-maker does, so you can fix or defend them first. Reads an argument, plan or recommendation and finds what it quietly depends on. It confirms its reading of the argument first, then ranks the unstated assumptions with a cheap test for the top three, and names possible cognitive biases and logical fallacies, each with the quoted passage, the most generous reading, a confidence and a question that would check it. Use when someone says "find the holes in this", "what am I missing", "check my assumptions", "is there a fallacy here", "what are my blind spots", "poke holes in my argument", "is this biased", or before an argument goes to someone who will decide on it.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"

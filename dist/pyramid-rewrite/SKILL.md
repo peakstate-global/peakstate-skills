@@ -1,6 +1,6 @@
 ---
 name: pyramid-rewrite
-description: Rewrites a document so it leads with the answer, then gives the situation, the complication and the question behind it (SCQA), with supporting points grouped under headings that state a point. Keeps every fact and adds none. Use when someone says "rewrite this answer-first", "pyramid this", "make this pyramid style", "put the point first", "bottom line up front", "SCQA", "restructure this email or report", or pastes a draft whose conclusion is buried at the end.
+description: Busy readers skim, and a conclusion buried at the end gets missed. This skill moves the answer to the top and groups the support beneath it, so your point lands in the first lines. Rewrites a document so it leads with the answer, then gives the situation, the complication and the question behind it (SCQA), with supporting points grouped under headings that state a point. Keeps every fact and adds none. Use when someone says "rewrite this answer-first", "pyramid this", "make this pyramid style", "put the point first", "bottom line up front", "SCQA", "restructure this email or report", or pastes a draft whose conclusion is buried at the end.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"

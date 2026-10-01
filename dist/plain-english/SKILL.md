@@ -1,6 +1,6 @@
 ---
 name: plain-english
-description: Rewrites text to the core rules of Simplified Technical English (short sentences, one idea each, active voice, commands for instructions, everyday words) and flags every jargon word, passive verb and long sentence it found, with the rule behind each change. Keeps every fact and adds none. Use when someone says "plain English", "make this plain", "simplify this", "make this easier to read", "remove the jargon", "Simplified Technical English", "STE", "check this is plain English", or pastes formal, bureaucratic or technical text for a wider audience.
+description: Jargon and long sentences make readers stop, misread or ignore important text. This skill rewrites it so a wide audience understands it the first time, and shows each change so you learn the rules. Rewrites text to the core rules of Simplified Technical English (short sentences, one idea each, active voice, commands for instructions, everyday words) and flags every jargon word, passive verb and long sentence it found, with the rule behind each change. Keeps every fact and adds none. Use when someone says "plain English", "make this plain", "simplify this", "make this easier to read", "remove the jargon", "Simplified Technical English", "STE", "check this is plain English", or pastes formal, bureaucratic or technical text for a wider audience.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"

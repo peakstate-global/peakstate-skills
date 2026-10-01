@@ -1,6 +1,6 @@
 ---
 name: hard-conversation-prep
-description: Prepares a difficult conversation with a colleague, manager, report, client or peer. It confirms the situation first, turns judgements into observable behaviour, and ends with an opening line, the situation, behaviour and impact (SBI), one clear request, and the likely replies with answers. Use when someone says "help me prepare for a hard conversation", "how do I raise this with", "I need to give tough feedback", "how do I tell my manager", "script this conversation", or before a conversation they are dreading.
+description: Difficult conversations go badly when they are vague, judgemental or unplanned. This skill turns yours into specific, fair, rehearsed words, so you go in calm and come out with an agreed request. Prepares a difficult conversation with a colleague, manager, report, client or peer. It confirms the situation first, turns judgements into observable behaviour, and ends with an opening line, the situation, behaviour and impact (SBI), one clear request, and the likely replies with answers. Use when someone says "help me prepare for a hard conversation", "how do I raise this with", "I need to give tough feedback", "how do I tell my manager", "script this conversation", or before a conversation they are dreading.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"

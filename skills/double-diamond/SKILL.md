@@ -1,6 +1,6 @@
 ---
 name: double-diamond
-description: Takes a fuzzy challenge through Discover, Define, Develop and Deliver, with a gate that holds back every solution until the user confirms the problem statement. Ends with the problem statement, the options considered, the chosen direction, an assumptions table, hypotheses each with a success threshold set before the test, and the next test with its owner and date. Use when someone says "help me work out what to do about", "where do we start", "we need to fix", "I think we need a new app or process", "design thinking", "double diamond", "frame this problem", or brings a challenge that has no clear problem statement yet.
+description: Teams often jump to a solution before they agree on the problem, and build the wrong thing. This skill holds solutions back until the problem is clear, then ends with a way forward you can test. Takes a fuzzy challenge through Discover, Define, Develop and Deliver, with a gate that holds back every solution until the user confirms the problem statement. Ends with the problem statement, the options considered, the chosen direction, an assumptions table, hypotheses each with a success threshold set before the test, and the next test with its owner and date. Use when someone says "help me work out what to do about", "where do we start", "we need to fix", "I think we need a new app or process", "design thinking", "double diamond", "frame this problem", or brings a challenge that has no clear problem statement yet.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"

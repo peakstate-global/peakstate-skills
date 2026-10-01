@@ -1,6 +1,6 @@
 ---
 name: improve-prompt
-description: Takes a prompt the user pasted and shows an improved version in a code block, with a table of each change and the reason for it, then runs the prompt only after the user says yes. An edit request gets the edited prompt shown again before anything runs. Use when someone says "improve this prompt", "make this prompt better", "tighten my prompt", "fix my prompt", "rewrite this prompt", "why is my prompt not working", or pastes a prompt and asks for feedback on it.
+description: A vague prompt gets a vague answer, and most people do not know what to add. This skill shows a stronger prompt and explains each change, so you get better results and learn to write better prompts. Takes a prompt the user pasted and shows an improved version in a code block, with a table of each change and the reason for it, then runs the prompt only after the user says yes. An edit request gets the edited prompt shown again before anything runs. Use when someone says "improve this prompt", "make this prompt better", "tighten my prompt", "fix my prompt", "rewrite this prompt", "why is my prompt not working", or pastes a prompt and asks for feedback on it.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"

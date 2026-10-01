@@ -1,6 +1,6 @@
 ---
 name: brief-lite
-description: Builds one self-contained HTML brief that readers answer in their browser. It opens with the answer, sets out the sections in pyramid order, asks numbered questions with answer boxes, lets readers comment on selected text, footnotes its sources, and exports the responses with Copy responses or Download responses. Use when someone says "make a brief", "build a brief", "I need decisions from my team", "put these questions to my manager", "get sign-off on this", "a document people can answer", or needs readers to answer questions about a proposal, plan or decision.
+description: Decisions stall when questions are buried in long documents and answers come back scattered across email. This skill gives readers one page to answer in, and gives you all their answers in one paste. Builds one self-contained HTML brief that readers answer in their browser. It opens with the answer, sets out the sections in pyramid order, asks numbered questions with answer boxes, lets readers comment on selected text, footnotes its sources, and exports the responses with Copy responses or Download responses. Use when someone says "make a brief", "build a brief", "I need decisions from my team", "put these questions to my manager", "get sign-off on this", "a document people can answer", or needs readers to answer questions about a proposal, plan or decision.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"

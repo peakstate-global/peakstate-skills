@@ -1,6 +1,6 @@
 ---
 name: sourced-lite
-description: Takes an idea, claim or position and shows what it rests on, so you can decide whether to stand behind it. It restates the idea in its strongest form and waits for you to confirm, then labels every load-bearing claim by where it came from, records the decisions that shaped the result, argues the strongest case against it, integrates what survives, and ends with a provenance block. Use when someone says "check this claim", "is this true", "stress-test my argument", "back this up", "steelman this", "what is the evidence for", "make this defensible", or before a paper, brief or recommendation goes to someone who will rely on it.
+description: Claims often go out on weak or unchecked evidence, and the reader cannot tell which parts to trust. Takes an idea, claim or position and shows what it rests on, so you can decide whether to stand behind it. It restates the idea in its strongest form and waits for you to confirm, then labels every load-bearing claim by where it came from, records the decisions that shaped the result, argues the strongest case against it, integrates what survives, and ends with a provenance block. Use when someone says "check this claim", "is this true", "stress-test my argument", "back this up", "steelman this", "what is the evidence for", "make this defensible", or before a paper, brief or recommendation goes to someone who will rely on it.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"

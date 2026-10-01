@@ -1,6 +1,6 @@
 ---
 name: pre-mortem
-description: Runs a pre-mortem on a plan. It confirms the plan first, asks the user to imagine the plan has failed 12 months from now and say why, adds likely causes from a library of failure prompts, and ends with a risk register (risk, likelihood, impact, early warning sign, owner, mitigation) and three next moves. Use when someone says "run a pre-mortem", "what could go wrong with this plan", "stress-test my plan", "risk register for this", "why might this fail", or before a plan is approved or launched.
+description: Plans fail for reasons the team could have predicted but did not say out loud. This skill makes it safe to name those risks before launch, and turns them into a register with owners and early warning signs. Runs a pre-mortem on a plan. It confirms the plan first, asks the user to imagine the plan has failed 12 months from now and say why, adds likely causes from a library of failure prompts, and ends with a risk register (risk, likelihood, impact, early warning sign, owner, mitigation) and three next moves. Use when someone says "run a pre-mortem", "what could go wrong with this plan", "stress-test my plan", "risk register for this", "why might this fail", or before a plan is approved or launched.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"
