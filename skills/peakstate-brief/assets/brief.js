@@ -3044,6 +3044,52 @@ var __briefTip = (() => {
       }
       return d;
     }
+    /* The card lives in the tooltip layer, not after the term, so the "Read the
+       brief" link needs three ways in beyond a mouse. Keyboard: Enter on the term
+       opens the card and focuses the link; Tab from an open card's term goes to
+       the link; Shift+Tab or Escape from the link returns to the term. Focus
+       inside the card keeps it open. Touch: a tap on the term pins the card
+       until a tap elsewhere, because the engine ignores touch hover and treats
+       focus straight after a press as mouse focus. */
+    function reach(s, tip) {
+      var pinned = false, base = tip.scheduleHide;
+      tip.scheduleHide = function () { if (!pinned) base.call(tip); };
+      function link() { return tip.el && tip.el.querySelector('.bterm-link'); }
+      function openNow() { tip.clearShow(); tip.clearHide(); tip.show(); wire(); }
+      function close() { pinned = false; document.removeEventListener('pointerdown', away, true); tip.dismiss(); }
+      function away(e) {
+        if (s.contains(e.target) || (tip.el && tip.el.contains(e.target))) return;
+        close();
+      }
+      function wire() {
+        var el = tip.el;
+        if (!el || el.__reach) return;
+        el.__reach = true;
+        el.addEventListener('focusin', function () { tip.clearHide(); });
+        el.addEventListener('focusout', function (e) {
+          if (e.relatedTarget !== s && !el.contains(e.relatedTarget)) tip.scheduleHide();
+        });
+        el.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' || (e.key === 'Tab' && e.shiftKey)) {
+            e.preventDefault(); e.stopPropagation(); s.focus();
+            if (e.key === 'Escape') close();
+          }
+        });
+      }
+      s.addEventListener('keydown', function (e) {
+        var go = e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey && tip.open);
+        if (!go) return;
+        if (!tip.open) openNow(); else wire();
+        var a = link();
+        if (a) { e.preventDefault(); a.focus(); }
+      });
+      s.addEventListener('pointerup', function (e) {
+        if (e.pointerType !== 'touch') return;
+        if (pinned) { close(); return; }
+        openNow(); pinned = true;
+        document.addEventListener('pointerdown', away, true);
+      });
+    }
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
         if (n.nodeType === 1) return skipped(n) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP;
@@ -3061,8 +3107,8 @@ var __briefTip = (() => {
         frag.appendChild(document.createTextNode(text.slice(last, m.index)));
         var s = document.createElement('span');
         s.className = 'bterm'; s.tabIndex = 0; s.textContent = m[0];
-        TT.attach(s, { content: (function (en) { return function () { return card(en); }; })(entry),
-          hoverable: true, placement: 'top', showDelay: 300 });
+        reach(s, TT.attach(s, { content: (function (en) { return function () { return card(en); }; })(entry),
+          hoverable: true, placement: 'top', showDelay: 300 }));
         frag.appendChild(s);
         last = m.index + m[0].length;
       }

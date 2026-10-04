@@ -185,6 +185,10 @@ beyond a normal Definitions block and normal headings.
     in its tooltip. Only `https:` and relative URLs are accepted, checked by the
     builder and again by the runtime, which strips an unsafe value from the card.
     In print the card shows the address as text, because paper has no tooltip.
+    The link is reachable without a mouse: Enter on a term opens its card and
+    focuses the link, Tab from a term with an open card does the same, and
+    Shift+Tab or Escape returns to the term. Focus inside the card keeps it open.
+    On touch, a tap on a term pins its card until a tap elsewhere.
   - **Skipped:** headings, code, links, buttons, table header cells, footnote
     markers, source lines (`.l5`), the Definitions block, the answers block, the
     contents, `:::draft` blocks, and any element that carries its own `<script>` (an interactive

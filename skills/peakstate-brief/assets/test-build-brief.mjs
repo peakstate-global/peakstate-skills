@@ -528,6 +528,18 @@ rmSync(tmp, { recursive: true, force: true });
   assert.equal((cmain.match(/data-href=/g) || []).length, 2, 'javascript:, protocol-relative and http: are dropped');
   assert.ok(cmain.includes('<h4>Beta</h4>'), 'the card itself stays when its href is dropped');
 
+  /* The href filter touches the Definitions term cards only: a code example
+     that shows the attribute, and a widget elsewhere, come through untouched. */
+  const elsewhere = /<main>[\s\S]*<\/main>/.exec(render(fm('title: T', '# P\n\n## S\n\n' +
+    'Write `data-href="javascript:x"` never.\n\n:::html\n<div class="widget" data-href="javascript:void(0)">W</div>\n:::\n')))[0];
+  assert.ok(elsewhere.includes('<code>data-href=&quot;javascript:x&quot;</code>') ||
+    elsewhere.includes('<code>data-href="javascript:x"</code>'), 'code text showing data-href is kept');
+  assert.ok(elsewhere.includes('<div class="widget" data-href="javascript:void(0)">'), 'a widget outside the Definitions cards is not touched');
+
+  /* Keys are checked as written, so a wrong case or an underscore fails too. */
+  assert.throws(() => render(fm('Title: T')), /unknown front matter key "Title"/, 'a capitalised key fails');
+  assert.throws(() => render(fm('title: T\nbrief_id: b')), /unknown front matter key "brief_id"/, 'an underscored key fails');
+
   /* :::draft is a marked block whose content is rendered as markdown. */
   const dr = /<main>[\s\S]*<\/main>/.exec(render(fm('title: T', '# P\n\n## S\n\n:::draft\nHi **there**,\n\n- one\n- two\n:::\n')))[0];
   assert.ok(/<div class="draft" data-draft>\n<p>Hi <strong>there<\/strong>,<\/p>/.test(dr), ':::draft renders a marked block with markdown inside');

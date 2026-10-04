@@ -489,7 +489,9 @@ function frontMatter(src) {
   if (!m) return [{}, src];
   const meta = {};
   for (const line of m[1].split('\n')) {
-    const kv = /^([a-z-]+):\s*(.*)$/.exec(line.trim());
+    /* Any key-shaped line is kept as written, so checkFrontMatter sees a
+       `Title` or a `brief_id` and fails on it rather than it vanishing here. */
+    const kv = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line.trim());
     if (kv) meta[kv[1]] = kv[2];
   }
   return [meta, src.slice(m[0].length)];
@@ -526,8 +528,12 @@ export function safeHref(v) {
   if (/^[/\\]{2}/.test(s)) return false;
   return !/[:&\\]/.test(s.split(/[/?#]/)[0]);
 }
-const dropUnsafeHrefs = (html) => html.replace(/\sdata-href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
-  (all, a, b, c) => (safeHref(a ?? b ?? c) ? all : ''));
+/* Runs only on the Definitions section, and only inside the opening tag of a
+   `term` card, which is the one place brief.js turns data-href into a link.
+   A code example or a widget elsewhere that mentions the attribute is left alone. */
+const dropUnsafeHrefs = (html) => html.replace(/<[a-z][^>]*\sclass\s*=\s*["'][^"']*\bterm\b[^"']*["'][^>]*>/gi,
+  (tag) => tag.replace(/\sdata-href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+    (all, a, b, c) => (safeHref(a ?? b ?? c) ? all : '')));
 
 const HEAD = /^(#{1,2})\s+(.*?)(?:\s*\{#([^}]+)\})?(?:\s*::\s*(.*))?$/;
 
@@ -878,7 +884,9 @@ export function render(source, opts = {}) {
   /* The printer's diamond: the document is over, and nothing below is missing. */
   out.push('<div class="endmark" aria-hidden="true"></div>');
 
-  for (let i = 0; i < out.length; i++) out[i] = dropUnsafeHrefs(out[i]);
+  for (let i = 0; i < out.length; i++) {
+    if (/^<section[^>]* id="s-definitions"/.test(out[i])) out[i] = dropUnsafeHrefs(out[i]);
+  }
 
   if (refs.missing.length) {
     throw new Error('footnote markers with no target: ' + [...new Set(refs.missing)].join(', '));
