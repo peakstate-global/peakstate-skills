@@ -26,7 +26,8 @@ still accepted, and becomes `data-addressed`: the same matching with no words.
 `define: every-use` links every eligible use of a defined term rather than the first
 use per section (`first-use` is the default and can be written out). `notes: per-fact`
 switches the brief to one footnote per fact rather than per source (see "Per-fact notes" in
-`references.md`); without it nothing changes. The publish
+`references.md`); without it nothing changes. `tabs: parts` lays the brief out as tabs, one
+per part (see "Tabbed layout" below); without it nothing changes. The publish
 tooling writes its own state back as `visibility:` and the `publish-*` keys
 (`publish-slug`, `publish-project`, `publish-project-uid`, `publish-brief-uid`,
 `publish-short-id`, `publish-tenant`); leave those to it.
@@ -103,6 +104,37 @@ by the renderer, not by the reader.
 `: definition` line renders as `<dl>`, and inside the section whose id is
 `s-provenance` it renders as `<dl class="provblock">` — the SOURCED four-label
 shape, with no markup to write by hand.
+
+**Tabbed layout: `tabs: parts`.** Use it for a long brief with several
+parallel subjects, each holding several sections, where a reader wants one
+subject at a time rather than one long scroll. Write the brief exactly as
+before; the key changes only how the screen lays it out.
+
+- **Tabs are the `#` parts, in source order, in one row.** The selected tab
+  rises out of a baseline that runs the width of the page. A long label wraps
+  inside its tab; the row never wraps and never reorders. The bar sticks under
+  the top bar, and every jump lands below it.
+- **Sub-tabs are the `##` sections of the selected part**, in source order,
+  wrapping onto more rows when needed. The label is the section's contents
+  label: the short label from `## Heading :: Short label | note` if given, else
+  the heading, with the `Q1:` prefix on a question. A part with one section has
+  no sub-tab row.
+- **One section shows at a time**, under its part heading and lede, with
+  Previous and Next buttons that name their targets and step through every
+  section in source order, across parts.
+- **The contents list is not rendered**, because the tabs and the gutter rail
+  already list every section; an authored `## Contents` is dropped and
+  `brief-lint.py` does not require one. **The answers block** and any section
+  before the first `#` part stay visible above the tab bar.
+- **Links still work.** A `#s-...` link, a footnote, the gutter rail, the
+  progress link and a comment in the drawer all switch to the tab that holds
+  their target first. The address bar carries the selected section's id, so a
+  reload returns to the same tab.
+- **Print and PDF show every section, untabbed.**
+- **A brief with no `#` part fails the build** under `tabs: parts`, because
+  there is nothing to make a tab from. The only accepted value is `parts`.
+
+The fixture `assets/test-tabs-brief.md` is a small worked example.
 
 **Anything with no markdown equivalent goes in a `:::html` block.** A styled
 table with `hl-focus` rows, an inline SVG diagram, a `<details class="example">`,

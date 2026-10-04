@@ -89,7 +89,9 @@ def check(html):
         dead = [h for h in re.findall(r'href="#([^"]+)"', toc[0]) if h not in ids]
         if dead:
             bad(f"dead contents anchor(s): {', '.join(dead[:5])}")
-    elif len(re.findall(r'class="brief-section"', b)) > 4:
+    # A tabbed brief (`tabs: parts`) has no contents list: its tab bar and the
+    # gutter rail do that job.
+    elif len(re.findall(r'class="brief-section"', b)) > 4 and 'data-tabs="parts"' not in html:
         bad("more than four sections and no contents list")
 
     # The answers block. A brief with no answers declares that by saying so in the
@@ -233,6 +235,13 @@ def self_check():
         got = " ".join(check(page))
         if want not in got:
             fails.append(f"{name}: expected {want!r}, got {got!r}")
+    # More than four sections needs a contents list, unless the brief is tabbed.
+    many = re.sub(r'<nav class="toc">.*?</nav>', "", GOOD).replace(
+        "</main>", '<section class="brief-section" data-sec="x"><p>y</p></section>' * 4 + "</main>")
+    if "no contents list" not in " ".join(check(many)):
+        fails.append("five sections and no contents list should fail")
+    if check(many.replace("<body>", '<body data-tabs="parts">')):
+        fails.append(f"a tabbed brief needs no contents list: {check(many.replace('<body>', '<body data-tabs=\"parts\">'))}")
     # The runtime must not be scanned: an em dash in inlined CSS is not the author's.
     if check(GOOD.replace("/* — */", "/* — — — */")):
         fails.append("em dashes inside <style> were counted; the runtime must be stripped")

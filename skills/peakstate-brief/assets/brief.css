@@ -1652,3 +1652,74 @@ html.lb-lock, html.lb-lock body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .lb-cmt { transition: none; } }
 @media print { .lb-cmt { display: none !important; } }
 
+
+/* ── part tabs (`tabs: parts`) ────────────────────────────────────────────
+   brief.js builds the bar. The tab row's baseline runs to the edges of the
+   paper (main), so the bar takes main's padding as negative margin and gives
+   it back as padding. The selected tab rises out of the line: same background,
+   side borders, and no line under it. Sub-tabs wrap; neither row ever reorders. */
+.btabs-nav {
+  position: sticky; top: var(--btabs-top, 0px); z-index: 30; background: var(--bg);
+  margin: 1.6rem calc(-1 * var(--btabs-mr, 0px)) 1.4rem calc(-1 * var(--btabs-ml, 0px));
+}
+/* Full width caps every child of main to the reading column; the bar is the
+   exception, because its baseline belongs to the paper. Its rows still start
+   at the column, through the padding brief.js measures from the probe. */
+body.fullwidth main > .btabs-nav {
+  max-width: none; margin-left: calc(-1 * var(--btabs-ml, 0px)); margin-right: calc(-1 * var(--btabs-mr, 0px));
+}
+.btabs-probe { height: 0; }
+.btabs {
+  position: relative; display: flex; flex-wrap: nowrap; align-items: flex-end; gap: .15rem;
+  padding: .45rem var(--btabs-pr, 0px) 0 var(--btabs-pl, 0px);
+}
+.btabs::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  border-bottom: 1px solid var(--line); pointer-events: none;
+}
+.btab, .bsubtab {
+  display: inline-flex; flex-direction: column;
+  background: transparent; color: var(--muted); cursor: pointer; overflow-wrap: break-word;
+}
+.btab {
+  position: relative; z-index: 1; flex: 0 1 auto; align-items: center; text-align: center;
+  font: 500 .82rem/1.3 var(--font-ui); padding: .5rem .95rem;
+  border: 1px solid transparent; border-bottom: 0; border-radius: 6px 6px 0 0;
+}
+.btab:hover, .bsubtab:hover { color: var(--fg); }
+.btab[aria-selected="true"] {
+  z-index: 2; color: var(--fg); font-weight: 600; background: var(--bg);
+  border-color: var(--line); margin-bottom: -1px; padding-bottom: calc(.5rem + 1px);
+}
+/* A label wraps between words, and a tab never shrinks below its longest word.
+   ponytail: a phone with many parts can push the row past the paper; shorten
+   the part titles if that happens. */
+@media (max-width: 600px) { .btab { padding-inline: .55rem; } }
+/* The hidden bold copy holds each tab at its selected width. */
+.btab-w { height: 0; overflow: hidden; visibility: hidden; font-weight: 600; }
+.bsubtabs {
+  display: flex; flex-wrap: wrap; gap: .3rem 1.2rem;
+  padding: .6rem var(--btabs-pr, 0px) .45rem var(--btabs-pl, 0px);
+}
+.bsubtabs[hidden] { display: none; }
+.bsubtab {
+  flex: 0 1 auto; text-align: left; font: 500 .78rem/1.3 var(--font-ui);
+  padding: .2rem 0; border: 0; border-bottom: 2px solid transparent;
+}
+.bsubtab[aria-selected="true"] { color: var(--fg); font-weight: 600; border-bottom-color: var(--accent); }
+.btab:focus-visible, .bsubtab:focus-visible, .btabs-pager button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.btabs-pager {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin: 2rem 0 1rem; padding-top: 1rem; border-top: 1px solid var(--line);
+}
+.btabs-pager button {
+  font: 600 .82rem/1.35 var(--font-ui); color: var(--fg); background: transparent; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 6px; padding: .55rem .9rem; max-width: 48%; text-align: left;
+}
+.btabs-pager button.next { margin-left: auto; text-align: right; }
+.btabs-pager button:hover { background: var(--accent-soft); }
+/* Screen only: paper and PDF show every section, untabbed. */
+@media screen { .tab-off { display: none !important; } }
+@media print { .btabs-nav, .btabs-pager { display: none !important; } }
