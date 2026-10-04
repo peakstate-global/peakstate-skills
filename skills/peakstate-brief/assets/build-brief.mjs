@@ -53,6 +53,13 @@ const escAttr = (t) => esc(t).replace(/"/g, '&quot;');
 const INLINE_HTML =
   /^<\/?(?:span|b|i|em|strong|s|del|ins|sub|sup|kbd|abbr|mark|small|wbr|br)(?:\s+class="[-\w\s]*")?\s*\/?>$/;
 
+/* Per-fact notes (`notes: per-fact`). `[^f<id>]` in prose is a marker; a line
+   `[^f<id>]: [^2] [^4q3]` defines that fact's note as the sources it rests on,
+   named by their ordinary reference keys. */
+const FACT_MARK = /\[\^f([\w-]+)\]/g;
+const FACT_DEF = /^\s*\[\^f([\w-]+)\]:\s*(.*)$/;
+const ANY_DEF = /^\s*\[\^(?:\d+|f[\w-]+)\]:/;
+
 /* Code spans are lifted out before any other rule runs, so `**not bold**`
    inside backticks stays literal. A fence of two or more backticks lets a span
    hold a backtick, the same way CommonMark does. */
@@ -66,6 +73,17 @@ function inline(text, refs) {
     park('<code>' + esc(body.replace(/^ (.*) $/, '$1')) + '</code>'));
   t = t.replace(/<\/?[a-zA-Z][^<>]*>/g, (m) => (INLINE_HTML.test(m) ? park(m) : m));
   t = esc(t);
+  /* A fact note marker, `notes: per-fact` only. The number is the fact's order
+     of first appearance in the rendered page, assigned here because inline()
+     runs in page order; a fact cited again reuses its number. */
+  t = t.replace(FACT_MARK, (m, id) => {
+    if (!refs) return m;
+    if (!refs.facts) { refs.missing.push(m + ' (a fact note marker needs `notes: per-fact`)'); return m; }
+    const f = refs.facts[id];
+    if (!f) { refs.missing.push(m + ' -> no fact note definition [^f' + id + ']:'); return m; }
+    if (!f.num) f.num = ++refs.factCount;
+    return '<sup class="fn fact"><a href="#note-f' + id + '">' + f.num + '</a></sup>';
+  });
   t = t.replace(/\[\^(\d+)(?:q(\d+))?\]/g, (m, n, q) => {
     /* Every marker lands on the ENTRY. Quotes no longer render at the back, so
        there is no per-quote anchor to jump to — the quote itself is in the
@@ -74,6 +92,9 @@ function inline(text, refs) {
        the source does not have is still a build error rather than a silent
        link to the wrong place. */
     const id = 'ref' + n;
+    /* One marker per fact: a bare source marker beside fact notes would show a
+       second, colliding number series. */
+    if (refs && refs.facts) refs.missing.push(m + ' (with `notes: per-fact`, cite a source through a fact note)');
     if (refs) {
       if (!refs.anchors.has(id)) refs.missing.push(m + ' -> #' + id);
       else if (q && refs.quoteCount && +q > (refs.quoteCount[n] || 0)) {
@@ -192,6 +213,7 @@ function parseRefs(lines) {
   const refs = [];
   let cur = null;
   for (const raw of lines) {
+    if (FACT_DEF.test(raw)) { cur = null; continue; }
     const def = /^\[\^(\d+)\]:\s*(.*)$/.exec(raw);
     if (def) { cur = { n: def[1], apa: [def[2]], quotes: [], note: null, origin: null }; refs.push(cur); continue; }
     if (!cur) continue;
@@ -285,7 +307,7 @@ function shortCite(apa) {
 
 /* Markers cited by a section's prose, in first-use order. A reference
    *definition* line is a target, not a citation, so it never counts. */
-function citedIn(lines) {
+function citedIn(lines, facts) {
   const seen = [];
   let fence = null;
   for (const l of lines) {
@@ -295,16 +317,17 @@ function citedIn(lines) {
     const f = fenceOpen(l);
     if (fence) { if (l.trim().startsWith(fence) && /^[`~]+$/.test(l.trim())) fence = null; continue; }
     if (f) { fence = f[1]; continue; }
-    if (/^\s*\[\^\d+\]:/.test(l)) continue;
-    for (const m of l.matchAll(/\[\^(\d+)(?:q\d+)?\]/g)) {
-      if (!seen.includes(m[1])) seen.push(m[1]);
+    if (ANY_DEF.test(l)) continue;
+    for (const m of l.matchAll(/\[\^(?:(\d+)(?:q\d+)?|f([\w-]+))\]/g)) {
+      const ns = m[1] ? [m[1]] : ((facts && facts[m[2]]) ? facts[m[2]].sources.map((s) => s.n) : []);
+      for (const n of ns) if (!seen.includes(n)) seen.push(n);
     }
   }
   return seen;
 }
 
 function proveIt(lines, index, reg) {
-  const cited = citedIn(lines).filter((n) => index[n] && index[n].label);
+  const cited = citedIn(lines, reg && reg.facts).filter((n) => index[n] && index[n].label);
   if (!cited.length) return '';
   const n = cited.reduce((a, k) => a + index[k].quotes.length, 0);
   const heads = esc(cited.map((k) => index[k].label).join('; '));
@@ -325,6 +348,57 @@ function proveIt(lines, index, reg) {
   return '\n  <details class="l5">\n    <summary>' + heads + '.' +
     '<span class="l5n">' + n + ' quote' + (n === 1 ? '' : 's') + '</span></summary>' +
     '\n    <div class="l5body">' + body + '\n    </div>\n  </details>';
+}
+
+/* ── per-fact notes ───────────────────────────────────────────────────────
+   One note per fact, numbered 1, 2, 3 by first appearance. Inside it one entry
+   per distinct source, numbered 1.1, 1.2, each with the source's short citation
+   linking to its References entry and every quote the definition named. */
+const NOTES_SLOT = '<!--fact-notes-->';
+
+function collectFacts(parts, index, quoteCount) {
+  const facts = {};
+  const bad = [];
+  for (const p of parts) {
+    for (const l of [...p.lede, ...p.sections.flatMap((s) => s.lines)]) {
+      const d = FACT_DEF.exec(l);
+      if (!d) continue;
+      const [, id, rest] = d;
+      if (facts[id]) { bad.push('[^f' + id + '] is defined twice'); continue; }
+      const sources = [];
+      for (const m of rest.matchAll(/\[\^(\d+)(?:q(\d+))?\]/g)) {
+        const n = m[1], q = +(m[2] || 1);
+        if (!index[n]) { bad.push('[^f' + id + '] names ' + m[0] + ', which has no reference'); continue; }
+        if (q > (quoteCount[n] || 0)) { bad.push('[^f' + id + '] names ' + m[0] + ', which has no quote ' + q); continue; }
+        let s = sources.find((x) => x.n === n);
+        if (!s) sources.push(s = { n, qs: [] });
+        if (!s.qs.includes(q)) s.qs.push(q);
+      }
+      const left = rest.replace(/\[\^\d+(?:q\d+)?\]/g, '').trim();
+      if (left) bad.push('[^f' + id + '] holds text that is not a source key: ' + left.slice(0, 40));
+      if (!sources.length && !left) bad.push('[^f' + id + '] names no source');
+      facts[id] = { sources, num: 0 };
+    }
+  }
+  if (bad.length) throw new Error('fact notes: ' + bad.join('; '));
+  return facts;
+}
+
+function renderFactNotes(reg, index) {
+  const used = Object.entries(reg.facts).filter(([, f]) => f.num).sort((a, b) => a[1].num - b[1].num);
+  const items = used.map(([id, f]) => '  <li id="note-f' + id + '"><span class="rnum">' + f.num +
+    '</span><ol class="factsrc">' + f.sources.map((s, i) => {
+      const r = index[s.n];
+      const label = r.label || 'Reference ' + ((reg.display && reg.display[s.n]) || s.n);
+      return '\n    <li><span class="fsub">' + f.num + '.' + (i + 1) + '</span><a class="fsrc" href="#ref' + s.n +
+        '">' + esc(label) + '</a>' + s.qs.map((q) => {
+        const parts = r.quotes[q - 1].split(/\s+--\s+/);
+        const qref = parts.length > 1 ? parts.pop() : null;
+        return '<blockquote class="pull">' + inline(parts.join(' -- '), reg) +
+          (qref ? '<span class="qref">' + inline(qref, reg) + '</span>' : '') + '</blockquote>';
+      }).join('') + '</li>';
+    }).join('') + '\n  </ol></li>');
+  return '<ol class="factnotes">\n' + items.join('\n') + '\n</ol>';
 }
 
 /* ── block renderer ─────────────────────────────────────────────────────── */
@@ -398,6 +472,15 @@ function renderBlock(lines, ctx) {
      global, and the two agreeing only when every entry sat in one unbroken run.
      Rendering the whole set at once is what makes the sort and the numbering
      read the same list. */
+  /* The fact notes list renders where its first definition block sits, filled
+     in once the page is done, because numbers come from first appearance. */
+  if (FACT_DEF.test(t)) {
+    if (!refs.facts) throw new Error('fact note definition ' + t.slice(0, 40) + ' needs `notes: per-fact` in the front matter');
+    if (refs.notesListed) return '';
+    refs.notesListed = true;
+    return NOTES_SLOT;
+  }
+
   if (/^\[\^\d+\]:/.test(t)) {
     if (refs.listed) return '';
     refs.listed = true;
@@ -502,7 +585,7 @@ function frontMatter(src) {
    this list fails the build, because a misspelt option otherwise does nothing
    and says nothing. Add a key here in the same change that starts reading it. */
 const KNOWN_KEYS = new Set(['title', 'head-title', 'brief-id', 'eyebrow', 'sub', 'replies',
-  'addressed', 'consumed', 'highlights', 'define', 'visibility', 'publish-slug', 'publish-project',
+  'addressed', 'consumed', 'highlights', 'define', 'notes', 'visibility', 'publish-slug', 'publish-project',
   'publish-project-uid', 'publish-brief-uid', 'publish-short-id', 'publish-tenant']);
 
 function checkFrontMatter(meta) {
@@ -513,6 +596,9 @@ function checkFrontMatter(meta) {
   }
   if (meta.define && !/^(first-use|every-use)$/.test(meta.define)) {
     throw new Error('define: expected first-use or every-use, got "' + meta.define + '"');
+  }
+  if (meta.notes && meta.notes !== 'per-fact') {
+    throw new Error('notes: expected per-fact, got "' + meta.notes + '"');
   }
 }
 
@@ -817,6 +903,13 @@ export function render(source, opts = {}) {
   const parts = opts.publish ? dropPrivate(outline(body)) : outline(body);
   const { anchors, index, quoteCount, display, all } = collectAnchors(parts, opts.publish);
   const refs = { anchors, missing: [], quoteCount, display, all, listed: false };
+  const facts = collectFacts(parts, index, quoteCount);
+  if (meta.notes === 'per-fact') {
+    refs.facts = facts;
+    refs.factCount = 0;
+  } else if (Object.keys(facts).length) {
+    throw new Error('fact note definitions need `notes: per-fact` in the front matter');
+  }
   const ctx = { refs, index, publish: !!opts.publish };
 
   const out = ['<header class="brief-title">\n  <p class="eyebrow">' + inline(meta.eyebrow || '', refs) +
@@ -886,6 +979,11 @@ export function render(source, opts = {}) {
 
   for (let i = 0; i < out.length; i++) {
     if (/^<section[^>]* id="s-definitions"/.test(out[i])) out[i] = dropUnsafeHrefs(out[i]);
+  }
+
+  if (refs.notesListed) {
+    const notes = renderFactNotes(refs, index);
+    for (let i = 0; i < out.length; i++) out[i] = out[i].replace(NOTES_SLOT, () => notes);
   }
 
   if (refs.missing.length) {

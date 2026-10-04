@@ -1442,7 +1442,8 @@
     /* aria-label, not title: a superscript link into the references needs no
        hover hint (the affordance is the shape), and a title attribute here put
        50 of them in one document, against this file's own rule. */
-    if (!a.getAttribute('aria-label')) a.setAttribute('aria-label', 'Jump to reference ' + (a.textContent || '').trim());
+    if (!a.getAttribute('aria-label')) a.setAttribute('aria-label',
+      (sup.classList.contains('fact') ? 'Note ' : 'Jump to reference ') + (a.textContent || '').trim());
   });
   Object.keys(citedBy).forEach(function (key) {
     var target = document.getElementById(key);
@@ -2980,7 +2981,7 @@ var __briefTip = (() => {
      table header cells, the Definitions and Answers blocks, and any widget
      that carries its own script. */
   var SKIP = 'h1,h2,h3,h4,h5,h6,code,pre,kbd,a,button,label,th,textarea,select,svg,script,style,' +
-    'sup.fn,.l5,#s-definitions,dl.answers,nav.toc,.brief-title,.topbar,.bterm,[contenteditable],[data-noterms],[data-draft]';
+    'sup.fn,.l5,ol.factnotes,#s-definitions,dl.answers,nav.toc,.brief-title,.topbar,.bterm,[contenteditable],[data-noterms],[data-draft]';
 
   /* Same rule as safeHref in build-brief.mjs: https, or relative. */
   function safeHref(v) {
@@ -2989,6 +2990,75 @@ var __briefTip = (() => {
     if (/^https:\/\/[^\s/]/i.test(s)) return s;
     if (/^[/\\]{2}/.test(s)) return '';
     return /[:&\\]/.test(s.split(/[/?#]/)[0]) ? '' : s;
+  }
+
+  /* The card lives in the tooltip layer, not after the term, so its first link
+     ("Read the brief" on a term, the sources on a fact note) needs three ways in beyond a mouse. Keyboard: Enter on the term
+     opens the card and focuses the link; Tab from an open card's term goes to
+     the link; Shift+Tab or Escape from the link returns to the term. Focus
+     inside the card keeps it open. Touch: a tap on the term pins the card
+     until a tap elsewhere, because the engine ignores touch hover and treats
+     focus straight after a press as mouse focus. */
+  function reach(s, tip) {
+    var pinned = false, touched = false, base = tip.scheduleHide;
+    tip.scheduleHide = function () { if (!pinned) base.call(tip); };
+    function link() { return tip.el && tip.el.querySelector('a[href]'); }
+    function openNow() { tip.clearShow(); tip.clearHide(); tip.show(); wire(); }
+    function close() { pinned = false; document.removeEventListener('pointerdown', away, true); tip.dismiss(); }
+    function away(e) {
+      if (s.contains(e.target) || (tip.el && tip.el.contains(e.target))) return;
+      close();
+    }
+    function wire() {
+      var el = tip.el;
+      if (!el || el.__reach) return;
+      el.__reach = true;
+      el.addEventListener('focusin', function () { tip.clearHide(); });
+      el.addEventListener('focusout', function (e) {
+        if (e.relatedTarget !== s && !el.contains(e.relatedTarget)) tip.scheduleHide();
+      });
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' || (e.key === 'Tab' && e.shiftKey)) {
+          e.preventDefault(); e.stopPropagation(); s.focus();
+          if (e.key === 'Escape') close();
+        }
+      });
+    }
+    s.addEventListener('keydown', function (e) {
+      var go = e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey && tip.open);
+      if (!go) return;
+      if (!tip.open) openNow(); else wire();
+      var a = link();
+      if (a) { e.preventDefault(); a.focus(); }
+    });
+    /* A tap opens the card; it must not also follow a marker's own link. */
+    s.addEventListener('click', function (e) { if (touched) { touched = false; e.preventDefault(); } });
+    s.addEventListener('pointerup', function (e) {
+      touched = e.pointerType === 'touch';
+      if (!touched) return;
+      if (pinned) { close(); return; }
+      openNow(); pinned = true;
+      document.addEventListener('pointerdown', away, true);
+    });
+  }
+  /* ── fact notes (`notes: per-fact`) ────────────────────────────────────
+     Each superscript opens its note in the tooltip layer: the fact's sources
+     as 1.1, 1.2, each with its quote and a link to the References entry. The
+     card is a copy of the printed Notes list entry, so the two cannot differ.
+     The marker stays a link to that entry, which is the no-script path. */
+  function factNotes() {
+    Array.prototype.forEach.call(document.querySelectorAll('sup.fn.fact > a[href^="#note-"]'), function (a) {
+      var li = document.getElementById(a.getAttribute('href').slice(1));
+      var src = li && li.querySelector('ol.factsrc');
+      if (!src) return;
+      var n = (a.textContent || '').trim();
+      reach(a, TT.attach(a, { content: function () {
+        var d = document.createElement('div'); d.className = 'fnote-card';
+        var t = document.createElement('strong'); t.textContent = 'Note ' + n;
+        d.appendChild(t); d.appendChild(src.cloneNode(true));
+        return d;
+      }, hoverable: true, placement: 'top', showDelay: 150 }));
+    });
   }
 
   function defLinks() {
@@ -3043,52 +3113,6 @@ var __briefTip = (() => {
         d.appendChild(a);
       }
       return d;
-    }
-    /* The card lives in the tooltip layer, not after the term, so the "Read the
-       brief" link needs three ways in beyond a mouse. Keyboard: Enter on the term
-       opens the card and focuses the link; Tab from an open card's term goes to
-       the link; Shift+Tab or Escape from the link returns to the term. Focus
-       inside the card keeps it open. Touch: a tap on the term pins the card
-       until a tap elsewhere, because the engine ignores touch hover and treats
-       focus straight after a press as mouse focus. */
-    function reach(s, tip) {
-      var pinned = false, base = tip.scheduleHide;
-      tip.scheduleHide = function () { if (!pinned) base.call(tip); };
-      function link() { return tip.el && tip.el.querySelector('.bterm-link'); }
-      function openNow() { tip.clearShow(); tip.clearHide(); tip.show(); wire(); }
-      function close() { pinned = false; document.removeEventListener('pointerdown', away, true); tip.dismiss(); }
-      function away(e) {
-        if (s.contains(e.target) || (tip.el && tip.el.contains(e.target))) return;
-        close();
-      }
-      function wire() {
-        var el = tip.el;
-        if (!el || el.__reach) return;
-        el.__reach = true;
-        el.addEventListener('focusin', function () { tip.clearHide(); });
-        el.addEventListener('focusout', function (e) {
-          if (e.relatedTarget !== s && !el.contains(e.relatedTarget)) tip.scheduleHide();
-        });
-        el.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape' || (e.key === 'Tab' && e.shiftKey)) {
-            e.preventDefault(); e.stopPropagation(); s.focus();
-            if (e.key === 'Escape') close();
-          }
-        });
-      }
-      s.addEventListener('keydown', function (e) {
-        var go = e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey && tip.open);
-        if (!go) return;
-        if (!tip.open) openNow(); else wire();
-        var a = link();
-        if (a) { e.preventDefault(); a.focus(); }
-      });
-      s.addEventListener('pointerup', function (e) {
-        if (e.pointerType !== 'touch') return;
-        if (pinned) { close(); return; }
-        openNow(); pinned = true;
-        document.addEventListener('pointerdown', away, true);
-      });
     }
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
@@ -3643,7 +3667,7 @@ var __briefTip = (() => {
     }, true);
   }
 
-  function start() { rail(); idle(defLinks); lightbox(); }
+  function start() { rail(); idle(defLinks); factNotes(); lightbox(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();

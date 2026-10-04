@@ -546,6 +546,45 @@ rmSync(tmp, { recursive: true, force: true });
   assert.ok(dr.includes('<li>one</li>'), 'lists inside a draft render');
 }
 
+/* ── per-fact notes (`notes: per-fact`) ──────────────────────────────────── */
+
+{
+  const REFS = '## References\n\n' +
+    '[^1]: Barker, S. (2018). *A book*. Pub. https://example.com/a\n' +
+    '    > "First quote." -- p. 4\n    > "Second quote." -- p. 9 (not captured: search summary only)\n' +
+    '[^2]: Adams, J. (2020). *Another*. Pub. https://example.com/b\n    > "Adams says it." -- Article body\n';
+  const NOTES = '## Notes\n\n[^fa]: [^1] [^1q2] [^2]\n[^fb]: [^2]\n[^fz]: [^1]\n\n';
+  const doc = (head, body, notes = NOTES) => '---\n' + head + '\n---\n\n# P\n\n## S\n\n' + body + '\n\n' + notes + REFS;
+  const pf = /<main>[\s\S]*<\/main>/.exec(render(doc('title: T\nnotes: per-fact',
+    'One[^fb]. Two[^fa][^fb]. Again[^fa].')))[0];
+  /* Numbered by first appearance, reused on repeat, never the reference number. */
+  assert.deepEqual([...pf.matchAll(/<sup class="fn fact"><a href="#note-f(\w+)">(\d+)<\/a><\/sup>/g)].map((m) => m[1] + m[2]),
+    ['b1', 'a2', 'b1', 'a2'], 'fact markers number by first appearance and reuse their number');
+  assert.ok(!/<sup class="fn"><a href="#ref/.test(pf), 'no bare source marker in per-fact mode');
+  /* The note nests one entry per distinct source, 2.1 and 2.2, with every quote named. */
+  const note = /<li id="note-fa">[\s\S]*?<\/ol><\/li>/.exec(pf)[0];
+  assert.ok(note.includes('<span class="rnum">2</span>'), 'the note carries its fact number');
+  assert.ok(note.includes('<span class="fsub">2.1</span><a class="fsrc" href="#ref1">Barker (2018)</a>'), '2.1 is the first source, short cite linking to its entry');
+  assert.ok(note.includes('<span class="fsub">2.2</span><a class="fsrc" href="#ref2">Adams (2020)</a>'), '2.2 is the second source');
+  assert.equal((note.match(/<li><span class="fsub">/g) || []).length, 2, 'one entry per distinct source');
+  assert.ok(note.includes('"Second quote."<span class="qref">p. 9 (not captured: search summary only)</span>'), 'a second quote of one source sits in that entry, locator and disclosure kept');
+  assert.ok(pf.indexOf('id="note-fb"') < pf.indexOf('id="note-fa"'), 'the Notes list is in fact order');
+  assert.ok(!pf.includes('id="note-fz"'), 'an uncited fact is not listed');
+  assert.ok(/<details class="l5">[\s\S]*Barker \(2018\)/.exec(pf.slice(pf.indexOf('id="s-s"'), pf.indexOf('id="s-notes"'))),
+    'the section evidence block still lists the sources its fact notes cite');
+  assert.ok(!/id="s-notes"[\s\S]*?<details class="l5">[\s\S]*?id="s-references"/.test(pf), 'the Notes section gets no evidence block of its own');
+
+  assert.throws(() => render(doc('title: T\nnotes: per-fact', 'One[^fq].')), /\[\^fq\] -> no fact note/, 'a marker with no definition fails');
+  assert.throws(() => render(doc('title: T\nnotes: per-fact', 'One[^fa].', '## Notes\n\n[^fa]: [^7]\n\n')), /names \[\^7\], which has no reference/, 'a note naming a missing source fails');
+  assert.throws(() => render(doc('title: T\nnotes: per-fact', 'One[^fa].', '## Notes\n\n[^fa]: [^2q2]\n\n')), /names \[\^2q2\], which has no quote 2/, 'a note naming a missing quote fails');
+  assert.throws(() => render(doc('title: T\nnotes: per-fact', 'One[^fa].', '## Notes\n\n[^fa]: [^1] typo\n\n')), /not a source key/, 'stray text in a note fails');
+  assert.throws(() => render(doc('title: T\nnotes: per-fact', 'One[^fa] and[^1].')), /cite a source through a fact note/, 'a bare source marker fails in per-fact mode');
+  assert.throws(() => render(doc('title: T', 'One[^fa].')), /need `notes: per-fact`/, 'fact notes without the mode fail');
+  assert.throws(() => render(doc('title: T\nnotes: per-source', 'One.')), /notes: expected per-fact/, 'an unknown notes value fails');
+  /* Default mode is untouched: the fixture renders as before with no fact markup. */
+  assert.ok(!/class="fn fact"|factnotes/.test(main), 'the default render carries no fact-note markup');
+}
+
 /* ── reproducibility ─────────────────────────────────────────────────────── */
 
 assert.equal(render(src), html, 'rendering is deterministic');

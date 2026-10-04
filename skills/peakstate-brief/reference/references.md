@@ -84,3 +84,40 @@ Where a source could not be retrieved, or was retrieved but its body could not b
 say so in a `note:` line on that entry rather than quietly omitting the quote. Same for a
 community forum thread or any non-authoritative source: the note says what it is, so a
 reader knows not to lean on it.
+
+### Per-fact notes: one marker per fact, its sources nested inside
+
+**`notes: per-fact` in the front matter gives each fact one marker, numbered 1, 2, 3
+by first appearance, and nests that fact's sources inside its note as 1.1, 1.2.**
+Use it when a sentence rests on several sources and a row of source numbers would
+crowd it. Without the key a brief renders exactly as above.
+
+    The vendor runs agents all day[^fa], at a cost buyers have not priced[^fb].
+
+    ## Notes
+
+    [^fa]: [^1] [^1q2] [^3]
+    [^fb]: [^3q2]
+
+    ## References
+
+    [^1]: ...ordinary entries, with their quotes, unchanged...
+
+- **A marker is `[^f<id>]`**, the id any run of letters, digits, `-` or `_`. A fact
+  cited again reuses its number.
+- **A definition is `[^f<id>]:` and the fact's source keys on one line**, written as
+  the ordinary `[^n]` or `[^nqk]` keys. `[^n]` means that source's first quote. Two
+  keys on one source, such as `[^1] [^1q2]`, make one entry carrying both quotes.
+- **The note shows one entry per distinct source**: its number (`2.1`), the short
+  citation linking to the References entry, and each quote with its locator. The
+  References list, its alphabetical numbering and each section's evidence block are
+  unchanged.
+- **On screen** the marker opens the note in a card on hover, on keyboard focus with
+  Enter (which moves focus to the first source link; Escape returns), and on a tap.
+  **On paper** the Notes list prints where the first definition line sits, so put the
+  definitions in their own `## Notes` section above the References.
+- **The build fails** on a marker with no definition, a definition naming a source or
+  quote that does not exist, text in a definition that is not a source key, a bare
+  `[^n]` marker in the body (it would print a second number series), and any fact
+  note in a brief without `notes: per-fact`. A fact defined but never cited is left
+  out of the Notes list.

@@ -24,7 +24,9 @@ the reader's answers — it is the only thing that clears the unsent-work marker
 (see "Replying to a comment the reader made"). `addressed:` is the older form,
 still accepted, and becomes `data-addressed`: the same matching with no words.
 `define: every-use` links every eligible use of a defined term rather than the first
-use per section (`first-use` is the default and can be written out). The publish
+use per section (`first-use` is the default and can be written out). `notes: per-fact`
+switches the brief to one footnote per fact rather than per source (see "Per-fact notes" in
+`references.md`); without it nothing changes. The publish
 tooling writes its own state back as `visibility:` and the `publish-*` keys
 (`publish-slug`, `publish-project`, `publish-project-uid`, `publish-brief-uid`,
 `publish-short-id`, `publish-tenant`); leave those to it.
@@ -48,6 +50,8 @@ reading a new key adds it to `KNOWN_KEYS` in `build-brief.mjs` in the same chang
 | `My assumption: …` then `If wrong: …` | `<p class="assume">` with both labels bold |
 | `a) …` and `b) …` lines | `<ul class="options">` with `<b>a)</b>`. The word `Recommended` (bold, bracketed or with a colon) inside an option renders as a `.rec` badge in place, and the item gets `class="is-rec"`; write it once, on one option |
 | `[^3]` and `[^3q2]` | `<sup class="fn"><a href="#ref3-q1">3</a></sup>` and `#ref3-q2` |
+| `[^fx]`, with `notes: per-fact` | `<sup class="fn fact"><a href="#note-fx">1</a></sup>`, numbered by first appearance on the page |
+| `[^fx]: [^3] [^3q2] [^5]`, with `notes: per-fact` | one entry of the generated Notes list, `<ol class="factnotes">`, rendered where the first such line sits |
 | `[^3]` where source 3 has no quote | `#ref3`, the entry itself. A marker pointing at a quote that does not exist is a build error. |
 | `:::verdict` … `:::` | `<div class="verdict">` with markdown rendered inside |
 | `:::html` … `:::` | passed through verbatim |

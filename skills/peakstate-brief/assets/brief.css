@@ -1456,6 +1456,29 @@ mark.cmt[data-hl] { color: var(--fg); }
 .bterm-card strong { display: block; font-size: .8rem; margin-bottom: .2rem; color: var(--accent); }
 .bterm-card span { display: block; font-size: .85rem; line-height: 1.45; }
 .bterm-card .bterm-link { display: inline-block; margin-top: .35rem; font-size: .8rem; color: var(--accent); cursor: pointer; }
+/* ── fact notes (`notes: per-fact`) ─────────────────────────────
+   The printed Notes list and the card a marker opens hold the same nested
+   list: one entry per source, numbered 1.1, 1.2, its citation linking to the
+   References entry and its quotes beneath. */
+ol.factnotes { list-style: none; padding: 0; margin: .5rem 0 0; }
+ol.factnotes > li { position: relative; padding-left: 2.6rem; margin: .9rem 0; scroll-margin-top: 4rem; }
+ol.factnotes > li:target { background: var(--accent-soft); border-radius: 6px; }
+ol.factsrc { list-style: none; padding: 0; margin: 0; }
+ol.factsrc > li { margin: 0 0 .5rem; }
+.fsub { font: 600 .68rem/1 var(--font-mono); color: var(--muted); margin-right: .45rem; }
+.fsrc { font: 600 .8rem/1.4 var(--font-ui); color: var(--accent); text-decoration: none; }
+.fsrc:hover, .fsrc:focus-visible { text-decoration: underline; }
+ol.factsrc blockquote.pull { margin: .25rem 0 0; font-style: normal; }
+.tt:has(.fnote-card) { --tt-maxw: 30rem; }
+.fnote-card { display: block; max-height: 60vh; overflow-y: auto; }
+.fnote-card > strong { display: block; font-size: .8rem; margin-bottom: .35rem; color: var(--accent); }
+.fnote-card ol.factsrc > li:last-child { margin-bottom: 0; }
+.fnote-card blockquote.pull { font-size: .82rem; }
+/* The back-link sits under the note number rather than on a line of its own. */
+ol.factnotes > li > a.backref { position: absolute; left: .3rem; top: 1.7rem; margin: 0; }
+/* A whole note kept on one page left most of a page blank before a long note,
+   so only each source entry is kept whole. Paper cannot follow a back-link. */
+@media print { ol.factsrc > li { break-inside: avoid; } ol.factnotes a.backref { display: none; } }
 /* A term card with a concept link prints the address as text: paper has no tooltip. */
 @media print { .defs-in .term[data-href]::after { content: "Read the brief: " attr(data-href); display: block;
   margin-top: .4rem; font-size: .75rem; color: var(--muted); word-break: break-all; } }

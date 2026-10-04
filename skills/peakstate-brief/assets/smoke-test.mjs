@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 /* Tick boxes are revealed by hovering the question head, and the heading slides
    aside to make room. Hover first, as a reader does, so a click never races the
    reveal animation (it lost that race on a loaded machine). */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 const url = 'file://' + process.argv[2] + '/test.html';
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -454,6 +454,52 @@ console.log(JSON.stringify({ icNoLayoutShift, icOnEveryImage, icCornerPlaced, ic
   reopenShowsText, exportImage, textExportUnchanged, drawerListsImages, drawerOpensLightbox,
   imagePersists, imageReplyThread, imageFollowUp, deleteClears, deleteClearsIcon, deleteLeavesExport,
   icNoTitleAttr, icNamed, jsErrors: errors }, null, 1));
+
+/* ── fact notes (`notes: per-fact`) ───────────────────────────────────────
+   The fixture's own page stays untouched; a second page swaps its <main> for a
+   per-fact body in the shape build-brief.mjs writes. Hover, keyboard and touch
+   each have to reach the note and its source links. */
+const FACTS_MAIN = '<main>\n<section class="brief-section" id="s-a" data-sec="a"><div class="sec-body">' +
+  '<p>Agents run all day<sup class="fn fact"><a href="#note-fa">1</a></sup> and cost money' +
+  '<sup class="fn fact"><a href="#note-fb">2</a></sup>.</p></div></section>\n' +
+  '<section class="brief-section" id="s-notes" data-sec="notes"><div class="sec-body"><ol class="factnotes">' +
+  '<li id="note-fa"><span class="rnum">1</span><ol class="factsrc">' +
+  '<li><span class="fsub">1.1</span><a class="fsrc" href="#ref1">Barker (2018)</a><blockquote class="pull">"First."<span class="qref">p. 4</span></blockquote></li>' +
+  '<li><span class="fsub">1.2</span><a class="fsrc" href="#ref2">Adams (2020)</a><blockquote class="pull">"Second."<span class="qref">p. 9</span></blockquote></li>' +
+  '</ol></li><li id="note-fb"><span class="rnum">2</span><ol class="factsrc">' +
+  '<li><span class="fsub">2.1</span><a class="fsrc" href="#ref2">Adams (2020)</a><blockquote class="pull">"Second."<span class="qref">p. 9</span></blockquote></li>' +
+  '</ol></li></ol></div></section>\n' +
+  '<section class="brief-section" id="s-references" data-sec="references"><div class="sec-body"><ol class="reflist">' +
+  '<li id="ref2"><span class="rnum">1</span>Adams, J. (2020). Another.</li><li id="ref1"><span class="rnum">2</span>Barker, S. (2018). A book.</li>' +
+  '</ol></div></section>\n</main>';
+writeFileSync(process.argv[2] + '/facts.html',
+  readFileSync(process.argv[2] + '/test.html', 'utf8').replace(/<main>[\s\S]*<\/main>/, () => FACTS_MAIN));
+const fp = await browser.newPage({ hasTouch: true });
+const ferr = [];
+fp.on('pageerror', e => ferr.push(e.message));
+await fp.goto('file://' + process.argv[2] + '/facts.html');
+const card = '.tt.tt-in .fnote-card';
+await fp.hover('sup.fn.fact a[href="#note-fa"]');
+await fp.waitForSelector(card, { timeout: 3000 });
+const fnCardText = await fp.locator(card).textContent();
+const fnHoverOpens = /^Note 1/.test(fnCardText) && fnCardText.includes('1.1') && fnCardText.includes('Barker (2018)');
+const fnTwoSources = (await fp.locator(card + ' ol.factsrc > li').count()) === 2;
+await fp.mouse.move(5, 5);
+await fp.waitForSelector(card, { state: 'detached', timeout: 3000 }).catch(() => {});
+await fp.focus('sup.fn.fact a[href="#note-fb"]');
+await fp.keyboard.press('Enter');
+await fp.waitForSelector(card, { timeout: 3000 });
+const fnEnterFocusesSource = await fp.evaluate(() => document.activeElement.matches('.tt .fnote-card a.fsrc[href="#ref2"]'));
+const fnEnterNoJump = await fp.evaluate(() => location.hash === '');
+await fp.keyboard.press('Escape');
+const fnEscReturns = await fp.evaluate(() => document.activeElement.matches('sup.fn.fact a[href="#note-fb"]'));
+await fp.tap('sup.fn.fact a[href="#note-fa"]');
+await fp.waitForSelector(card, { timeout: 3000 });
+const fnTapOpensNoJump = await fp.evaluate(() => location.hash === '');
+const fnNoTitleAttr = await fp.evaluate(() => !document.querySelector('sup.fn [title], sup.fn[title], .fnote-card [title]'));
+const fnLabelled = await fp.evaluate(() => document.querySelector('sup.fn.fact a').getAttribute('aria-label') === 'Note 1');
+console.log(JSON.stringify({ fnHoverOpens, fnTwoSources, fnEnterFocusesSource, fnEnterNoJump, fnEscReturns,
+  fnTapOpensNoJump, fnNoTitleAttr, fnLabelled, jsErrors: ferr }, null, 1));
 
 await browser.close();
 
