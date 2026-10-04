@@ -585,7 +585,7 @@ function frontMatter(src) {
    this list fails the build, because a misspelt option otherwise does nothing
    and says nothing. Add a key here in the same change that starts reading it. */
 const KNOWN_KEYS = new Set(['title', 'head-title', 'brief-id', 'eyebrow', 'sub', 'replies',
-  'addressed', 'consumed', 'highlights', 'define', 'notes', 'visibility', 'publish-slug', 'publish-project',
+  'addressed', 'consumed', 'highlights', 'define', 'notes', 'tabs', 'visibility', 'publish-slug', 'publish-project',
   'publish-project-uid', 'publish-brief-uid', 'publish-short-id', 'publish-tenant']);
 
 function checkFrontMatter(meta) {
@@ -596,6 +596,9 @@ function checkFrontMatter(meta) {
   }
   if (meta.define && !/^(first-use|every-use)$/.test(meta.define)) {
     throw new Error('define: expected first-use or every-use, got "' + meta.define + '"');
+  }
+  if (meta.tabs && meta.tabs !== 'parts') {
+    throw new Error('tabs: expected parts, got "' + meta.tabs + '"');
   }
   if (meta.notes && meta.notes !== 'per-fact') {
     throw new Error('notes: expected per-fact, got "' + meta.notes + '"');
@@ -738,18 +741,28 @@ function renderToc(parts) {
   return out.join('\n');
 }
 
+/* The sub-tab label under `tabs: parts`: the same short label the contents
+   list would show, as plain text, so a long heading is shortened by the
+   author's own `:: label | note` rather than truncated by the runtime. */
+function tabLabel(s) {
+  const label = s.toc.length > 1 && s.toc[0] ? s.toc[0] : s.title;
+  return escAttr(inline(s.q ? s.q + ': ' + label : label).replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&'));
+}
+
 function renderSection(sec, ctx) {
   const data = sec.id.replace(/^s-/, '');
+  const tl = ctx.tabs ? ' data-tablabel="' + tabLabel(sec) + '"' : '';
   const body = renderBody(sec.lines, { ...ctx, sec: data });
   if (sec.q) {
-    return '<section class="q" id="' + sec.id + '" data-q="' + sec.q + '">\n' +
+    return '<section class="q" id="' + sec.id + '" data-q="' + sec.q + '"' + tl + '>\n' +
       '  <div class="q-head">\n' +
       '    <label class="tick"><input type="checkbox" aria-label="Mark ' + sec.q + ' resolved"></label>\n' +
       '    <h3><span class="qid">' + sec.q + '</span> ' + inline(sec.title, ctx.refs) + '</h3>\n' +
       '  </div>\n  <div class="q-body">\n' + body + '\n  </div>' +
       proveIt(sec.lines, ctx.index || {}, ctx.refs) + '\n</section>';
   }
-  return '<section class="brief-section" id="' + sec.id + '" data-sec="' + data + '">\n' +
+  return '<section class="brief-section" id="' + sec.id + '" data-sec="' + data + '"' + tl + '>\n' +
     '  <div class="sec-head">\n' +
     '    <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>\n' +
     '    <h3>' + inline(sec.title, ctx.refs) + '</h3>\n' +
@@ -910,7 +923,11 @@ export function render(source, opts = {}) {
   } else if (Object.keys(facts).length) {
     throw new Error('fact note definitions need `notes: per-fact` in the front matter');
   }
-  const ctx = { refs, index, publish: !!opts.publish };
+  const tabs = meta.tabs === 'parts';
+  if (tabs && !parts.some((p) => p.title)) {
+    throw new Error('tabs: parts needs at least one `# ` part heading to make a tab from');
+  }
+  const ctx = { refs, index, publish: !!opts.publish, tabs };
 
   const out = ['<header class="brief-title">\n  <p class="eyebrow">' + inline(meta.eyebrow || '', refs) +
     '</p>\n  <h1>' + inline(meta.title || 'Brief', refs) + '</h1>\n  <p class="sub">' +
@@ -937,8 +954,10 @@ export function render(source, opts = {}) {
      so it cannot sit below a list of the sections it summarises. */
   const ansSec = hoist(parts, 's-answers');
   if (ansSec) out.push(renderSection(ansSec, ctx));
+  /* Under `tabs: parts` the tab bar and the gutter rail do the contents list's
+     job, so an authored `## Contents` is taken out and not rendered. */
   const tocSec = hoist(parts, 's-toc');
-  if (tocSec) {
+  if (tocSec && !tabs) {
     if (!tocSec.lines.some((l) => l.trim())) tocSec.lines = renderToc(parts).split('\n');
     out.push(renderSection(tocSec, ctx));
   }
@@ -1009,6 +1028,7 @@ export function render(source, opts = {}) {
      which highlights are now part of the document rather than of one browser. */
   const consumed = meta.consumed ? ' data-consumed="' + escAttr(meta.consumed) + '"' : '';
   const define = meta.define === 'every-use' ? ' data-define="every-use"' : '';
+  const tabsAttr = meta.tabs === 'parts' ? ' data-tabs="parts"' : '';
   const baked = meta.highlights ? ' data-highlights="' + escAttr(meta.highlights) + '"' : '';
   /* A token that changes whenever the source does. A comment the reader
      exported under one build and has not touched since is treated as received
@@ -1025,7 +1045,7 @@ export function render(source, opts = {}) {
   return inlineRuntime(template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + define + build + pub + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + define + tabsAttr + build + pub + '>')
     /* The LAST <main> in the template is the body. A function, so a `$&` or
        `$'` in the brief's own text is not expanded. */
     .replace(/<main>(?![\s\S]*<main>)[\s\S]*<\/main>/, () => '<main>\n\n' + out.join('\n\n') + '\n\n</main>'), opts);

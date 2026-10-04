@@ -1154,7 +1154,7 @@
     editing = c;
     var mk = document.querySelector('mark.cmt[data-cid="' + c.cid + '"]');
     var r = mk ? mk.getBoundingClientRect() : { left: innerWidth / 2 - 170, width: 0, bottom: 120 };
-    if (mk) mk.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (mk) { reveal(mk); r = mk.getBoundingClientRect(); mk.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
     openPop(r.left + r.width / 2 + window.scrollX, r.bottom + window.scrollY, c.text, c, null);
   }
 
@@ -1330,7 +1330,7 @@
     if (act === 'goto') {
       toggleDrawer(false);
       var mk = document.querySelector('mark.cmt[data-cid="' + c.cid + '"]');
-      if (mk) { mk.scrollIntoView({ block: 'center', behavior: 'smooth' }); mk.classList.add('flash');
+      if (mk) { reveal(mk); mk.scrollIntoView({ block: 'center', behavior: 'smooth' }); mk.classList.add('flash');
                 setTimeout(function () { mk.classList.remove('flash'); }, 1600); }
       return;
     }
@@ -1380,11 +1380,15 @@
      A footnote target may sit inside a collapsed <details> or a ticked-off
      (collapsed) section, so jumping to it must reveal it first, else the click
      appears to do nothing. Also back-links each reference to its first citation. */
+  /* Tell the part tabs (`tabs: parts`) to show whatever holds el before a
+     jump scrolls to it. A no-op on an untabbed brief: nothing listens. */
+  function reveal(el) { if (el) el.dispatchEvent(new CustomEvent('brief-reveal', { bubbles: true })); }
   function revealTarget(hash) {
     if (!hash || hash.length < 2) return;
     var el;
     try { el = document.querySelector(hash); } catch { return; }
     if (!el) return;
+    reveal(el);
     var p = el;
     while (p && p !== document.body) {
       if (p.tagName === 'DETAILS') p.open = true;
@@ -1394,7 +1398,10 @@
       }
       p = p.parentElement;
     }
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    /* A tabbed brief scrolls a section or part to its top, under the sticky
+       tab bar; centring a long section put its heading off the screen. */
+    var tabbed = document.body.getAttribute('data-tabs') && el.matches('section, h2.part');
+    el.scrollIntoView({ block: tabbed ? 'start' : 'center', behavior: 'smooth' });
   }
   /* Published, the host page cannot see this frame's hash, so a jump in here
      never reaches the address bar and nobody can copy a deep link. Tell the host,
@@ -1402,6 +1409,7 @@
      it, so an unpublished or unframed brief sends nothing. An empty hash is sent
      as '' and means CLEAR: Back past the first jump drops the host's fragment too. */
   var hashFromHost = null;
+  window.addEventListener('brief-hash-replaced', function () { tellHostHash(); });
   function tellHostHash() {
     if (!host || !FRAMED) return;
     /* The host moved us with brief-hash-set; its URL already says so, and echoing
@@ -3209,8 +3217,11 @@ var __briefTip = (() => {
       var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       /* Land the heading just below the sticky top bar. scrollIntoView put it
          under the bar, because sections carry no scroll margin. */
+      it.el.dispatchEvent(new CustomEvent('brief-reveal', { bubbles: true }));
       var bar = document.querySelector('.topbar');
-      var off = (bar ? bar.getBoundingClientRect().bottom : 0) + 12;
+      /* A tabbed brief sets scroll-padding to clear its tab bar as well. */
+      var pad = parseFloat(document.documentElement.style.scrollPaddingTop) || 0;
+      var off = pad || (bar ? bar.getBoundingClientRect().bottom : 0) + 12;
       window.scrollTo({ top: it.head.getBoundingClientRect().top + window.scrollY - off,
         behavior: reduce ? 'auto' : 'smooth' });
       if (history.replaceState) history.replaceState(null, '', '#' + it.el.id);
@@ -3244,6 +3255,8 @@ var __briefTip = (() => {
       ticking = false;
       var hit = 0;
       for (var i = 0; i < items.length; i++) {
+        // A heading in a hidden tab has no box; skip it rather than read top 0.
+        if (!items[i].head.getClientRects().length) continue;
         if (items[i].head.getBoundingClientRect().top <= 120) hit = i; else break;
       }
       if (hit === active) return;
@@ -3668,6 +3681,214 @@ var __briefTip = (() => {
   }
 
   function start() { rail(); idle(defLinks); factNotes(); lightbox(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+
+/* ── part tabs (`tabs: parts` in the front matter) ─────────────────────────
+   Opt-in, for a long brief with several parallel subjects. Each `#` part is a
+   tab; the `##` sections inside the selected part are a second row of
+   sub-tabs; one section shows at a time, with Previous and Next under it.
+   Everything above the first part (title, answers) stays above the bar.
+
+   Only screen layout changes. Every section stays in the DOM, so print, the
+   footnote gate, comments and copy all see the whole brief. Anything that
+   jumps somewhere first dispatches `brief-reveal` on its target; this module
+   switches to the tab that holds it, synchronously, before the scroll runs. */
+(function () {
+  if (document.body.getAttribute('data-tabs') !== 'parts') return;
+  function start() {
+    var root = document.getElementById('briefMain') || document.querySelector('main');
+    if (!root || root.querySelector('.btabs-nav')) return;
+    var heads = root.querySelectorAll('h2.part[id]');
+    if (!heads.length) return;
+    var isSec = function (n) { return n.matches('section.brief-section, section.q'); };
+    var parts = Array.prototype.map.call(heads, function (h, pi) {
+      var members = [h], secs = [];
+      for (var n = h.nextElementSibling; n && !n.matches('h2.part, .endmark'); n = n.nextElementSibling) {
+        members.push(n); if (isSec(n)) secs.push(n);
+      }
+      var pn = h.querySelector('.pnum');
+      var box = h.parentElement.classList.contains('summary-page') ? h.parentElement : null;
+      return { i: pi, head: h, members: members, secs: secs, box: box,
+        label: h.textContent.slice(pn ? pn.textContent.length : 0).trim(), cur: secs[0] || null };
+    });
+    /* Every view in source order, for the pager: one per section, or one for a
+       part that holds a lede and no sections. */
+    var views = [];
+    parts.forEach(function (p) {
+      if (!p.secs.length) views.push({ p: p, s: null });
+      p.secs.forEach(function (s) { views.push({ p: p, s: s }); });
+    });
+    var secLabel = function (s) {
+      var h = s.querySelector('h3');
+      return s.getAttribute('data-tablabel') || (h ? h.textContent.trim() : s.id);
+    };
+
+    function tabButton(cls, label, controls) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = cls; b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', controls);
+      /* The hidden bold copy reserves the selected width, so selecting a tab
+         never changes its size and nothing beside it moves. */
+      var t = document.createElement('span'); t.textContent = label;
+      var w = document.createElement('span'); w.className = 'btab-w'; w.setAttribute('aria-hidden', 'true'); w.textContent = label;
+      b.appendChild(t); b.appendChild(w);
+      return b;
+    }
+    var nav = document.createElement('div'); nav.className = 'btabs-nav';
+    var bar = document.createElement('div'); bar.className = 'btabs';
+    bar.setAttribute('role', 'tablist'); bar.setAttribute('aria-label', 'Parts');
+    nav.appendChild(bar);
+    parts.forEach(function (p) {
+      p.tab = tabButton('btab', p.label, (p.box || p.head).id || p.head.id);
+      p.tab.id = 'tab-' + p.head.id;
+      p.tab.addEventListener('click', function () { show(p, p.cur, true); });
+      bar.appendChild(p.tab);
+      if (p.secs.length > 1) {
+        p.sub = document.createElement('div'); p.sub.className = 'bsubtabs';
+        p.sub.setAttribute('role', 'tablist'); p.sub.setAttribute('aria-label', 'Sections of ' + p.label);
+        p.subtabs = p.secs.map(function (s) {
+          var b = tabButton('bsubtab', secLabel(s), s.id);
+          b.id = 'tab-' + s.id;
+          s.setAttribute('role', 'tabpanel'); s.setAttribute('aria-labelledby', b.id);
+          b.addEventListener('click', function () { show(p, s, true); });
+          p.sub.appendChild(b);
+          return b;
+        });
+        nav.appendChild(p.sub);
+      }
+    });
+    var first = parts[0].box || parts[0].head;
+    first.parentNode.insertBefore(nav, first);
+    /* An empty block where the bar sits: it takes the reading column's width
+       in both modes, so its edges are where the tab rows start and end. */
+    var probe = document.createElement('div'); probe.className = 'btabs-probe';
+    nav.parentNode.insertBefore(probe, nav);
+    var pager = document.createElement('nav'); pager.className = 'btabs-pager';
+    pager.setAttribute('aria-label', 'Previous and next section');
+
+    /* Arrow keys move between tabs in one tablist and select as they go. */
+    function keys(list, pick) {
+      list.addEventListener('keydown', function (e) {
+        var tabs = Array.prototype.slice.call(list.querySelectorAll('[role="tab"]'));
+        var i = tabs.indexOf(document.activeElement);
+        if (i < 0) return;
+        var j = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (i + 1) % tabs.length
+          : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (i - 1 + tabs.length) % tabs.length
+          : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+        if (j < 0) return;
+        e.preventDefault(); tabs[j].focus(); pick(j);
+      });
+    }
+    keys(bar, function (j) { show(parts[j], parts[j].cur, true); });
+    parts.forEach(function (p) { if (p.sub) keys(p.sub, function (j) { show(p, p.secs[j], true); }); });
+
+    var curP = null, curS = null;
+    function viewLabel(v) {
+      return v.s ? (v.p === curP ? '' : v.p.label + ', ') + secLabel(v.s) : v.p.label;
+    }
+    function placePager() {
+      var i = -1;
+      views.forEach(function (v, k) { if (v.p === curP && v.s === curS) i = k; });
+      pager.textContent = '';
+      [[i - 1, 'prev', '‹ Previous: '], [i + 1, 'next', 'Next: ']].forEach(function (d) {
+        var v = views[d[0]];
+        if (!v) { pager.appendChild(document.createElement('span')); return; }
+        var b = document.createElement('button'); b.type = 'button'; b.className = d[1];
+        b.textContent = d[2] + viewLabel(v) + (d[1] === 'next' ? ' ›' : '');
+        b.addEventListener('click', function () {
+          show(v.p, v.s, true);
+          /* Rebuilding the pager drops the focused button; give a keyboard
+             reader the same control back, or its sibling at the ends. */
+          var nb = pager.querySelector('button.' + d[1]) || pager.querySelector('button');
+          if (nb) nb.focus({ preventScroll: true });
+        });
+        pager.appendChild(b);
+      });
+      var after = curP.box || curP.members[curP.members.length - 1];
+      after.parentNode.insertBefore(pager, after.nextSibling);
+    }
+    function show(p, s, byUser) {
+      curP = p; curS = s || null; p.cur = curS;
+      parts.forEach(function (q) {
+        var on = q === p;
+        if (q.box) q.box.classList.toggle('tab-off', !on);
+        q.members.forEach(function (m) { m.classList.toggle('tab-off', !on || (isSec(m) && m !== curS)); });
+        q.tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        q.tab.tabIndex = on ? 0 : -1;
+        if (q.sub) {
+          q.sub.hidden = !on;
+          q.subtabs.forEach(function (b, k) {
+            var sel = q.secs[k] === curS;
+            b.setAttribute('aria-selected', sel ? 'true' : 'false'); b.tabIndex = sel ? 0 : -1;
+          });
+        }
+      });
+      placePager();
+      measure();
+      if (!byUser) return;
+      if (history.replaceState) history.replaceState(history.state, '', '#' + (curS ? curS.id : p.head.id));
+      /* replaceState fires no hashchange, so a published host would keep the old
+         address. The host messaging lives in another closure; it listens for this. */
+      window.dispatchEvent(new Event('brief-hash-replaced'));
+      /* Bring the start of the view up under the bar, measured from the view
+         itself: once the bar is stuck its own position is the sticky offset and
+         says nothing about where the content starts. Do not move the page when
+         the view already starts below the bar (the reader is above it). */
+      var first = curS || p.box || p.members[0];
+      var top = first.getBoundingClientRect().top + window.scrollY - stickTop() - nav.offsetHeight;
+      if (window.scrollY > top) window.scrollTo({ top: top });
+    }
+    function stickTop() { var tb = document.querySelector('.topbar'); return tb ? tb.offsetHeight : 0; }
+    /* The baseline runs to the edges of the paper, so the bar takes main's
+       padding as negative margin. Anchor jumps land below the topbar and the
+       tab bar: scroll-padding on the root covers native jumps and
+       scrollIntoView alike. */
+    function measure() {
+      var cs = getComputedStyle(root), m = root.getBoundingClientRect(), c = probe.getBoundingClientRect();
+      nav.style.setProperty('--btabs-ml', cs.paddingLeft);
+      nav.style.setProperty('--btabs-mr', cs.paddingRight);
+      nav.style.setProperty('--btabs-pl', Math.max(0, c.left - m.left) + 'px');
+      nav.style.setProperty('--btabs-pr', Math.max(0, m.right - c.right) + 'px');
+      nav.style.setProperty('--btabs-top', stickTop() + 'px');
+      document.documentElement.style.scrollPaddingTop = (stickTop() + nav.offsetHeight + 12) + 'px';
+    }
+    window.addEventListener('resize', measure);
+    if (window.ResizeObserver) new ResizeObserver(measure).observe(root);
+
+    function find(el) {
+      for (var k = 0; k < parts.length; k++) {
+        var p = parts[k];
+        for (var m = 0; m < p.members.length; m++) {
+          if (p.members[m].contains(el)) return { p: p, s: isSec(p.members[m]) ? p.members[m] : p.cur };
+        }
+        if (p.box && p.box.contains(el)) return { p: p, s: p.cur };
+      }
+      return null;
+    }
+    document.addEventListener('brief-reveal', function (e) {
+      var hit = find(e.target);
+      if (hit && (hit.p !== curP || hit.s !== curS)) show(hit.p, hit.s, false);
+    });
+    /* A link into another tab: switch first, in the capture phase, so the
+       browser's own jump then lands on a visible target. */
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href^="#"]');
+      if (!a) return;
+      var el;
+      try { el = document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1))); } catch { return; }
+      if (el && el.closest('.tab-off')) {
+        var hit = find(el);
+        if (hit) show(hit.p, hit.s, false);
+      }
+    }, true);
+
+    var target = null;
+    try { target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch {}
+    var hit = target && find(target);
+    show(hit ? hit.p : parts[0], hit ? hit.s : parts[0].cur, false);
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();

@@ -257,6 +257,26 @@ it will differ from a hand-written one, which is the point.
 Deliver the result per the global rule: full `file:///…` URL in a fenced code
 block.
 
+### Tabbed layout for a long brief (`tabs: parts`, opt-in)
+
+**Add `tabs: parts` to the front matter when a long brief covers several
+parallel subjects, each with several sections** (a dossier on five suppliers, a
+review of four products). Each `#` part becomes a tab and each `##` section in
+it a sub-tab; the reader sees one section at a time, with Previous and Next
+under it. Leave it off for a brief that reads top to bottom: one verdict and its
+evidence is a scroll, not a set of tabs.
+
+- **The contents list is not rendered.** The tab bar and the gutter rail do its
+  job, and `brief-lint.py` does not ask for one. An authored `## Contents` is dropped.
+- **Sub-tab labels are the contents labels.** Give a long heading a short label
+  with the usual `## Heading :: Short label | note`; the runtime never truncates.
+- **The answers block and anything above the first part stay above the bar.**
+  Questions and references are sections in their parts, so put them in a last
+  part (for example "Questions and sources").
+- Links, footnotes, the rail and comments switch to the right tab before they
+  jump, and print or PDF shows every section, untabbed. Example source:
+  `assets/test-tabs-brief.md`. Full rules: `reference/markdown-format.md`.
+
 ## End-of-phase brief — required section order
 
 A brief closing a work phase (see global CLAUDE.md § How I work) uses these

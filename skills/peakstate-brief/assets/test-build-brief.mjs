@@ -591,4 +591,21 @@ assert.equal(render(src), html, 'rendering is deterministic');
 assert.equal(render(src.replace(/\r?\n/g, '\r\n')).replace(/\r/g, ''), html,
   'CRLF source renders the same page');
 
+/* ── part tabs (`tabs: parts`) ─────────────────────────────────────────────── */
+{
+  const tabSrc = readFileSync(join(HERE, 'test-tabs-brief.md'), 'utf8');
+  const tabbed = render(tabSrc);
+  assert.ok(/<body [^>]*data-tabs="parts"/.test(tabbed), 'tabs: parts lands on <body>');
+  const tm = /<main>[\s\S]*<\/main>/.exec(tabbed)[0];
+  assert.ok(!tm.includes('nav class="toc"'), 'a tabbed brief renders no contents list');
+  assert.ok(tm.includes('data-tablabel="Overview"'), 'a section carries its short label for the sub-tab');
+  assert.ok(tm.includes('data-tablabel="Q1: Accept A?"'), 'a question label keeps its number');
+  assert.ok(tm.includes('data-tablabel="Price"'), 'the `:: label | note` label, not the heading');
+  assert.ok(!main.includes('data-tablabel'), 'an untabbed brief carries no tab labels');
+  assert.ok(!/data-tabs=/.test(html.split('<main>')[0].replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, '')),
+    'an untabbed brief is not tabbed');
+  assert.throws(() => render('---\ntitle: T\ntabs: sections\n---\n\n# P\n\n## S\n\nx\n'), /tabs: expected parts/);
+  assert.throws(() => render('---\ntitle: T\ntabs: parts\n---\n\n## S\n\nx\n'), /needs at least one/);
+}
+
 console.log('build-brief: all checks passed');
