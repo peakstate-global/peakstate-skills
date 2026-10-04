@@ -1455,6 +1455,16 @@ mark.cmt[data-hl] { color: var(--fg); }
 .bterm-card { display: block; }
 .bterm-card strong { display: block; font-size: .8rem; margin-bottom: .2rem; color: var(--accent); }
 .bterm-card span { display: block; font-size: .85rem; line-height: 1.45; }
+.bterm-card .bterm-link { display: inline-block; margin-top: .35rem; font-size: .8rem; color: var(--accent); cursor: pointer; }
+/* A term card with a concept link prints the address as text: paper has no tooltip. */
+@media print { .defs-in .term[data-href]::after { content: "Read the brief: " attr(data-href); display: block;
+  margin-top: .4rem; font-size: .75rem; color: var(--muted); word-break: break-all; } }
+
+/* ── draft block: a message the reader sends on ── */
+.draft { position: relative; border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 8px; padding: .8rem 3rem .8rem 1rem; margin: 0 0 1.2rem; background: var(--accent-soft); }
+.draft > :last-child { margin-bottom: 0; }
+.draft > .copybtn { position: absolute; top: .55rem; right: .55rem; }
 
 /* ── Gutter contents rail (brief.js builds it from part and section headings)
    Fixed-width mode only. The column stays centred while the gutter has room

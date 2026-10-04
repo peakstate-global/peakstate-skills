@@ -45,6 +45,10 @@
   button into every `<pre>` (copies its `<code>`/text content, ✓ + toast on
   success). Just write plain `<pre><code>…</code></pre>` — never hand-roll a
   copy button.
+- **Copy button on every `:::draft` block** → copies the message with its
+  formatting: one `ClipboardItem` holding `text/html` and `text/plain`. Where the
+  browser refuses the rich write (as `file://` often does), it falls back to the
+  plain text through the same textarea copy the other buttons use.
 - **Copy summary as markdown** → the copy icon on the summary page puts the verdict
   on the clipboard as markdown, and **appends a short References list of only the
   sources that part cites**, numbered as they are numbered on the page. The collapsed
@@ -175,9 +179,15 @@ beyond a normal Definitions block and normal headings.
   whole-word, case-insensitive, longest term first.
   - **First use per section only**, not every use. A page with every "bootstrap"
     underlined reads as noise, and the reader needs the card once per section.
+    A brief with `define: every-use` in its front matter (`data-define` on
+    `<body>`) links every eligible use instead, for a reader who arrives mid-page.
+  - **Concept links.** A card carrying `data-href` gets a "Read the brief" link
+    in its tooltip. Only `https:` and relative URLs are accepted, checked by the
+    builder and again by the runtime, which strips an unsafe value from the card.
+    In print the card shows the address as text, because paper has no tooltip.
   - **Skipped:** headings, code, links, buttons, table header cells, footnote
     markers, source lines (`.l5`), the Definitions block, the answers block, the
-    contents, and any element that carries its own `<script>` (an interactive
+    contents, `:::draft` blocks, and any element that carries its own `<script>` (an interactive
     `:::html` widget owns its DOM). Add `data-noterms` to opt any other element out.
   - **Non-blocking.** A `TreeWalker` runs in small slices under
     `requestIdleCallback` (a `setTimeout` fallback), so a 500KB brief never freezes.

@@ -131,7 +131,8 @@ with their locators, each linking to its exact passage in the references.
    reader learns the field's words from the brief; a term used and not defined is a lookup
    pushed onto them. See `reference/definitions-block.md`. Omit the block only when the brief
    uses no technical terms at all. **The runtime links every body use of a defined term
-   to its card automatically** (first use per section, hover and focus), and builds a
+   to its card automatically** (first use per section, or every use with `define: every-use`
+   in the front matter; hover and focus), and builds a
    gutter contents rail from the headings; write neither by hand
    (`reference/runtime.md`, "Definition links and the gutter contents rail").
 11. **The first paragraph after the answers block is the verdict.** One sentence stating
@@ -199,7 +200,10 @@ the rule alone is enough to write a correct brief without opening anything.
   the lookup. State the mechanism, not just the outcome. → `reference/prose.md`
 - **The source is markdown: front matter, then parts, then sections.** The structural layer
   is deliberately small — only the parts the runtime keys off have a syntax of their own.
-  → `reference/markdown-format.md`
+  An unknown front matter key fails the build, so a misspelt option never silently does
+  nothing. A `:::draft` fence boxes a message the reader sends on, with a copy button that
+  keeps its formatting, and a term card's `data-href` adds a "Read the brief" link to its
+  tooltip. → `reference/markdown-format.md`
 
 ## How to build one — author markdown, render the HTML
 

@@ -23,6 +23,15 @@ the reader's answers — it is the only thing that clears the unsent-work marker
 `reply` is your answer to it, which the runtime shows in a thread on that comment
 (see "Replying to a comment the reader made"). `addressed:` is the older form,
 still accepted, and becomes `data-addressed`: the same matching with no words.
+`define: every-use` links every eligible use of a defined term rather than the first
+use per section (`first-use` is the default and can be written out). The publish
+tooling writes its own state back as `visibility:` and the `publish-*` keys
+(`publish-slug`, `publish-project`, `publish-project-uid`, `publish-brief-uid`,
+`publish-short-id`, `publish-tenant`); leave those to it.
+
+**An unknown front matter key fails the build**, naming the key and listing the known
+ones. A misspelt option would otherwise do nothing and say nothing. A tool that starts
+reading a new key adds it to `KNOWN_KEYS` in `build-brief.mjs` in the same change.
 
 | Source | Renders as |
 | --- | --- |
@@ -42,6 +51,8 @@ still accepted, and becomes `data-addressed`: the same matching with no words.
 | `[^3]` where source 3 has no quote | `#ref3`, the entry itself. A marker pointing at a quote that does not exist is a build error. |
 | `:::verdict` … `:::` | `<div class="verdict">` with markdown rendered inside |
 | `:::html` … `:::` | passed through verbatim |
+| `:::draft` … `:::` | `<div class="draft" data-draft>` with markdown rendered inside: a boxed message the reader sends on (an email, a chat post). The runtime adds a copy button that writes `text/html` and `text/plain`, so it pastes formatted into a rich editor and as plain text into a terminal |
+| `data-href` on a `.defs-in .term` card | a "Read the brief" link in that term's tooltip, and the address printed under the card on paper. Only an `https:` or a relative URL is kept; the builder drops any other value (`javascript:`, `data:`, `http:`, `//host`) and keeps the card |
 | `:::gallery` … `:::`, one `![caption](src)` per line | `<div class="gallery">` of captioned `<figure>` thumbnails, 3 across on a desktop, 2 on a tablet, 1 on a phone, more in full width. `:::gallery pairs` holds two across (four in full width) so a before-and-after pair shares a row. The lightbox steps through that gallery only. A line starting with `<` (a hand-written `<figure>`) passes through; any other line fails the build |
 | a block starting with `<` | passed through verbatim |
 | inline `<span class="hl-warn">…</span>` | passed through, in prose, a list item or a table cell. Allowlist: `span b i em strong s del ins sub sup kbd abbr mark small wbr br`, carrying at most a `class`. Anything else escapes to visible text |
