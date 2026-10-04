@@ -1515,6 +1515,31 @@
     }));
   }
 
+  /* ── copy buttons on draft blocks ──
+     A `:::draft` block is a message the reader sends on, so its copy keeps the
+     formatting: text/html and text/plain together, through ClipboardItem. A
+     browser that refuses the rich write (file:// often does) gets the plain
+     text through copyText and its textarea fallback instead. */
+  Array.prototype.forEach.call(document.querySelectorAll('div[data-draft]'), function (box) {
+    if (box.querySelector(':scope > .copybtn')) return;
+    box.appendChild(copybtn('Copy message', 'draftcopy', function () {
+      var clone = box.cloneNode(true);
+      Array.prototype.forEach.call(clone.querySelectorAll('.copybtn'), function (b) { b.remove(); });
+      var html = clone.innerHTML.trim(), txt = (box.innerText || box.textContent || '').trim();
+      var msg = 'Message copied';
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        try {
+          navigator.clipboard.write([new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([txt], { type: 'text/plain' })
+          })]).then(function () { toast(msg); }, function () { copyText(txt, msg); });
+          return;
+        } catch (err) { /* fall through to the plain copy */ }
+      }
+      copyText(txt, msg);
+    }));
+  });
+
   /* The footnote markers inside one part of the document, resolved against the
      brief's own reference list. Numbering follows the markers, so the copied
      extract and the page agree. Returns '' when the part cites nothing. */
@@ -2949,11 +2974,22 @@ var __briefTip = (() => {
 
   /* ── definition links ──────────────────────────────────────────────────
      First use of each term per section, not every use: a page where every
-     "bootstrap" is underlined reads as noise. Skips headings, code, links,
+     "bootstrap" is underlined reads as noise. A brief whose front matter says
+     `define: every-use` (body data-define) links every eligible use instead,
+     for a reader who lands mid-page from a search or a link. Skips headings, code, links,
      table header cells, the Definitions and Answers blocks, and any widget
      that carries its own script. */
   var SKIP = 'h1,h2,h3,h4,h5,h6,code,pre,kbd,a,button,label,th,textarea,select,svg,script,style,' +
-    'sup.fn,.l5,#s-definitions,dl.answers,nav.toc,.brief-title,.topbar,.bterm,[contenteditable],[data-noterms]';
+    'sup.fn,.l5,#s-definitions,dl.answers,nav.toc,.brief-title,.topbar,.bterm,[contenteditable],[data-noterms],[data-draft]';
+
+  /* Same rule as safeHref in build-brief.mjs: https, or relative. */
+  function safeHref(v) {
+    var s = String(v || '').trim();
+    if (!s || /[\x00-\x1f\x7f]/.test(s)) return '';
+    if (/^https:\/\/[^\s/]/i.test(s)) return s;
+    if (/^[/\\]{2}/.test(s)) return '';
+    return /[:&\\]/.test(s.split(/[/?#]/)[0]) ? '' : s;
+  }
 
   function defLinks() {
     var root = mainEl();
@@ -2964,7 +3000,10 @@ var __briefTip = (() => {
       var h = card.querySelector('h4'); if (!h) return;
       var li = card.querySelector('li'), k = li && li.querySelector('.k');
       var def = li ? li.textContent.slice(k ? k.textContent.length : 0).trim() : '';
-      var entry = { id: idx, title: h.textContent.trim(), def: def };
+      var href = safeHref(card.getAttribute('data-href'));
+      /* An unsafe address goes entirely, so print cannot show it either. */
+      if (!href) card.removeAttribute('data-href');
+      var entry = { id: idx, title: h.textContent.trim(), def: def, href: href };
       /* "Authored blend / AI-bust-tilted blend" defines two names for one card. */
       h.textContent.split(/\s+\/\s+/).forEach(function (w) {
         w = w.trim();
@@ -2987,8 +3026,9 @@ var __briefTip = (() => {
       for (var i = 0; i < widgets.length; i++) if (widgets[i].contains(el)) return true;
       return false;
     }
-    var used = new WeakMap();
+    var used = new WeakMap(), everyUse = document.body.getAttribute('data-define') === 'every-use';
     function seen(scope, id) {
+      if (everyUse) return false;
       var s = used.get(scope); if (!s) { s = {}; used.set(scope, s); }
       if (s[id]) return true; s[id] = 1; return false;
     }
@@ -2996,7 +3036,59 @@ var __briefTip = (() => {
       var d = document.createElement('div'); d.className = 'bterm-card';
       var t = document.createElement('strong'); t.textContent = entry.title;
       var p = document.createElement('span'); p.textContent = entry.def;
-      d.appendChild(t); d.appendChild(p); return d;
+      d.appendChild(t); d.appendChild(p);
+      if (entry.href) {
+        var a = document.createElement('a'); a.className = 'bterm-link';
+        a.href = entry.href; a.textContent = 'Read the brief';
+        d.appendChild(a);
+      }
+      return d;
+    }
+    /* The card lives in the tooltip layer, not after the term, so the "Read the
+       brief" link needs three ways in beyond a mouse. Keyboard: Enter on the term
+       opens the card and focuses the link; Tab from an open card's term goes to
+       the link; Shift+Tab or Escape from the link returns to the term. Focus
+       inside the card keeps it open. Touch: a tap on the term pins the card
+       until a tap elsewhere, because the engine ignores touch hover and treats
+       focus straight after a press as mouse focus. */
+    function reach(s, tip) {
+      var pinned = false, base = tip.scheduleHide;
+      tip.scheduleHide = function () { if (!pinned) base.call(tip); };
+      function link() { return tip.el && tip.el.querySelector('.bterm-link'); }
+      function openNow() { tip.clearShow(); tip.clearHide(); tip.show(); wire(); }
+      function close() { pinned = false; document.removeEventListener('pointerdown', away, true); tip.dismiss(); }
+      function away(e) {
+        if (s.contains(e.target) || (tip.el && tip.el.contains(e.target))) return;
+        close();
+      }
+      function wire() {
+        var el = tip.el;
+        if (!el || el.__reach) return;
+        el.__reach = true;
+        el.addEventListener('focusin', function () { tip.clearHide(); });
+        el.addEventListener('focusout', function (e) {
+          if (e.relatedTarget !== s && !el.contains(e.relatedTarget)) tip.scheduleHide();
+        });
+        el.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' || (e.key === 'Tab' && e.shiftKey)) {
+            e.preventDefault(); e.stopPropagation(); s.focus();
+            if (e.key === 'Escape') close();
+          }
+        });
+      }
+      s.addEventListener('keydown', function (e) {
+        var go = e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey && tip.open);
+        if (!go) return;
+        if (!tip.open) openNow(); else wire();
+        var a = link();
+        if (a) { e.preventDefault(); a.focus(); }
+      });
+      s.addEventListener('pointerup', function (e) {
+        if (e.pointerType !== 'touch') return;
+        if (pinned) { close(); return; }
+        openNow(); pinned = true;
+        document.addEventListener('pointerdown', away, true);
+      });
     }
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
@@ -3015,8 +3107,8 @@ var __briefTip = (() => {
         frag.appendChild(document.createTextNode(text.slice(last, m.index)));
         var s = document.createElement('span');
         s.className = 'bterm'; s.tabIndex = 0; s.textContent = m[0];
-        TT.attach(s, { content: (function (en) { return function () { return card(en); }; })(entry),
-          hoverable: true, placement: 'top', showDelay: 300 });
+        reach(s, TT.attach(s, { content: (function (en) { return function () { return card(en); }; })(entry),
+          hoverable: true, placement: 'top', showDelay: 300 }));
         frag.appendChild(s);
         last = m.index + m[0].length;
       }

@@ -492,6 +492,60 @@ rmSync(tmp, { recursive: true, force: true });
   assert.ok(out.includes("Body text costs $&amp; and $' here."), 'the body lands, and $& in the text is not expanded');
 }
 
+/* ── front matter is checked, and the four per-brief options ───────────── */
+
+{
+  const fm = (keys, body = '## S\n\nBody.\n') => '---\n' + keys + '\n---\n\n' + body;
+  /* A misspelt option must fail, never silently do nothing. */
+  assert.throws(() => render(fm('title: T\ndefnie: every-use')), /unknown front matter key "defnie"/,
+    'an unknown front matter key fails the build');
+  /* Every key a real brief carries still builds. */
+  render(fm(['title: T', 'head-title: H', 'brief-id: b', 'eyebrow: E', 'sub: S', 'replies: []',
+    'addressed: []', 'consumed: c1', 'highlights: []', 'publish-slug: s', 'publish-project: p',
+    'publish-project-uid: u', 'publish-brief-uid: u', 'publish-short-id: i', 'publish-tenant: t',
+    'visibility: private', 'define: every-use'].join('\n')));
+
+  /* define: every-use reaches the runtime as one body attribute; the default adds nothing. */
+  const DEF_BODY = '## S\n\nA widget, another widget.\n';
+  assert.ok(/<body[^>]* data-define="every-use"/.test(render(fm('title: T\ndefine: every-use', DEF_BODY))),
+    'define: every-use marks the body');
+  assert.ok(!/<body[^>]* data-define=/.test(render(fm('title: T', DEF_BODY))), 'no define, no attribute');
+  assert.throws(() => render(fm('title: T\ndefine: sometimes')), /define: expected/,
+    'an unknown define value fails');
+
+  /* data-href on a term card: https and relative survive, anything else is dropped. */
+  const cards = render(fm('title: T', '# P\n\n## Definitions\n\n:::html\n<div class="defs-in">' +
+    '<div class="term" data-href="https://example.org/brief"><h4>Alpha</h4></div>' +
+    '<div class="term" data-href="javascript:alert(1)"><h4>Beta</h4></div>' +
+    '<div class="term" data-href=" JaVa\tScript:alert(1)"><h4>Gamma</h4></div>' +
+    '<div class="term" data-href="//evil.example/x"><h4>Delta</h4></div>' +
+    '<div class="term" data-href="http://example.org/x"><h4>Eps</h4></div>' +
+    '<div class="term" data-href="../other-brief.html#s-two"><h4>Zeta</h4></div>' +
+    '</div>\n:::\n'));
+  const cmain = /<main>[\s\S]*<\/main>/.exec(cards)[0];
+  assert.ok(cmain.includes('data-href="https://example.org/brief"'), 'an https data-href survives');
+  assert.ok(cmain.includes('data-href="../other-brief.html#s-two"'), 'a relative data-href survives');
+  assert.equal((cmain.match(/data-href=/g) || []).length, 2, 'javascript:, protocol-relative and http: are dropped');
+  assert.ok(cmain.includes('<h4>Beta</h4>'), 'the card itself stays when its href is dropped');
+
+  /* The href filter touches the Definitions term cards only: a code example
+     that shows the attribute, and a widget elsewhere, come through untouched. */
+  const elsewhere = /<main>[\s\S]*<\/main>/.exec(render(fm('title: T', '# P\n\n## S\n\n' +
+    'Write `data-href="javascript:x"` never.\n\n:::html\n<div class="widget" data-href="javascript:void(0)">W</div>\n:::\n')))[0];
+  assert.ok(elsewhere.includes('<code>data-href=&quot;javascript:x&quot;</code>') ||
+    elsewhere.includes('<code>data-href="javascript:x"</code>'), 'code text showing data-href is kept');
+  assert.ok(elsewhere.includes('<div class="widget" data-href="javascript:void(0)">'), 'a widget outside the Definitions cards is not touched');
+
+  /* Keys are checked as written, so a wrong case or an underscore fails too. */
+  assert.throws(() => render(fm('Title: T')), /unknown front matter key "Title"/, 'a capitalised key fails');
+  assert.throws(() => render(fm('title: T\nbrief_id: b')), /unknown front matter key "brief_id"/, 'an underscored key fails');
+
+  /* :::draft is a marked block whose content is rendered as markdown. */
+  const dr = /<main>[\s\S]*<\/main>/.exec(render(fm('title: T', '# P\n\n## S\n\n:::draft\nHi **there**,\n\n- one\n- two\n:::\n')))[0];
+  assert.ok(/<div class="draft" data-draft>\n<p>Hi <strong>there<\/strong>,<\/p>/.test(dr), ':::draft renders a marked block with markdown inside');
+  assert.ok(dr.includes('<li>one</li>'), 'lists inside a draft render');
+}
+
 /* ── reproducibility ─────────────────────────────────────────────────────── */
 
 assert.equal(render(src), html, 'rendering is deterministic');

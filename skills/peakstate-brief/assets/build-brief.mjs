@@ -358,6 +358,9 @@ function renderBlock(lines, ctx) {
       });
       return '<div class="gallery' + (c[2] ? ' ' + escAttr(c[2]) : '') + '">\n' + items.join('\n') + '\n</div>';
     }
+    /* A message the reader sends on: boxed, rendered as markdown, and given a
+       copy button by brief.js, which finds it by the data attribute. */
+    if (c[1] === 'draft') return '<div class="draft" data-draft>\n' + renderBody(inner, ctx) + '\n</div>';
     const cls = c[1] + (c[2] ? ' ' + c[2] : '');
     return '<div class="' + cls + '">\n' + renderBody(inner, ctx) + '\n</div>';
   }
@@ -486,11 +489,51 @@ function frontMatter(src) {
   if (!m) return [{}, src];
   const meta = {};
   for (const line of m[1].split('\n')) {
-    const kv = /^([a-z-]+):\s*(.*)$/.exec(line.trim());
+    /* Any key-shaped line is kept as written, so checkFrontMatter sees a
+       `Title` or a `brief_id` and fails on it rather than it vanishing here. */
+    const kv = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line.trim());
     if (kv) meta[kv[1]] = kv[2];
   }
   return [meta, src.slice(m[0].length)];
 }
+
+/* Every front matter key something reads: this renderer, the runtime, and the
+   publish tooling that writes its own state back into the file. A key outside
+   this list fails the build, because a misspelt option otherwise does nothing
+   and says nothing. Add a key here in the same change that starts reading it. */
+const KNOWN_KEYS = new Set(['title', 'head-title', 'brief-id', 'eyebrow', 'sub', 'replies',
+  'addressed', 'consumed', 'highlights', 'define', 'visibility', 'publish-slug', 'publish-project',
+  'publish-project-uid', 'publish-brief-uid', 'publish-short-id', 'publish-tenant']);
+
+function checkFrontMatter(meta) {
+  const bad = Object.keys(meta).filter((k) => !KNOWN_KEYS.has(k));
+  if (bad.length) {
+    throw new Error('unknown front matter key ' + bad.map((k) => '"' + k + '"').join(', ') +
+      '\n  Known keys: ' + [...KNOWN_KEYS].join(', '));
+  }
+  if (meta.define && !/^(first-use|every-use)$/.test(meta.define)) {
+    throw new Error('define: expected first-use or every-use, got "' + meta.define + '"');
+  }
+}
+
+/* A term card's `data-href` becomes a live link in its tooltip, so only two
+   shapes are allowed: an https URL, or a relative one. Anything with a scheme
+   (javascript:, data:, http:), a protocol-relative `//host`, a control
+   character or an entity in the scheme position is dropped. brief.js applies
+   the same rule again on the decoded value. */
+export function safeHref(v) {
+  const s = String(v).trim();
+  if (!s || /[\x00-\x1f\x7f]/.test(s)) return false;
+  if (/^https:\/\/[^\s/]/i.test(s)) return true;
+  if (/^[/\\]{2}/.test(s)) return false;
+  return !/[:&\\]/.test(s.split(/[/?#]/)[0]);
+}
+/* Runs only on the Definitions section, and only inside the opening tag of a
+   `term` card, which is the one place brief.js turns data-href into a link.
+   A code example or a widget elsewhere that mentions the attribute is left alone. */
+const dropUnsafeHrefs = (html) => html.replace(/<[a-z][^>]*\sclass\s*=\s*["'][^"']*\bterm\b[^"']*["'][^>]*>/gi,
+  (tag) => tag.replace(/\sdata-href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+    (all, a, b, c) => (safeHref(a ?? b ?? c) ? all : '')));
 
 const HEAD = /^(#{1,2})\s+(.*?)(?:\s*\{#([^}]+)\})?(?:\s*::\s*(.*))?$/;
 
@@ -767,6 +810,7 @@ export function render(source, opts = {}) {
      here is what makes the same source render the same page on any machine. */
   const src = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const [meta, body] = frontMatter(src);
+  checkFrontMatter(meta);
   /* Dropping runs before the anchor index is built, so a footnote DEFINITION
      that lived in a private section still fails the build loudly rather than
      orphaning every marker that cited it. That gate is not weakened here. */
@@ -840,6 +884,10 @@ export function render(source, opts = {}) {
   /* The printer's diamond: the document is over, and nothing below is missing. */
   out.push('<div class="endmark" aria-hidden="true"></div>');
 
+  for (let i = 0; i < out.length; i++) {
+    if (/^<section[^>]* id="s-definitions"/.test(out[i])) out[i] = dropUnsafeHrefs(out[i]);
+  }
+
   if (refs.missing.length) {
     throw new Error('footnote markers with no target: ' + [...new Set(refs.missing)].join(', '));
   }
@@ -862,6 +910,7 @@ export function render(source, opts = {}) {
      what work Claude has already taken (so the unsent-work marker clears), and
      which highlights are now part of the document rather than of one browser. */
   const consumed = meta.consumed ? ' data-consumed="' + escAttr(meta.consumed) + '"' : '';
+  const define = meta.define === 'every-use' ? ' data-define="every-use"' : '';
   const baked = meta.highlights ? ' data-highlights="' + escAttr(meta.highlights) + '"' : '';
   /* A token that changes whenever the source does. A comment the reader
      exported under one build and has not touched since is treated as received
@@ -878,7 +927,7 @@ export function render(source, opts = {}) {
   return inlineRuntime(template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + build + pub + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + define + build + pub + '>')
     /* The LAST <main> in the template is the body. A function, so a `$&` or
        `$'` in the brief's own text is not expanded. */
     .replace(/<main>(?![\s\S]*<main>)[\s\S]*<\/main>/, () => '<main>\n\n' + out.join('\n\n') + '\n\n</main>'), opts);
