@@ -826,6 +826,16 @@ main img { max-width: 100%; height: auto; }
 @media (max-width: 58rem) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 34rem) { .gallery { grid-template-columns: minmax(0, 1fr); } }
 body.fullwidth .gallery { grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr)); }
+/* A short gallery stays in the reading column, even in full width. A gallery
+   bleeds only once it holds more figures than the column shows in one row:
+   four or more, or three or more for pairs. Below that, the bleed widened the
+   grid to the whole window and the auto-fill columns parked a lone figure in
+   the left gutter, far outside the text. Measured 2026-10-06 at 2000px: a
+   one-image header gallery sat at the window's left edge. */
+@media (min-width: 58.01rem) {
+  body.fullwidth .gallery:not(.pairs):not(:has(> figure:nth-child(4))) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.fullwidth .gallery.pairs:not(:has(> figure:nth-child(3))) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* `:::gallery pairs`: an even column count, so each before-and-after pair
    shares a row. Two across, four in full width, one on a phone. */
 .gallery.pairs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1199,7 +1209,10 @@ body.fullwidth .sec-body, body.fullwidth .q-body {
 body.fullwidth .sec-body > .tblwrap, body.fullwidth .q-body > .tblwrap,
 body.fullwidth .sec-body > pre, body.fullwidth .q-body > pre,
 body.fullwidth .sec-body > figure, body.fullwidth .q-body > figure,
-body.fullwidth .sec-body > .gallery, body.fullwidth .q-body > .gallery,
+body.fullwidth .sec-body > .gallery:not(.pairs):has(> figure:nth-child(4)),
+body.fullwidth .q-body > .gallery:not(.pairs):has(> figure:nth-child(4)),
+body.fullwidth .sec-body > .gallery.pairs:has(> figure:nth-child(3)),
+body.fullwidth .q-body > .gallery.pairs:has(> figure:nth-child(3)),
 body.fullwidth .sec-body > table, body.fullwidth .q-body > table,
 body.fullwidth .sec-body > .diag, body.fullwidth .q-body > .diag,
 /* A `:::html` block arrives as a plain wrapper div, so a table inside one was
