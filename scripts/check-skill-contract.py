@@ -185,6 +185,9 @@ def check_skill(skill, snippet=None):
     desc = top.get("description", "")
     if not desc or len(desc) > 1024:
         errs.append("description must be 1 to 1024 characters on one line")
+    if ": " in desc or desc.endswith(":") or " #" in desc:
+        # Strict YAML parsers (claude.ai upload) reject an unquoted ": " or " #".
+        errs.append("description must not contain ': ' or ' #' (strict YAML rejects it)")
     if top.get("license") != "Apache-2.0":
         errs.append("license must be Apache-2.0")
     for k, v in META_FIXED.items():
@@ -364,6 +367,7 @@ def selftest():
     run("wrong license", edit("Apache-2.0", "MIT"), "license must be Apache-2.0")
     run("name mismatch", edit("name: demo-skill", "name: other"), "does not match the folder")
     run("long description", edit("Makes a demo.", "x" * 1030), "1 to 1024")
+    run("colon in description", edit("Makes a demo.", "Makes two things: a demo."), "strict YAML")
     run("unquoted metadata", edit('version: "0.1"', "version: 0.1"), "must be a quoted string")
     run("extra metadata key", edit('  output:', '  tier: "1"\n  output:'), "metadata keys must be exactly")
     run("wrong author", edit("Peak State Global", "Someone"), "metadata.author")

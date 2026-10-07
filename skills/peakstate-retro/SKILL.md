@@ -1,6 +1,6 @@
 ---
 name: peakstate-retro
-description: Analyze the user's own coding-agent session history (Claude Code, Codex or pi) to find how they actually work: repeated requests, correction loops, skill/hook candidates, and built-but-unused tooling. Use when the user says "claude retro", "analyze how I work", "audit my usage", "what do I repeat", or invokes /peakstate-retro (also answers to "claude retro"). Args in any order: an agent name (claude, codex, pi, or all), a number of days (default 30), and/or a project substring; bare invocation asks which to include.
+description: Analyze the user's own coding-agent session history (Claude Code, Codex or pi) to find how they actually work, such as repeated requests, correction loops, skill/hook candidates, and built-but-unused tooling. Use when the user says "claude retro", "analyze how I work", "audit my usage", "what do I repeat", or invokes /peakstate-retro (also answers to "claude retro"). Args in any order are an agent name (claude, codex, pi, or all), a number of days (default 30), and/or a project substring; bare invocation asks which to include.
 disable-model-invocation: true
 ---
 

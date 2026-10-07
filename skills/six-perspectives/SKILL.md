@@ -1,6 +1,6 @@
 ---
 name: six-perspectives
-description: Decisions get stuck when people argue from different angles at the same time. This skill looks at one angle at a time, so every view is heard and the decision gets made. Looks at a decision, plan or idea in six modes, one at a time: facts, feelings, risks, benefits, ideas and process. It asks for the user's own view in each mode before it adds suggestions, keeps every item in its mode, and ends with a synthesis and three next moves. Based on Edward de Bono's parallel thinking method. Use when someone says "look at this from every angle", "help me think this through", "parallel thinking", "de Bono hats", "pros and cons and gut feel", "should I do this", or before a group or a person makes a decision.
+description: Decisions get stuck when people argue from different angles at the same time. This skill looks at one angle at a time, so every view is heard and the decision gets made. Looks at a decision, plan or idea in six modes, one at a time (facts, feelings, risks, benefits, ideas and process). It asks for the user's own view in each mode before it adds suggestions, keeps every item in its mode, and ends with a synthesis and three next moves. Based on Edward de Bono's parallel thinking method. Use when someone says "look at this from every angle", "help me think this through", "parallel thinking", "de Bono hats", "pros and cons and gut feel", "should I do this", or before a group or a person makes a decision.
 license: Apache-2.0
 metadata:
   author: "Peak State Global"
