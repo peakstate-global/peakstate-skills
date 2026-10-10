@@ -534,7 +534,7 @@ def check_accountable_review(text):
             "class": "overclaim",
             "why": "a review status after the name is a claim about that person "
                    "the model cannot ground; only they can state it",
-            "suggestion": "remove the status unless the named person wrote it",
+            "suggestion": "remove the status unless the named person told you it; then keep exactly what they said",
         })
     return findings
 
