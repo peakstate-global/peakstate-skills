@@ -479,12 +479,14 @@ def scan_text(text, rules):
     return findings
 
 
-# What an Accountable entry must say about review, and what it may never imply.
+# What an Accountable entry may say about review, and what it may never imply.
 # A person is accountable for a process without reading every output of it: that
-# is how governance and quality control work in any large organisation. So naming
-# the accountable person is correct and says nothing about who read what. The
-# failure is the SILENCE around it, because a reader takes an unqualified name as
-# an endorsement of the specific words in front of them.
+# is how governance and quality control work in any large organisation. So a
+# bare name is correct and says nothing about who read what, and is the clean,
+# default form. The model cannot know the named person's review status, so any
+# status it writes, in either direction, is an ungrounded claim about that
+# person. Only the named person may add one, in their own words, once they have
+# said exactly what it should say.
 REVIEW_STATUS = re.compile(
     r"\((?:not reviewed|unreviewed|reviewed[^)]*)\)", re.I)
 REVIEW_CLAIM = re.compile(
@@ -495,19 +497,13 @@ REVIEW_DISCLAIMER = re.compile(
 
 
 def check_accountable_review(text):
-    """Findings for an Accountable entry that is silent, or loud, about review.
+    """Findings for an Accountable entry that claims a review status it should not.
 
-    Two failures, opposite directions, same cause.
-
-    An entry naming a person with no review status reads as a signature. The fix
-    is safe and mechanical, so this one carries a suggestion: add `(Not reviewed)`
-    after the name. That is the honest default, because the accountable person
-    signs for the process rather than for the sentence.
-
-    An entry asserting that a person reviewed it cannot be checked by any tool,
-    so it always fires and always needs a human override. Only the person named
-    can say they signed off on THIS version, and the scanner must never assume it
-    from the presence of their name.
+    A bare name is accountable for the process, not for the sentence, and says
+    nothing about who read the output: that is correct, and it is the clean,
+    default form. Any review status after the name, in either direction, is a
+    claim the model cannot ground on its own, so it always fires. Only the
+    named person may add one, and only in their own words.
     """
     findings = []
     lines = dict(content_lines(text, keep_blank=True))
@@ -530,14 +526,15 @@ def check_accountable_review(text):
                 "suggestion": None,
             })
 
-    if named and not REVIEW_STATUS.search(body):
+    m2 = REVIEW_STATUS.search(body) if named else None
+    if m2:
         findings.append({
             "line_no": entry[0],
-            "matched_text": "Accountable names a person with no review status",
+            "matched_text": " ".join(m2.group(0).split()),
             "class": "overclaim",
-            "why": "an unqualified name reads as a signature on the content, and "
-                   "accountability for a process is not review of its output",
-            "suggestion": "add (Not reviewed) after the name, or the version they signed off on",
+            "why": "a review status after the name is a claim about that person "
+                   "the model cannot ground; only they can state it",
+            "suggestion": "remove the status unless the named person wrote it",
         })
     return findings
 
@@ -675,32 +672,33 @@ Limitations
         failures.append(f"the rendered Attribution entry still fires: {got}")
     if _REPOS and not any(f["class"] == "tooling" and f["line_no"] == 5 for f in got):
         failures.append("the exemption swallowed the whole rendered definition list")
-    # --- Accountable: named without a review status, and claiming review ------
+    # --- Accountable: a bare name is clean, a review status is not -----------
     # A person is accountable for a process without reading every output of it.
-    # So the name is fine and the SILENCE is not, because a bare name reads as a
-    # signature on the sentence in front of the reader.
-    silent = "Accountable\n: Andrew Ramsden. The decision needs a person.\n\n"
-    got = check_accountable_review(silent)
-    if not any(f["class"] == "overclaim" and f["suggestion"] for f in got):
-        failures.append("an Accountable entry with no review status did not fire")
+    # A bare name says nothing about who read what, and that is correct, so it
+    # is now clean. A review status after the name is a claim about that person
+    # the model cannot ground, in either direction, so it always fires.
+    bare = "Accountable\n: Andrew Ramsden. The decision needs a person.\n\n"
+    if check_accountable_review(bare):
+        failures.append(f"a bare Accountable name should be clean: {check_accountable_review(bare)}")
 
     stated = "Accountable\n: Andrew Ramsden (Not reviewed). The decision needs a person.\n\n"
-    if check_accountable_review(stated):
-        failures.append(f"(Not reviewed) should be clean: {check_accountable_review(stated)}")
+    got = check_accountable_review(stated)
+    if not any(f["class"] == "overclaim" and f["suggestion"] for f in got):
+        failures.append("(Not reviewed) after the name did not fire")
 
     claimed = "Accountable\n: Andrew Ramsden, who has reviewed this version.\n\n"
     if not any(f["class"] == "overclaim" and f["suggestion"] is None
                for f in check_accountable_review(claimed)):
         failures.append("a claim of personal review did not fire")
 
-    honest = ("Accountable\n: Andrew Ramsden (Not reviewed). No person has "
-              "reviewed the claims against their evidence.\n\n")
-    if check_accountable_review(honest):
-        failures.append(f"an honest negative should be clean: {check_accountable_review(honest)}")
+    reviewed = ("Accountable\n: Andrew Ramsden (Reviewed version 3, 7 September "
+                "2026). The decision needs a person.\n\n")
+    if not check_accountable_review(reviewed):
+        failures.append("a (Reviewed ...) status after the name did not fire")
 
     # --- the author's name is the content of Attribution and Accountable ------
     prov_name = ("Attribution\n: Written by Andrew Ramsden.\n\nAccountable\n"
-                 ": Andrew Ramsden (Not reviewed).\n\n")
+                 ": Andrew Ramsden.\n\n")
     if any(f["class"] == "personal" for f in scan_text(prov_name, rules)):
         failures.append("the author's name still fires inside the provenance block")
     if not any(f["class"] == "personal"
