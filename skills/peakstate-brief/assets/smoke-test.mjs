@@ -225,9 +225,13 @@ const threadMsgs = await page.locator('#cpop .ctmsg').count();
 const threadBoxCleared = (await page.inputValue('#cpop textarea')) === '';
 // an unanswered follow-up edits in place, and the export carries the new words
 await page.click('#cpop .ctedit');
+// while it is edited, the edit owns the only Save: the reply box and its Save hide
+const editHidesReply = !(await page.isVisible('#ctreply')) && !(await page.isVisible('#cpop [data-act="save"]'))
+  && (await page.locator('#cpop .ctedit.primary').textContent()) === 'Save';
 await page.fill('#cpop .cteditbox', 'an edited follow up from the reader');
 await page.click('#cpop .ctedit');
 await page.waitForTimeout(100);
+const replyBackAfterEdit = await page.isVisible('#ctreply') && await page.isVisible('#cpop [data-act="save"]');
 const followUpEdited = (await page.locator('#cpop .ctmsg').count()) === threadMsgs
   && (await page.locator('#cpop .ctmsg .cttext').last().textContent()) === 'an edited follow up from the reader';
 await page.keyboard.press('Escape');
@@ -240,7 +244,7 @@ const unrepliedUntouched = (json3.comments || [])
   .some(c => c.comment === 'crosses an element boundary' && !('reply' in c));
 console.log(JSON.stringify({ repliedMarks, noLineThrough, repliedTip, repliedBadge, dimmedRows,
   rowNotStruck, threadWho, threadOriginal, threadShowsReply, writtenReplyBeatsAddressed,
-  threadMsgs, threadBoxCleared, followUpEdited,
+  threadMsgs, threadBoxCleared, followUpEdited, editHidesReply, replyBackAfterEdit,
   followUpInJSON, unrepliedUntouched, jsErrors: errors }, null, 1));
 
 // ── summary page: placement, and "Copy summary as markdown" ─────────────

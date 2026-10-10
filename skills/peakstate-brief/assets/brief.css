@@ -589,6 +589,10 @@ mark.cmt.replied::after { content: "\21A9"; font-size: .72em; vertical-align: su
 #cpop .ctedit { appearance: none; border: 0; background: none; padding: .15rem 0 0; cursor: pointer;
                font: 500 .7rem/1.3 var(--font-ui); color: var(--muted); text-decoration: underline; }
 #cpop .ctedit:hover { color: var(--accent); }
+#cpop .ctedit.primary { display: block; margin: .35rem 0 0 auto; padding: .25rem .6rem; border: 1px solid var(--accent);
+               border-radius: 8px; font: 600 .78rem/1.3 var(--font-ui); text-decoration: none; }
+#cpop .ctedit.primary:hover { color: #fff; }
+#cpop.ctediting > :is(.ctlabel, #ctreply), #cpop.ctediting .row [data-act="save"] { display: none; }
 #cpop .cteditbox { width: 100%; min-height: 3.2rem; font: inherit; font-size: .82rem; resize: vertical; }
 :is(#cpop, .lb-panel) .ctlabel { display: block; font: 600 .6rem/1 var(--font-ui); letter-spacing: .06em;
                  text-transform: uppercase; color: var(--muted); margin-bottom: .25rem; }

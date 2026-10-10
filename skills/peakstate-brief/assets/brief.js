@@ -919,6 +919,7 @@
       var box = document.createElement('div');
       box.innerHTML = threadHTML(c, true);
       pop.replaceChild(box.firstChild, pop.querySelector('.cthread'));
+      pop.classList.remove('ctediting');
     }
     function commit() {
       var val = ta.value.trim();
@@ -941,7 +942,11 @@
         box = document.createElement('textarea'); box.className = 'cteditbox';
         box.value = c.thread[i].text;
         msg.querySelector('.cttext').replaceWith(box);
-        btn.textContent = 'Save edit'; box.focus();
+        /* One box at a time: the reply box and its Save hide until this edit
+           is saved, and the edit carries its own primary Save. repaint() and
+           closePop() both drop the class, so the reply box comes back. */
+        btn.textContent = 'Save'; btn.classList.add('btn', 'small', 'primary');
+        pop.classList.add('ctediting'); box.focus();
         return;
       }
       var v = box.value.trim();
