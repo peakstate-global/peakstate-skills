@@ -1236,6 +1236,38 @@ body.fullwidth .q-body > div:not(.tblwrap):not([data-nobleed]):has(table) {
   margin-inline: calc(-1 * var(--bleed));
 }
 body.fullwidth .tblwrap, body.fullwidth pre { max-width: none; }
+/* The bleed is room a block MAY take, never a width it must fill. Only content
+   wider than the reading column sticks out, and then only as far as it needs,
+   centred on the column. Content that fits stays exactly at the column.
+   Measured 2026-10-13 at 2000px: a five-column thumbnail table (natural width
+   about 1070px) was stretched or hung off the left edge of an 1684px bleed,
+   with nothing in it that needed the room.
+   i) A table inside a bleeding wrapper (.tblwrap from the renderer, or a
+      `:::html` div) shrinks to its content inside the wrapper's room, never
+      narrower than the column, and centres. The base `min-width: 100%` is what
+      used to stretch it to the whole bleed. */
+body.fullwidth .sec-body > .tblwrap > table, body.fullwidth .q-body > .tblwrap > table,
+body.fullwidth .sec-body > div:not([data-nobleed]):has(table) > table,
+body.fullwidth .q-body > div:not([data-nobleed]):has(table) > table {
+  width: auto; min-width: calc(100% - 2 * var(--bleed)); margin-inline: auto;
+}
+/* ii) A block that is its own box (a bare table, a pre, a figure) cannot use
+   the negative margins: a shrink-to-fit box starts at the left margin edge, so
+   a narrow one hung off the left. It takes its content width, at least the
+   column and at most the column plus both bleeds, and is centred on the column
+   with a translate. A figure's caption is kept out of that width
+   (`contain: inline-size`), so a one-line caption cannot widen the box; the
+   image decides. A `.diag` still fills the bleed, because an SVG scales to any
+   width and so has no content width to measure. */
+body.fullwidth .sec-body > table, body.fullwidth .q-body > table,
+body.fullwidth .sec-body > pre, body.fullwidth .q-body > pre,
+body.fullwidth .sec-body > figure, body.fullwidth .q-body > figure {
+  width: max-content; min-width: 100%; max-width: calc(100% + 2 * var(--bleed));
+  margin-inline: 0; position: relative; left: 50%; transform: translateX(-50%);
+}
+body.fullwidth .sec-body > figure > figcaption,
+body.fullwidth .q-body > figure > figcaption { contain: inline-size; }
+body.fullwidth .sec-body > figure img, body.fullwidth .q-body > figure img { max-width: 100%; }
 
 /* The bleed only works if something does not clip it 4px past the column.
    `.sec-body` carries `overflow: clip` so ticking a section folds it away, and

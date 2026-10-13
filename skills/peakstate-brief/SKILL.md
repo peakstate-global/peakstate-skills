@@ -39,9 +39,12 @@ serif, UI chrome is sans; keep that split in any extras you add.
 **Full width widens the paper, not the prose, and only tables and diagrams take the extra room.**
 The reader's width toggle releases the page cap so the background, the rules and the summary box
 run to the window, while the reading column stays centred at a slightly wider measure. A `.tblwrap`,
-a `table`, a `pre`, a `figure`, a `.gallery` or a `.diag` that is a **direct child** of a section body then bleeds
-symmetrically out of that column into the room the window has. Nest a wide table inside a `<div>` and
-it loses that, so keep it at the top level of the section.
+a `table`, a `pre`, a `figure`, a `.gallery` or a `.diag` that is a **direct child** of a section body may then
+bleed out of that column into the room the window has. **Only content wider than the column sticks
+out, and only as far as it needs, centred on the column.** A table, code block or figure that fits
+the column stays exactly at the column; the bleed is an allowance, never a width to fill. A `.diag`
+is the one exception and fills the bleed, because an SVG scales and has no content width. Keep a wide
+block at the top level of the section, or in a `:::html` div holding the table.
 
 **Images show in one of two modes, chosen per section.** Every image fits its column by default
 and opens full size in the lightbox: use that when each image must be read closely, in sequence.
