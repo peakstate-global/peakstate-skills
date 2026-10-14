@@ -56,6 +56,8 @@ Pause after it. Let the room answer its own question before you speak.
 
 - **Credibility in the first three minutes, through a story.** One specific moment that shows why the speaker has the right to say this. Never a CV, a list of titles or a wall of logos.
 - **One "I was wrong" beat.** A time the speaker believed what the piece now argues against, or a failure of their own. Vulnerability gives the room permission to change its own mind (S8). Place it near the peak, often straight after the slide that challenges the room most.
+- **The confession serves the argument.** What the speaker was wrong about is the belief the piece now corrects, so the beat carries the room toward the throughline. It never concedes a counter-argument: a confession that grants the other side's case comes at the moment the room trusts the speaker most, so it does the most damage to the piece. If an objection deserves a place, answer it in its own section, not in the confession.
+- **Reviewers raise, the author decides.** An objection from a reviewer, a grader or a model never changes the argument or the narrative on its own, the confession included. Raise it with the author with what it would change, and change the piece only on the author's explicit approval, because the author is the one who has to stand behind it.
 
 ## Light moments
 
