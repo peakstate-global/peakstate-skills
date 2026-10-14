@@ -10,6 +10,8 @@ Fill this in before any slide or paragraph is written, and get it approved.
 
 **Throughline:** one idea, 15 words or fewer, written before the spine.
 
+**Hook and position:** only if the piece opens on a deliberately polarised hook. Write the hook as it stands, then the position the author actually holds, in their plain words: what the hook means, where it overstates, and what the author still believes matters. Every claim stays true to the position. A reviewer's literal reading of the hook is answered by the position, and the argument changes only with the author's approval.
+
 **Where they start:**
 
 | Belief they arrive with | What it costs them | OBSERVED or INFERRED | Section that answers it |

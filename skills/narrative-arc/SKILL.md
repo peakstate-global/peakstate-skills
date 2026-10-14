@@ -5,7 +5,7 @@ license: Apache-2.0
 metadata:
   author: "Peak State Global"
   source: "https://github.com/peakstate-global/peakstate-skills"
-  version: "0.4"
+  version: "0.5"
   profile: "guided"
   output: "text"
 ---
@@ -19,6 +19,7 @@ The topic, any draft and any notes on the audience are the input. If they hold n
 1. **Name the audience.** Who is in the room or reading, what they already know, and what they are responsible for. One audience per piece. If there are two, ask which one the piece is for, and name the other as out of scope.
 2. **Name the job to be done.** The job the audience hires this piece to do: the progress they want to make in their own work, not the topic (S2). Write it as "When [situation], they want to [progress], so they can [outcome]."
 3. **Write the throughline.** One idea, in 15 words or fewer, that the whole piece serves (S4). Write it before the spine. Every section must serve it; name any section that serves it only indirectly, and cut or justify it. The throughline also tells you what to cut.
+   - **Hook and position.** A piece may open on a deliberately polarised hook, such as a title that overstates the case to start a conversation. If it does, write the position the author actually holds beside the hook in the arc sheet, in the author's own plain words: what they mean, where the hook overstates, and what they still believe matters. Every claim in the piece must stay true to the position, even where the hook alone would allow more. The hook stays as written.
 4. **Map where they start.** List the beliefs they arrive with, the pains they feel and the common misunderstandings, then write beside each belief what it costs them. Keep only beliefs that send effort in the wrong direction. Label each one OBSERVED (the user or a source says so) or INFERRED (your reasoning). Ask the user to confirm any INFERRED belief that the arc leans on, because a wrong belief costs its section the hook.
 5. **Name the shift.** One sentence: from what they would say now to what they can say at the end. The audience is the hero and the piece is the mentor (S1). Then say the one action they take after it: where to start. The piece opens on the change in the world that the audience already feels, before any framework or method.
 6. **Map the emotional journey.** Beliefs change only once the audience feels understood, so plan the feelings as well as the arguments. Name how they feel arriving (wary, cynical, anxious, bored, quietly afraid) and how they should feel leaving. Then plan three moves:
@@ -42,9 +43,11 @@ The topic, any draft and any notes on the audience are the input. If they hold n
 
     **The argument belongs to the author.** An objection from a reviewer, a grader or a model never changes the piece's argument, throughline or narrative without the author's explicit approval. Raise the objection with the author, say what it would change, and wait. The author has to stand behind the argument in the room, and a reviewer sees only one draft of it.
 
+    **A literal reading of the hook is answered by the position.** When a reviewer objects to what a polarised hook says on its own, answer with the position recorded in the arc sheet, and clarify the piece so it carries the position (a definition, a footnote, a line in the notes). Never change the argument, and never add a concession, without the author's approval.
+
 ## The take-away
 
-The arc sheet: the audience, the job to be done, the starting map (belief, what it costs, OBSERVED or INFERRED, and the section that answers it), the throughline, the shift in one sentence, the emotional journey (arriving, leaving, and where the understanding moment sits), where to start, the spine table (section, premise, from, to, feel, move and its line), and the moments (the peak, the last 60 seconds, the open loop, the S.T.A.R. moment, the credibility story, the "I was wrong" beat, the light moments and each section's story). The template and a worked example are in `references/arc-sheet.md`.
+The arc sheet: the audience, the job to be done, the starting map (belief, what it costs, OBSERVED or INFERRED, and the section that answers it), the throughline, the hook and the position behind it (if the piece opens on a polarised hook), the shift in one sentence, the emotional journey (arriving, leaving, and where the understanding moment sits), where to start, the spine table (section, premise, from, to, feel, move and its line), and the moments (the peak, the last 60 seconds, the open loop, the S.T.A.R. moment, the credibility story, the "I was wrong" beat, the light moments and each section's story). The template and a worked example are in `references/arc-sheet.md`.
 
 ## Next
 
@@ -58,7 +61,7 @@ Your next three moves:
 ## Self-check before you deliver
 
 - The audience is one named group, and the job to be done is written as progress they want, not as the topic.
-- The throughline is one idea in 15 words or fewer, written before the spine, and the piece opens on the change in the world before any framework.
+- The throughline is one idea in 15 words or fewer, written before the spine, and the piece opens on the change in the world before any framework. A polarised hook has the author's position written beside it, and no claim goes past that position.
 - Every starting belief has its cost and its label, and is answered by a named section.
 - Every section has a premise, a from, a to, a move and its line; each to is the next from; each idea has one model and a named shape; the devices vary.
 - Read alone, the premises make the argument, the feelings make a journey, and the moves put a confirm or a justify before the first promise, with all five appearing.
