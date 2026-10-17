@@ -686,6 +686,43 @@ rmSync(tmp, { recursive: true, force: true });
     assert.ok(toc.indexOf('#s-q1"') < toc.indexOf('#s-q2"') && toc.indexOf('#s-q2"') < toc.indexOf('#s-your-q1'), 'at its old position');
   }
 
+  /* A retired section goes back inside its own part: first in Part Two, it
+     lands under Part Two's heading, not at the end of Part One; a part left
+     with no live entries gets a list of its own in the contents. */
+  {
+    const p1 = ['---', 'title: P', 'brief-id: p', 'consumed: a', '---', '', '## Contents', '',
+      '# One', '', 'Lede one.', '', '## A1', '', 'a1.', '', '## A2', '', 'a2.', '',
+      '# Two', '', 'Lede two.', '', '## B1', '', 'b1.', '', '## B2', '', 'b2.', '',
+      '# Three', '', '## C1', '', 'c1.', ''].join('\n');
+    const p2 = p1.replace('consumed: a', 'consumed: b\nretired: [{"id": "s-b1", "why": "x"}, {"id": "s-c1", "why": "y"}]')
+      .replace('## B1\n\nb1.\n\n', '').replace('## C1\n\nc1.\n', '');
+    const pr1 = renderRound(p1, null);
+    assert.equal(pr1.rounds.rounds[0].sections['s-b1'].part, 'part-2', 'the sidecar records each section\'s part');
+    const pm = renderRound(p2, pr1.rounds).html.split('<main>')[1].split('</main>')[0];
+    const body = pm.slice(pm.indexOf('</nav>'));
+    assert.ok(body.indexOf('id="part-2"') < body.indexOf('id="s-b1"') && body.indexOf('id="s-b1"') < body.indexOf('id="s-b2"') &&
+      body.indexOf('Lede two.') < body.indexOf('id="s-b1"'), 'a retired first section sits after its part heading and lede, before its sibling');
+    assert.ok(body.indexOf('id="part-3"') < body.indexOf('id="s-c1"'), 'a part with no live sections still holds its retired one');
+    const ptoc = /<nav class="toc">[\s\S]*?<\/nav>/.exec(pm)[0];
+    assert.ok(ptoc.indexOf('href="#part-2"') < ptoc.indexOf('#s-b1"') && ptoc.indexOf('#s-b1"') < ptoc.indexOf('#s-b2"'),
+      'the retired contents entry sits under its own part');
+    assert.ok(/<a href="#part-3">[^\n]*<\/p>\n {2}<ol>\n {4}<li class="toc-diff toc-retired">[^\n]*#s-c1"/.test(ptoc),
+      'a part with no live entries gets its own list for the retired one');
+  }
+
+  /* Ghost blocks lose ids and runtime hooks in every quoting and case, and
+     parked internal links come back only when their target still exists. */
+  {
+    const raw = (t) => ['---', 'title: G', 'brief-id: g', 'consumed: ' + t, '---', '', '## Keep', '', 'k.', '', '## G', '', ':::html',
+      '<div ID=\'gid\' DATA-Q=Q7 data-sec="s" For=x title="id=keep"><a HREF=\'#s-keep\'>in</a> <a href=#gone>out</a> ' + t + '</div>', ':::', ''].join('\n');
+    const gm = renderRound(raw('b'), renderRound(raw('a'), null).rounds).html.split('<main>')[1].split('</main>')[0];
+    const del = /<div class="diff-del" inert>([\s\S]*?)<\/div><\/div>/.exec(gm)[1];
+    assert.ok(!/\s(id|data-q|data-sec|for)\s*=/i.test(del.replace(/title="[^"]*"/, '')), 'no id, data-q, data-sec or for survives in any quoting: ' + del);
+    assert.ok(del.includes('title="id=keep"'), 'a quoted value that looks like an attribute is left alone');
+    assert.ok(/<a href="#s-keep">in<\/a>/.test(del), 'a single-quoted uppercase internal link is parked and restored');
+    assert.ok(/<a>out<\/a>/.test(del), 'an unquoted link to a gone id is dropped');
+  }
+
   /* A rebuild during round two compares with round one, not with itself. */
   const tweak = renderRound(r2ok.replace('Brand new.', 'Brand new, fixed typo.'), second.rounds);
   assert.equal(tweak.rounds.rounds.length, 2, 'the same consumed token is the same round');
@@ -748,6 +785,11 @@ rmSync(tmp, { recursive: true, force: true });
   writeFileSync(md2, r2rev.replace('Hmm, revised.', 'Hmm.')); run2();
   try { cover(); failed = null; } catch (e) { failed = e; }
   assert.ok(failed && /answer +Q2 +UNCOVERED/.test(failed.stdout), 'an untouched question with an answer is uncovered');
+  /* A reply matching the answer's words is no home: the page shows replies only under comments. */
+  writeFileSync(md2, r2rev.replace('Hmm, revised.', 'Hmm.').replace('consumed: b',
+    'consumed: b\nreplies: [{"match": "not sure", "reply": "Fine."}, {"match": "is this still true in 2026?", "reply": "Yes."}]')); run2();
+  try { cover(); failed = null; } catch (e) { failed = e; }
+  assert.ok(failed && /answer +Q2 +UNCOVERED/.test(failed.stdout), 'a replies: entry never covers an answer');
   writeFileSync(resp, JSON.stringify({ brief: 'someone-else', answers: [], comments: [] }));
   try { cover(); failed = null; } catch (e) { failed = e; }
   assert.ok(failed && failed.status === 2, 'responses for another brief are refused');

@@ -1585,6 +1585,7 @@
   function citedRefs(scope) {
     var seen = {}, cited = [];
     scope.querySelectorAll('sup.fn a[href^="#ref"]').forEach(function (a) {
+      if (a.closest('.diff-del, .diff-retired')) return;
       var id = a.getAttribute('href').slice(1);
       if (seen[id]) return;
       seen[id] = 1;
@@ -3086,6 +3087,7 @@ var __briefTip = (() => {
      The marker stays a link to that entry, which is the no-script path. */
   function factNotes() {
     Array.prototype.forEach.call(document.querySelectorAll('sup.fn.fact > a[href^="#note-"]'), function (a) {
+      if (a.closest('.diff-del, .diff-retired')) return;
       var li = document.getElementById(a.getAttribute('href').slice(1));
       var src = li && li.querySelector('ol.factsrc');
       if (!src) return;
@@ -3104,9 +3106,13 @@ var __briefTip = (() => {
     var cards = document.querySelectorAll('section#s-definitions .defs-in .term');
     if (!root || !cards.length) return;
     var byKey = {}, words = [];
+    /* A struck-through block from the last round sits under a .diff-del
+       wrapper, so the class is on an ancestor, not on the h4 or li itself. */
+    var live = function (n) { return !n.closest('.diff-del, .diff-retired'); };
     Array.prototype.forEach.call(cards, function (card, idx) {
-      var h = card.querySelector('h4:not(.diff-del)'); if (!h) return;
-      var li = card.querySelector('li:not(.diff-del)'), k = li && li.querySelector('.k');
+      if (!live(card)) return;
+      var h = Array.prototype.find.call(card.querySelectorAll('h4'), live); if (!h) return;
+      var li = Array.prototype.find.call(card.querySelectorAll('li'), live), k = li && li.querySelector('.k');
       var def = li ? li.textContent.slice(k ? k.textContent.length : 0).trim() : '';
       var href = safeHref(card.getAttribute('data-href'));
       /* An unsafe address goes entirely, so print cannot show it either. */
@@ -3361,7 +3367,7 @@ var __briefTip = (() => {
 
   function lightbox() {
     var root = mainEl(); if (!root) return;
-    function eligible(img) { return img.tagName === 'IMG' && root.contains(img) && !img.matches(LB_SKIP); }
+    function eligible(img) { return img.tagName === 'IMG' && root.contains(img) && !img.matches(LB_SKIP) && !img.closest('.diff-del, .diff-retired'); }
     function gallery() { return Array.prototype.filter.call(root.querySelectorAll('img'), eligible); }
     var IMG = window.__briefImg = window.__briefImg || {};
     /* ── image comments: which image, and the corner icon ──

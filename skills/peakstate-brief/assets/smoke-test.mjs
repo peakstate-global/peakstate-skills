@@ -537,10 +537,16 @@ const diffPersisted = await rp.locator('#diffBtn').getAttribute('aria-pressed') 
 await rp.focus('#diffBtn');
 await rp.keyboard.press('Enter');
 const diffKeyboard = await rp.locator('#diffBtn').getAttribute('aria-pressed') === 'true' && await rp.locator('.diff-del').first().isVisible();
+/* A definition card under a .diff-del wrapper is the last round's: its term is
+   not linked, though the class sits on an ancestor and not on the h4. */
+await rp.waitForSelector('.bterm', { state: 'attached', timeout: 5000 }).catch(() => {});
+const diffDefsSkipped = await rp.evaluate(() => !!document.querySelector('.diff-del .term h4') &&
+  [...document.querySelectorAll('.bterm')].some((b) => /summary page/i.test(b.textContent)) &&
+  ![...document.querySelectorAll('.bterm')].some((b) => /ghost word/i.test(b.textContent)));
 const rcExportBuild = 'build' in json && /^Q1 Confirm/.test(json.answers[0].question) &&
   !json.answers.some((a) => a.id === 'Q9');
 console.log(JSON.stringify({ diffOffer, diffDefaultOn, diffNoExtraQs, diffPillRight, diffNoHeadingPill, diffOffHides,
-  diffPersisted, diffKeyboard, rcExportBuild, jsErrors: rerr }, null, 1));
+  diffPersisted, diffKeyboard, diffDefsSkipped, rcExportBuild, jsErrors: rerr }, null, 1));
 
 await browser.close();
 

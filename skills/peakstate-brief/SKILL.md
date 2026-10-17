@@ -469,8 +469,9 @@ struck in red, added ones in green, retired sections struck in place, and New /
 Changed / Retired pills in the contents ("Rounds" in
 `reference/markdown-format.md`). **Before delivering, run
 `python3 assets/check-coverage.py <brief.md> <responses.json>`**: it fails on any
-answer or comment with no home (an answer section, a revised question, or a
-`replies:` entry).
+answer or comment with no home. An answer's home is a `## Your Qn answer`
+section or a revised question; a comment's home is a `replies:` entry. A reply
+never covers an answer, because the page shows replies only under comments.
 
 ## SOURCED — run it when it is available, and show your working
 

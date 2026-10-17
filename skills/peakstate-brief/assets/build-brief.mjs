@@ -1012,13 +1012,24 @@ function lcsOps(a, b) {
    nothing a script or the runtime would pick up, and internal links parked on
    data-ghost-href until the page is done (an old link may point at an id that
    has gone; renderDoc restores the ones that still resolve). */
-const GHOST_ATTR = /\s(?:id|for|data-doc|data-draft|data-q|data-sec|data-tablabel|aria-labelledby)(?:="[^"]*")?(?=[\s>/])/g;
+const GHOST_DROP = new Set(['id', 'for', 'data-doc', 'data-draft', 'data-q', 'data-sec', 'data-tablabel', 'aria-labelledby']);
+/* One attribute at a time, so a value is consumed whole and a name inside a
+   quoted value is never mistaken for an attribute. Names are case-insensitive;
+   values may be double-quoted, single-quoted or bare. */
+const ATTR = /(\s+)([^\s"'>\/=]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
+const ghostAttrs = (attrs) => attrs.replace(ATTR, (all, sp, name, val) => {
+  const n = name.toLowerCase();
+  if (GHOST_DROP.has(n)) return '';
+  const v = val ? val.replace(/^(["'])([\s\S]*)\1$/, '$2') : '';
+  if (n === 'href' && v.startsWith('#')) return ' data-ghost-href="' + v.replace(/"/g, '&quot;') + '"';
+  return all;
+});
 const ghost = (html) => html
   .replace(/<script\b[\s\S]*?<\/script>/gi, '')
   .replace(/<textarea\b[\s\S]*?<\/textarea>/gi, '')
   .replace(/\s*<label class="tick">[\s\S]*?<\/label>/g, '')
   .replace(/<input\b[^>]*>/gi, '')
-  .replace(/<[a-zA-Z][^>]*>/g, (tag) => tag.replace(GHOST_ATTR, '').replace(/\shref="#/g, ' data-ghost-href="#'));
+  .replace(/<([a-zA-Z][\w-]*)((?:"[^"]*"|'[^']*'|[^'">])*)>/g, (_, t, attrs) => '<' + t + ghostAttrs(attrs) + '>');
 const addClass = (html, cls, extra = '') => html.replace(/^<([a-zA-Z][\w-]*)([^>]*)>/, (_, t, attrs) =>
   '<' + t + (/\sclass="/.test(attrs) ? attrs.replace(/\sclass="([^"]*)"/, (__, c) => ' class="' + c + ' ' + cls + '"')
     : ' class="' + cls + '"' + attrs) + extra + '>');
@@ -1104,7 +1115,7 @@ const TOC_LI = /<li>(<a href="#([^"]+)"[\s\S]*?)<\/li>/g;
    Returns the new sidecar and whether a diff was drawn. Only the last two
    rounds keep their rendered HTML (`html`, `toc`): the next build diffs
    against one of them, and the hash history stays small. */
-function stampRounds(out, allSecs, meta, build, cfg) {
+function stampRounds(out, allSecs, meta, build, cfg, partOf = {}) {
   const id = meta['brief-id'] || slug(meta.title || 'brief');
   const key = meta.consumed || build;
   const prev = cfg.prev && cfg.prev['brief-id'] === id && Array.isArray(cfg.prev.rounds) ? cfg.prev.rounds : [];
@@ -1124,6 +1135,7 @@ function stampRounds(out, allSecs, meta, build, cfg) {
     sections[sid] = { title: titleOf[sid],
       hash: createHash('sha256').update(sectionText(out[i])).digest('hex').slice(0, 12), html: out[i] };
     if (tocOf[sid]) sections[sid].toc = tocOf[sid];
+    if (sid in partOf) sections[sid].part = partOf[sid];
     if (!base) continue;
     const was = base.sections && base.sections[sid];
     state[sid] = !was ? 'new' : was.hash === sections[sid].hash ? 'same' : 'changed';
@@ -1157,17 +1169,33 @@ function stampRounds(out, allSecs, meta, build, cfg) {
       '\n  retired: [{"id": "' + missing[0] + '", "why": "what replaced it"}]');
   }
 
-  /* Each retired section goes back after its old predecessor, the last earlier
-     section that is still on the page (or was just put back). */
+  /* Each retired section goes back inside the part it was in, after its old
+     predecessor in that part (the last earlier section of the part still on the
+     page, or just put back), else straight after the part heading and lede. A
+     sidecar from before parts were recorded, or a part that has gone, falls
+     back to the last earlier section anywhere. */
   const at = (sid) => out.findIndex((h) => h.startsWith('<section') && h.includes(' id="' + sid + '"'));
+  const partHead = (pid) => pid ? out.findIndex((h) => h.startsWith('<h2 class="part" id="' + pid + '"')) : -1;
+  const partOfNow = (sid) => sections[sid] ? sections[sid].part : base.sections[sid].part;
+  const afterIn = new Map();
   let after = null;
   for (const sid of order) {
     const old = base.sections[sid];
-    if (sections[sid] || !old.html) { if (at(sid) >= 0) after = sid; continue; }
-    const pos = after ? at(after) + 1 : out.findIndex((h) => h.startsWith('<section') && !h.includes(' id="s-toc"'));
+    if (sections[sid] || !old.html) {
+      if (at(sid) >= 0) { after = sid; afterIn.set(partOfNow(sid), sid); }
+      continue;
+    }
+    const prevIn = afterIn.get(old.part), head = partHead(old.part);
+    let pos;
+    if (old.part !== undefined && prevIn) pos = at(prevIn) + 1;
+    else if (head >= 0) {
+      pos = head + 1;
+      while (pos < out.length && !/^<(section|h2 class="part"|\/div>|div class="endmark")/.test(out[pos])) pos++;
+    } else pos = after ? at(after) + 1 : out.findIndex((h) => h.startsWith('<section') && !h.includes(' id="s-toc"'));
     out.splice(pos < 0 ? out.length - 1 : pos, 0, retiredSection(old.html, sid, why[sid]));
     state[sid] = 'retired';
     after = sid;
+    afterIn.set(old.part, sid);
   }
 
   /* Contents: a pill on each new, changed or retired entry, and the retired
@@ -1176,15 +1204,29 @@ function stampRounds(out, allSecs, meta, build, cfg) {
     const toc = out.findIndex((h) => /^<section[^>]* id="s-toc"/.test(h));
     let html = out[toc].replace(TOC_LI, (all, inner, sid) =>
       state[sid] === 'new' || state[sid] === 'changed' ? tocLi(inner, state[sid]) : all);
+    /* Same rule as the body: after the entry before it in its own part, else
+       first under that part's line in the contents (opening a list if the part
+       has no entries left), else after the entry before it anywhere. */
     let prevSid = null;
+    const prevIn = new Map();
     for (const sid of order) {
       const old = base.sections[sid];
       if (state[sid] === 'retired' && old.toc) {
         const li = tocLi(ghost(old.toc), 'retired');
-        const ref = prevSid ? html.indexOf('href="#' + prevSid + '"') : -1;
-        const end = ref >= 0 ? html.indexOf('</li>', ref) + 5 : html.search(/<li[\s>]/);
-        if (end >= 0) { html = html.slice(0, end) + (ref >= 0 ? '\n    ' + li : li + '\n    ') + html.slice(end); prevSid = sid; }
-      } else if (html.includes('href="#' + sid + '"')) prevSid = sid;
+        const pin = old.part !== undefined ? prevIn.get(old.part) : null;
+        const pref = old.part ? html.indexOf('<a href="#' + old.part + '">') : -1;
+        let ins = -1, txt = '';
+        if (pin || pref < 0) {
+          const p = pin || prevSid, ref = p ? html.indexOf('href="#' + p + '"') : -1;
+          ins = ref >= 0 ? html.indexOf('</li>', ref) + 5 : html.search(/<li[\s>]/);
+          txt = ref >= 0 ? '\n    ' + li : li + '\n    ';
+        } else {
+          const pEnd = html.indexOf('</p>', pref) + 4, ol = /^\n\s*<ol[^>]*>/.exec(html.slice(pEnd));
+          ins = ol ? pEnd + ol[0].length : pEnd;
+          txt = ol ? '\n    ' + li : '\n  <ol>\n    ' + li + '\n  </ol>';
+        }
+        if (ins >= 0) { html = html.slice(0, ins) + txt + html.slice(ins); prevSid = sid; prevIn.set(old.part, sid); }
+      } else if (html.includes('href="#' + sid + '"')) { prevSid = sid; prevIn.set(partOfNow(sid), sid); }
     }
     out[toc] = html;
   }
@@ -1296,13 +1338,17 @@ function renderDoc(source, opts = {}) {
   const build = createHash('sha256').update(String(source).replace(/\r\n?/g, '\n')).digest('hex').slice(0, 12);
   let rounds = null, diffAttr = '';
   if (opts.rounds) {
-    const r = stampRounds(out, allSecs, meta, build, opts.rounds);
+    /* Read after the hoists, so a section is recorded in the part it renders in. */
+    const partOf = {};
+    for (const p of parts) for (const s of p.sections) partOf[s.id] = p.id || '';
+    const r = stampRounds(out, allSecs, meta, build, opts.rounds, partOf);
     rounds = r.rounds;
     if (r.diff) diffAttr = ' data-diff';
   } else parseRetired(meta.retired);
   /* Old internal links in struck-through blocks keep only the targets that
      still exist; the raw-block markers the diff reads are never shipped. */
-  const liveIds = new Set([...out.join('\n').matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  const liveIds = new Set([...out.join('\n').matchAll(/\sid\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s"'=<>`]+))/gi)]
+    .map((m) => m[1] || m[2] || m[3]));
   for (let i = 0; i < out.length; i++) {
     out[i] = out[i].replace(/ data-ghost-href="#([^"]*)"/g, (_, a) => liveIds.has(a) ? ' href="#' + a + '"' : '')
       .replace(/<!--\/?diff:blk-->/g, '');

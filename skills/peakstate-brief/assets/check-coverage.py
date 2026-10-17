@@ -13,8 +13,10 @@ An ANSWER (by question id) has a home when one of these holds:
   i)   the source has a section headed `## Your Qn answer...`;
   ii)  the `## Qn` section still exists and its text changed since the round the
        answer was given against (read from the `<brief>.html.rounds.json`
-       sidecar the build writes; the payload's `build` token names the round);
-  iii) a `replies:` entry in the front matter matches the answer's text.
+       sidecar the build writes; the payload's `build` token names the round).
+A `replies:` entry never covers an answer: the runtime shows a reply only under
+a selection comment, so an answer whose only home is a reply would vanish from
+the next round.
 A tick with no words confirms the assumption as stated, so it needs no home.
 
 A COMMENT has a home when a `replies:` entry matches it: the first forty
@@ -135,8 +137,6 @@ def main(argv):
             now = current.get("sections", {}).get("s-q" + n, {}).get("hash")
             if was and now and was != now:
                 home = "Q%s revised since round %s" % (n, given.get("round"))
-        if not home and any(matches(key40(text), rk) for rk, _ in rkeys):
-            home = "replies:"
         rows.append(("answer", qid, text, bool(home), home or "no home"))
 
     for c in payload.get("comments", []):
