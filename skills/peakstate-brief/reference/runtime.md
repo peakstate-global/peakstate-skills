@@ -56,7 +56,18 @@
 - **Copy + download combo button** → JSON of `{id, question, resolved, answer}`
   pairs plus all selection comments, all drafts and all note fields. The download
   half writes `<brief-id>-responses-<YYYY-MM-DD>.json`, for a brief read offline or
-  answers worth keeping as a file. Both are icon-only with hover tooltips.
+  answers worth keeping as a file. Both are icon-only with hover tooltips. The
+  payload carries `build`, the brief's `data-build` token, which names the round
+  the answers were given against (`check-coverage.py` reads it).
+- **Diff** → a top-bar toggle (`#diffBtn`, `aria-pressed`, `data-tip`) offered only
+  on a brief built from round two (`body[data-diff]`). On shows the round diff the
+  build drew; off adds `body.diff-off`, which hides `.diff-del` blocks, retired
+  sections and the contents pills and drops the tints, leaving the current text
+  clean. Remembered per brief (`briefDiff:<brief-id>` in the store), on by
+  default, and print follows it. Removed blocks and retired sections are skipped by
+  the question count, answer boxes, footnote back-links, definition links, comment
+  anchoring and the summary and draft copy. The marks are build output (see
+  "Rounds" in `markdown-format.md`).
 - **Comments drawer** (speech-bubble icon, or press `C`) → every comment and every
   unsaved draft in one scrollable list, with Show / Edit / Delete per row and
   Resume / Discard per draft. A comment whose highlight could not be restored is

@@ -23,7 +23,8 @@ the reader's answers — it is the only thing that clears the unsent-work marker
 `reply` is your answer to it, which the runtime shows in a thread on that comment
 (see "Replying to a comment the reader made"). `addressed:` is the older form,
 still accepted, and becomes `data-addressed`: the same matching with no words.
-`define: every-use` links every eligible use of a defined term rather than the first
+`retired:` names sections deliberately dropped since the last round (see "Rounds"
+below). `define: every-use` links every eligible use of a defined term rather than the first
 use per section (`first-use` is the default and can be written out). `notes: per-fact`
 switches the brief to one footnote per fact rather than per source (see "Per-fact notes" in
 `references.md`); without it nothing changes. `tabs: parts` lays the brief out as tabs, one
@@ -35,6 +36,41 @@ tooling writes its own state back as `visibility:` and the `publish-*` keys
 **An unknown front matter key fails the build**, naming the key and listing the known
 ones. A misspelt option would otherwise do nothing and say nothing. A tool that starts
 reading a new key adds it to `KNOWN_KEYS` in `build-brief.mjs` in the same change.
+
+**Rounds: what changed, and no silent trimming.** Each build from the command line
+writes `<output>.rounds.json` beside the HTML: per round, a number, the build date,
+and for every section its id, heading and a hash of its rendered text (footnote
+numbers left out, so a new source does not mark every later section changed). The
+last two rounds also keep each section's rendered HTML and contents entry, which
+the next build diffs against; older rounds keep the hashes only. A round is keyed
+on `consumed:` when the front matter has one, else on the source hash, so
+rebuilding while drafting the same round never starts a new one, and it still
+diffs against the round before.
+
+From round two on, each section gets `data-round-state="new" | "changed" | "same"`
+and the build draws a **paragraph-level diff**. Blocks are leaf paragraphs, list
+items, dt/dd, table rows, headings, blockquotes, pre and figures; a raw HTML block
+is one block. Blocks are matched on their text. An added block gets `diff-add`
+(green tint, green left bar). A removed block is put back where it was as
+`diff-del` (red tint, red bar, struck through, `inert`, ids stripped, inner
+formatting kept); an edit reads as the old block above the new one. A new section
+gets a green bar and a faint green body. A retired section stays at its old place
+(after its old predecessor), struck through, with its reason under the heading,
+and loses the classes the runtime counts questions by. The contents list carries a
+New / Changed / Retired pill, right-aligned, on each entry, retired entries struck
+at their old place. The runtime adds the **Diff** toggle. The first build of a
+brief, and the publish render, show none of this. Keep the sidecar with the brief;
+delete it to restart the history.
+
+**A section from the last round that is missing now fails the build**, naming it.
+Put it back, or retire it on purpose with a reason the reader sees under its struck heading:
+
+    retired: [{"id": "s-x", "why": "merged into the pricing section"}]
+
+An answered question stays in the brief as a normal section: `## Q3 Which host?`
+becomes `## Your Q3 answer: Cloudflare` (whatever the answer settled). That
+retires `s-q3` by itself, listed as "answered, see Your Q3 answer: Cloudflare", so
+it needs no `retired:` entry. Use `retired:` only for anything else.
 
 | Source | Renders as |
 | --- | --- |

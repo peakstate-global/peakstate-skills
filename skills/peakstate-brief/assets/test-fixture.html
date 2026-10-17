@@ -6,7 +6,7 @@
 <title>Brief runtime test — peakstate-brief fixture</title>
 <link rel="stylesheet" href="brief.css">
 </head>
-<body data-brief-id="test-brief"
+<body data-brief-id="test-brief" data-diff
       data-addressed="a test comment"
       data-replies='[{"match":"a test comment","reply":"Agreed, and the wording is fixed in this revision.\nA second line, so line breaks are covered."},{"match":"thumb two reply target","reply":"Image reply from the author."}]'>
 <main>
@@ -52,7 +52,8 @@
 <nav class="toc">
   <p><b><a href="#part-1">Part one — The verdict</a></b></p>
   <ol>
-    <li><a href="#s-definitions">Definitions</a> <span class="tnote">what the words mean here</span></li>
+    <li class="toc-diff"><span class="toc-entry"><a href="#s-definitions">Definitions</a> <span class="tnote">what the words mean here</span></span><span class="toc-pill" data-round="changed">Changed</span></li>
+    <li class="toc-diff toc-retired"><span class="toc-entry"><a href="#s-old">Q9: Old question?</a></span><span class="toc-pill" data-round="retired">Retired</span></li>
   </ol>
 </nav>
   </div>
@@ -92,7 +93,7 @@ the copied References list.<sup class="fn"><a href="#ref3">3</a></sup></p>
 
 </div>
 
-<section class="brief-section" data-sec="overview">
+<section class="brief-section" data-sec="overview" data-round-state="changed">
   <div class="sec-head">
     <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
     <h2>Overview</h2>
@@ -110,7 +111,8 @@ the copied References list.<sup class="fn"><a href="#ref3">3</a></sup></p>
   </div>
   <div class="q-body">
     <p class="assume"><strong>My assumption:</strong> M=No means second-hand, GST claimed under Div 66 when sold. <strong>If wrong:</strong> the BAS export mislabels ~40 rows.</p>
-    <p>The column is unlabelled in the source sheet, so I inferred the meaning from the values — confirm before I lock it in.</p>
+    <p class="diff-del" inert>The column was unlabelled, so this asked the wrong question.</p>
+    <p class="diff-add">The column is unlabelled in the source sheet, so I inferred the meaning from the values — confirm before I lock it in.</p>
     <ul class="options">
       <li><b>a)</b> Yes — M=No = second-hand (my assumption).</li>
       <li><b>b)</b> No — M=No means something else (say what in your answer).</li>
@@ -129,9 +131,18 @@ the copied References list.<sup class="fn"><a href="#ref3">3</a></sup></p>
     </details>
   </div>
 </section>
+<section class="diff-retired" id="s-old" data-round-state="retired" inert>
+  <div class="q-head">
+    <h3><span class="qid">Q9</span> Old question?</h3>
+  </div>
+  <p class="diff-why">Retired: folded into Q1</p>
+  <div class="q-body">
+    <p>Old body that asked something else.</p>
+  </div>
+</section>
 <!-- /SAMPLE -->
 
-<section class="brief-section" data-sec="draft">
+<section class="brief-section" data-sec="draft" data-round-state="same">
   <div class="sec-head">
     <label class="tick"><input type="checkbox" aria-label="Mark section read"></label>
     <h2>Draft</h2>

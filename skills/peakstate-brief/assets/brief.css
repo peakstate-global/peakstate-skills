@@ -1772,3 +1772,58 @@ body.fullwidth main > .btabs-nav {
 /* Screen only: paper and PDF show every section, untabbed. */
 @media screen { .tab-off { display: none !important; } }
 @media print { .btabs-nav, .btabs-pager { display: none !important; } }
+
+/* Round diff (build-brief.mjs, diffSection). Green is what this round added,
+   red and struck through is what it removed, and an edit is the old block
+   above the new one. The tints are translucent so they read on both themes.
+   body.diff-off (the Diff toggle) shows the current text clean. */
+:root { --diff-add: rgba(46,160,67,.14); --diff-add-bar: rgba(46,160,67,.8);
+        --diff-del: rgba(248,81,73,.11); --diff-del-bar: rgba(248,81,73,.7); }
+.diff-add { background: var(--diff-add); box-shadow: -3px 0 0 var(--diff-add-bar); }
+.diff-del { background: var(--diff-del); box-shadow: -3px 0 0 var(--diff-del-bar);
+            color: var(--muted); text-decoration: line-through; text-decoration-color: var(--diff-del-bar); }
+tr.diff-add, tr.diff-del { box-shadow: none; }
+dl.answers dd.diff-add, dl.answers dd.diff-del { box-shadow: none; }
+tr.diff-add > :first-child { box-shadow: inset 3px 0 0 var(--diff-add-bar); }
+tr.diff-del > :first-child { box-shadow: inset 3px 0 0 var(--diff-del-bar); }
+table.diff-wrap, ul.diff-wrap, dl.diff-wrap { margin: 0; }
+section[data-round-state="new"] .sec-head, section[data-round-state="new"] .q-head,
+section[data-round-state="new"] .sec-body, section[data-round-state="new"] .q-body { box-shadow: -3px 0 0 var(--diff-add-bar); }
+section[data-round-state="new"] .sec-body, section[data-round-state="new"] .q-body { background: rgba(46,160,67,.06); }
+section.diff-retired { margin: 1.7rem 0 0; padding-inline: var(--step, 0); opacity: .75; }
+section.diff-retired .sec-head, section.diff-retired .q-head { display: flex; gap: .5rem; }
+section.diff-retired h3 { margin: 0; }
+section.diff-retired h3, section.diff-retired .sec-body, section.diff-retired .q-body, section.diff-retired .l5 {
+  text-decoration: line-through; text-decoration-color: var(--diff-del-bar); color: var(--muted); }
+section.diff-retired .sec-body, section.diff-retired .q-body { box-shadow: -3px 0 0 var(--diff-del-bar); background: var(--diff-del); }
+section.diff-retired .diff-why { margin: .2rem 0 .6rem; font: 600 .85rem/1.4 var(--font-ui, system-ui, sans-serif);
+  color: var(--danger, #a83228); text-decoration: none; }
+/* Contents pills, right-aligned on the entry's line. */
+nav.toc li.toc-diff { display: flex; align-items: baseline; gap: .6rem; }
+nav.toc li.toc-diff > .toc-entry { min-width: 0; }
+nav.toc > ol > li > .toc-entry > a { color: var(--fg); text-decoration: none; }
+nav.toc > ol > li > .toc-entry > a:hover { color: var(--accent); text-decoration: underline; }
+.toc-pill { margin-left: auto; flex: none; font: 600 .62rem/1.5 var(--font-ui, system-ui, sans-serif); letter-spacing: .07em;
+            text-transform: uppercase; border-radius: 999px; padding: 0 .45rem; }
+.toc-pill[data-round="new"] { background: rgba(46,160,67,.2); color: #1f7a38; }
+.toc-pill[data-round="changed"] { background: rgba(210,153,34,.22); color: #8a6100; }
+.toc-pill[data-round="retired"] { background: rgba(248,81,73,.18); color: #b42318; }
+:root[data-theme="dark"] .toc-pill[data-round="new"] { color: #8fe0a5; }
+:root[data-theme="dark"] .toc-pill[data-round="changed"] { color: #f0c674; }
+:root[data-theme="dark"] .toc-pill[data-round="retired"] { color: #f2a19a; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .toc-pill[data-round="new"] { color: #8fe0a5; }
+  :root:not([data-theme="light"]) .toc-pill[data-round="changed"] { color: #f0c674; }
+  :root:not([data-theme="light"]) .toc-pill[data-round="retired"] { color: #f2a19a; }
+}
+nav.toc li.toc-retired .toc-entry { text-decoration: line-through; text-decoration-color: var(--diff-del-bar); opacity: .7; }
+#diffBtn[aria-pressed="true"] { color: var(--accent); }
+body.diff-off .diff-del, body.diff-off .diff-wrap, body.diff-off section.diff-retired,
+body.diff-off li.toc-retired, body.diff-off .toc-pill { display: none; }
+body.diff-off .diff-add, body.diff-off tr.diff-add > :first-child,
+body.diff-off section[data-round-state="new"] .sec-head, body.diff-off section[data-round-state="new"] .q-head,
+body.diff-off section[data-round-state="new"] .sec-body, body.diff-off section[data-round-state="new"] .q-body { background: none; box-shadow: none; }
+@media print {
+  .diff-add, .diff-del, section[data-round-state="new"] .sec-body, section.diff-retired .sec-body,
+  section.diff-retired .q-body, .toc-pill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
