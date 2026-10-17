@@ -203,6 +203,27 @@
     }, true);
     applyRate();
   }
+  /* ── Diff toggle, only on a brief built from round two on (body[data-diff]).
+     The build marks what this round added and removed (build-brief.mjs,
+     diffSection). On shows the marks; off hides the removed blocks, the retired
+     sections and the contents pills and drops the tints, leaving the current
+     text clean. Remembered per brief, on by default. */
+  if (document.body.hasAttribute('data-diff')) {
+    var dKey = 'briefDiff:' + (document.body.dataset.briefId || location.pathname);
+    var db = document.createElement('button');
+    db.className = 'btn icon'; db.id = 'diffBtn'; db.type = 'button';
+    db.innerHTML = svg('<path d="M12 3.5v8"/><path d="M8 7.5h8"/><path d="M8 18.5h8"/>');
+    var dAnchor = document.getElementById('widthBtn') || document.getElementById('themeBtn');
+    if (dAnchor) dAnchor.parentNode.insertBefore(db, dAnchor);
+    var setDiff = function (on, keep) {
+      document.body.classList.toggle('diff-off', !on);
+      db.setAttribute('aria-pressed', on ? 'true' : 'false');
+      tip(db, on ? 'Diff on: showing what changed this round. Click to hide' : 'Diff off. Click to show what changed this round');
+      if (keep) put(dKey, on ? '1' : '0');
+    };
+    setDiff(get(dKey) !== '0', false);
+    db.addEventListener('click', function () { setDiff(document.body.classList.contains('diff-off'), true); });
+  }
   applyUI();
   if (!document.getElementById('toast')) {
     var t0 = document.createElement('div');
@@ -609,10 +630,12 @@
 
   /* ── responses JSON ── */
   function responsesJSON() {
-    var out = { brief: BRIEF, title: document.title, exported: new Date().toISOString(), answers: [], comments: [] };
+    /* `build` names the round these answers were given against, so
+       check-coverage.py can tell whether a question changed since. */
+    var out = { brief: BRIEF, title: document.title, exported: new Date().toISOString(), build: buildTok(), answers: [], comments: [] };
     sections.forEach(function (sec) {
       if (!sec.dataset.q) return;
-      var h = sec.querySelector('.q-head h2');
+      var h = sec.querySelector('.q-head h2, .q-head h3');
       /* `resolved` matches the on-screen counter: answered OR ticked. `ticked` is
          reported separately so an explicit "assumption accepted, nothing to add"
          (ticked, no answer) stays distinguishable from a typed reply. */
@@ -752,7 +775,7 @@
        3. text typed into the popup was lost the moment the reader clicked away.
      The drawer is the backstop: every comment and every draft is reachable
      from it whether or not its highlight survived. */
-  var CHROME = '.topbar, #cpop, #cdrawer, #toast, .codecopy';
+  var CHROME = '.topbar, #cpop, #cdrawer, #toast, .codecopy, .diff-del, .diff-retired';
   var pop = null, editing = null, pendingRange = null, popDraftKey = null;
 
   function main() { return document.getElementById('briefMain') || document.querySelector('main'); }
@@ -1449,6 +1472,8 @@
   var citedBy = {};
   Array.prototype.forEach.call(document.querySelectorAll('sup.fn > a[href^="#"]'), function (a, i) {
     var sup = a.parentElement;
+    /* A struck-through block from the last round is not a citation. */
+    if (sup.closest('.diff-del, .diff-retired')) return;
     if (!sup.id) sup.id = 'cite-' + (i + 1);
     var key = a.getAttribute('href').slice(1);
     if (!citedBy[key]) citedBy[key] = sup.id;
@@ -1538,8 +1563,8 @@
     if (box.querySelector(':scope > .copybtn')) return;
     box.appendChild(copybtn('Copy message', 'draftcopy', function () {
       var clone = box.cloneNode(true);
-      Array.prototype.forEach.call(clone.querySelectorAll('.copybtn'), function (b) { b.remove(); });
-      var html = clone.innerHTML.trim(), txt = (box.innerText || box.textContent || '').trim();
+      Array.prototype.forEach.call(clone.querySelectorAll('.copybtn, .diff-del, .diff-wrap'), function (b) { b.remove(); });
+      var html = clone.innerHTML.trim(), txt = ((box.querySelector('.diff-del') ? clone.textContent : box.innerText) || box.textContent || '').trim();
       var msg = 'Message copied';
       if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
         try {
@@ -1560,6 +1585,7 @@
   function citedRefs(scope) {
     var seen = {}, cited = [];
     scope.querySelectorAll('sup.fn a[href^="#ref"]').forEach(function (a) {
+      if (a.closest('.diff-del, .diff-retired')) return;
       var id = a.getAttribute('href').slice(1);
       if (seen[id]) return;
       seen[id] = 1;
@@ -1585,7 +1611,7 @@
       /* htmlToMd walks block children, so the section shells are flattened
          first — otherwise a whole section collapses into one inline run. */
       var clone = summary.cloneNode(true);
-      clone.querySelectorAll('.copybtn, label.tick, .cmt-btn, .lb-cmt').forEach(function (n) { n.remove(); });
+      clone.querySelectorAll('.copybtn, label.tick, .cmt-btn, .lb-cmt, .diff-del, .diff-wrap, .diff-retired, .toc-pill').forEach(function (n) { n.remove(); });
       /* "Part one" is a label, not the first words of the heading. */
       clone.querySelectorAll('.pnum').forEach(function (n) { n.textContent = n.textContent.trim() + ' —'; });
       var shell;
@@ -2994,7 +3020,7 @@ var __briefTip = (() => {
      table header cells, the Definitions and Answers blocks, and any widget
      that carries its own script. */
   var SKIP = 'h1,h2,h3,h4,h5,h6,code,pre,kbd,a,button,label,th,textarea,select,svg,script,style,' +
-    'sup.fn,.l5,ol.factnotes,#s-definitions,dl.answers,nav.toc,.brief-title,.topbar,.bterm,[contenteditable],[data-noterms],[data-draft]';
+    '.diff-del,.diff-retired,sup.fn,.l5,ol.factnotes,#s-definitions,dl.answers,nav.toc,.brief-title,.topbar,.bterm,[contenteditable],[data-noterms],[data-draft]';
 
   /* Same rule as safeHref in build-brief.mjs: https, or relative. */
   function safeHref(v) {
@@ -3061,6 +3087,7 @@ var __briefTip = (() => {
      The marker stays a link to that entry, which is the no-script path. */
   function factNotes() {
     Array.prototype.forEach.call(document.querySelectorAll('sup.fn.fact > a[href^="#note-"]'), function (a) {
+      if (a.closest('.diff-del, .diff-retired')) return;
       var li = document.getElementById(a.getAttribute('href').slice(1));
       var src = li && li.querySelector('ol.factsrc');
       if (!src) return;
@@ -3079,9 +3106,13 @@ var __briefTip = (() => {
     var cards = document.querySelectorAll('section#s-definitions .defs-in .term');
     if (!root || !cards.length) return;
     var byKey = {}, words = [];
+    /* A struck-through block from the last round sits under a .diff-del
+       wrapper, so the class is on an ancestor, not on the h4 or li itself. */
+    var live = function (n) { return !n.closest('.diff-del, .diff-retired'); };
     Array.prototype.forEach.call(cards, function (card, idx) {
-      var h = card.querySelector('h4'); if (!h) return;
-      var li = card.querySelector('li'), k = li && li.querySelector('.k');
+      if (!live(card)) return;
+      var h = Array.prototype.find.call(card.querySelectorAll('h4'), live); if (!h) return;
+      var li = Array.prototype.find.call(card.querySelectorAll('li'), live), k = li && li.querySelector('.k');
       var def = li ? li.textContent.slice(k ? k.textContent.length : 0).trim() : '';
       var href = safeHref(card.getAttribute('data-href'));
       /* An unsafe address goes entirely, so print cannot show it either. */
@@ -3336,7 +3367,7 @@ var __briefTip = (() => {
 
   function lightbox() {
     var root = mainEl(); if (!root) return;
-    function eligible(img) { return img.tagName === 'IMG' && root.contains(img) && !img.matches(LB_SKIP); }
+    function eligible(img) { return img.tagName === 'IMG' && root.contains(img) && !img.matches(LB_SKIP) && !img.closest('.diff-del, .diff-retired'); }
     function gallery() { return Array.prototype.filter.call(root.querySelectorAll('img'), eligible); }
     var IMG = window.__briefImg = window.__briefImg || {};
     /* ── image comments: which image, and the corner icon ──

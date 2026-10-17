@@ -12,7 +12,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { render } from './build-brief.mjs';
+import { render, renderRound } from './build-brief.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(HERE, 'test-brief.md'), 'utf8');
@@ -583,6 +583,218 @@ rmSync(tmp, { recursive: true, force: true });
   assert.throws(() => render(doc('title: T\nnotes: per-source', 'One.')), /notes: expected per-fact/, 'an unknown notes value fails');
   /* Default mode is untouched: the fixture renders as before with no fact markup. */
   assert.ok(!/class="fn fact"|factnotes/.test(main), 'the default render carries no fact-note markup');
+}
+
+/* ── rounds: what changed, and no silent trimming ──────────────────────── */
+{
+  const r1 = ['---', 'title: R', 'brief-id: r-test', 'consumed: a', '---', '',
+    '# Part', '', 'Lede.', '', '## Keep', '', 'Same text[^1].', '', '## Edit me', '', 'Old text.', '',
+    '## Q1 Pick one?', '', 'Which?', '', '## Q2 Another?', '', 'Hmm.', '',
+    '## References', '', '[^1]: Zed, A. (2020). *Z*.', ''].join('\n');
+  const first = renderRound(r1, null, { date: '2026-10-12' });
+  assert.ok(!/data-round-state|round-pill|round-changes/.test(/<main>[\s\S]*<\/main>/.exec(first.html)[0]), 'a first round has no pills and no list');
+  assert.equal(first.rounds.rounds.length, 1, 'the sidecar records round one');
+  assert.equal(first.rounds.rounds[0].round, 1);
+  assert.ok(first.rounds.rounds[0].sections['s-keep'].hash, 'each section carries a hash');
+  assert.equal(first.rounds.rounds[0].sections['s-q1'].title, 'Q1 Pick one?', 'and its heading');
+  assert.ok(!('s-toc' in first.rounds.rounds[0].sections), 'the generated contents is not tracked');
+
+  /* Same source again: the same round, not a new one. */
+  const again = renderRound(r1, first.rounds, { date: '2026-10-13' });
+  assert.equal(again.rounds.rounds.length, 1, 'rebuilding unchanged source does not start a round');
+  assert.equal(again.html, first.html, 'and renders the same page');
+
+  /* Round two: one edit, one answered question, one new section, a new source
+     that renumbers the footnotes (not a change to Keep). */
+  const r2 = r1.replace('consumed: a', 'consumed: b').replace('Old text.', 'New text.')
+    .replace('## Q1 Pick one?\n\nWhich?', '## Your Q1 answer: picked A\n\nDone.')
+    .replace('## Q2 Another?\n\nHmm.\n\n', '')
+    .replace('## References', '## Fresh\n\nBrand new.[^2]\n\n## References')
+    .replace('[^1]: Zed', '[^2]: Abel, B. (2021). *A*.\n[^1]: Zed');
+  assert.throws(() => renderRound(r2, first.rounds), /missing: s-q2 \(Q2 Another\?\)[\s\S]*retired:/,
+    'a dropped section fails the build and names it');
+  const r2ok = r2.replace('consumed: b', 'consumed: b\nretired: [{"id": "s-q2", "why": "folded into Fresh"}]');
+  const second = renderRound(r2ok, first.rounds, { date: '2026-10-17' });
+  const m2 = second.html.split('<main>')[1].split('</main>')[0];
+  assert.ok(/id="s-keep"[^>]*data-round-state="same"/.test(m2), 'an untouched section is same, even when its footnote number moved');
+  assert.ok(/id="s-edit-me"[^>]*data-round-state="changed"/.test(m2), 'an edited section is changed');
+  assert.ok(/id="s-fresh"[^>]*data-round-state="new"/.test(m2), 'an added section is new');
+  /* Paragraph-level diff. Edit me's one paragraph changed: the old one is put
+     back struck through directly above the new one. */
+  const sec = (h, sid) => { const i = h.indexOf('id="' + sid + '"'); return h.slice(i, h.indexOf('</section>', i)); };
+  assert.ok(/<p class="diff-del" inert>Old text\.<\/p>\n<p class="diff-add">New text\.<\/p>/.test(sec(m2, 's-edit-me')),
+    'an edited block shows the old block struck above the new one');
+  assert.ok(!/diff-(add|del)/.test(sec(m2, 's-keep')), 'an untouched section carries no diff marks');
+  assert.ok(/<section class="brief-section" id="s-fresh"[^>]*data-round-state="new"/.test(m2), 'a new section is stamped new');
+  /* Retired sections stay in place: Q1 (answered) and Q2 (retired: list), after
+     their old predecessor, struck, with the reason under the heading. */
+  const ret = /<section class="diff-retired" id="s-q2" data-round-state="retired" inert>[\s\S]*?<\/section>/.exec(m2);
+  assert.ok(ret, 'a retired section is put back');
+  assert.ok(/<p class="diff-why">Retired: folded into Fresh<\/p>/.test(ret[0]), 'with its why under the heading');
+  assert.ok(!/label class="tick"|data-q=|class="q"/.test(ret[0]), 'and nothing the runtime counts as a question');
+  assert.ok(m2.indexOf('id="s-q1"') > m2.indexOf('id="s-edit-me"') && m2.indexOf('id="s-q2"') > m2.indexOf('id="s-q1"') &&
+    m2.indexOf('id="s-q2"') < m2.indexOf('id="s-your-q1-answer-picked-a"'), 'retired sections sit at their old place');
+  assert.ok(/Retired: answered, see Your Q1 answer: picked A/.test(m2), 'an answered question retires itself');
+  assert.ok(!/round-pill|round-changes/.test(m2), 'no heading pills and no What changed box');
+  assert.ok(/<body[^>]* data-diff[ >]/.test(second.html), 'a round two build carries data-diff');
+  assert.ok(!/<body[^>]* data-diff[ >]/.test(first.html), 'a round one build does not');
+  /* No id appears twice. */
+  const ids = [...m2.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(ids.length, new Set(ids).size, 'no duplicated ids: ' + ids.filter((x, i) => ids.indexOf(x) !== i));
+  assert.ok(!/<!--\/?diff:blk-->|data-ghost-href/.test(second.html), 'no internal markers are shipped');
+
+  /* The stored rendered HTML lives on the last two rounds only. */
+  assert.ok(second.rounds.rounds[1].sections['s-keep'].html && second.rounds.rounds[0].sections['s-keep'].html,
+    'the last two rounds keep their section HTML');
+
+  /* Blocks of every kind: list items, table rows, dt/dd, headings, raw HTML. */
+  {
+    const k1 = ['---', 'title: K', 'brief-id: k', 'consumed: a', '---', '', '## Contents', '', '## Kinds', '',
+      '- one', '- two', '- three', '', '| A | B |', '|---|---|', '| r1 | x |', '| r2 | y |', '', 'T1', ': d1', '',
+      '### Sub head', '', ':::html', '<div class="w" id="wid"><p>raw para</p></div>', ':::', '',
+      '## Q1 Which?', '', 'Text **bold** [link](https://example.com).', ''].join('\n');
+    const k2 = k1.replace('consumed: a', 'consumed: b').replace('- two\n', '').replace('| r2 | y |', '| r2 | z |')
+      .replace(': d1', ': d2').replace('### Sub head', '### Sub head two').replace('raw para', 'raw para two')
+      .replace('Text **bold**', 'Text **bolder**').replace('- three', '- three\n- four');
+    const kr1 = renderRound(k1, null);
+    const km = renderRound(k2, kr1.rounds).html.split('<main>')[1].split('</main>')[0];
+    const kinds = sec(km, 's-kinds');
+    assert.ok(/<li class="diff-del" inert>two<\/li>/.test(kinds), 'a removed list item is struck in its list');
+    assert.ok(/<li class="diff-add">four<\/li>/.test(kinds), 'an added list item is marked');
+    assert.ok(/<tr class="diff-del" inert>[\s\S]*?y[\s\S]*?<\/tr>\s*<tr class="diff-add">[\s\S]*?z/.test(kinds), 'an edited table row shows old above new');
+    assert.ok(/<dd class="diff-del" inert>d1<\/dd>/.test(kinds) && /<dd class="diff-add">d2<\/dd>/.test(kinds), 'dt/dd are blocks');
+    assert.ok(/<h4 class="diff-del" inert>Sub head<\/h4>/.test(kinds), 'a removed heading is struck, without its id');
+    assert.ok(/<div class="diff-del" inert><div class="w"><p>raw para<\/p><\/div><\/div>/.test(kinds), 'a raw HTML block is one block, ids stripped');
+    assert.ok(/<div class="diff-add"><div class="w" id="wid">/.test(kinds), 'the new raw block keeps its id');
+    const q = sec(km, 's-q1');
+    assert.ok(/<p class="diff-del" inert>Text <strong>bold<\/strong> <a href="https:\/\/example.com"[^>]*>link<\/a>\.<\/p>/.test(q),
+      'old blocks keep their inner formatting');
+    assert.ok((km.match(/data-q="Q1"/g) || []).length === 1, 'only one live Q1');
+    /* Contents: pills on changed entries, right-aligned by CSS. */
+    assert.ok(/<li class="toc-diff"><span class="toc-entry"><a href="#s-kinds">Kinds<\/a><\/span><span class="toc-pill" data-round="changed">Changed<\/span><\/li>/.test(km),
+      'a changed section carries a Changed pill in the contents');
+  }
+  /* Contents in the main fixture round: new and retired pills, retired entry in place. */
+  {
+    const c1 = r1.replace('# Part', '## Contents\n\n# Part');
+    const c2 = r2ok.replace('# Part', '## Contents\n\n# Part');
+    const cm = renderRound(c2, renderRound(c1, null).rounds).html.split('<main>')[1];
+    const toc = /<nav class="toc">[\s\S]*?<\/nav>/.exec(cm)[0];
+    assert.ok(/<a href="#s-fresh">Fresh<\/a><\/span><span class="toc-pill" data-round="new">New/.test(toc), 'a new entry has the New pill');
+    assert.ok(/<li class="toc-diff toc-retired"><span class="toc-entry"><a href="#s-q2">Q2: Another\?<\/a><\/span><span class="toc-pill" data-round="retired">Retired/.test(toc),
+      'a retired entry is listed with the Retired pill, linking to the struck section');
+    assert.ok(toc.indexOf('#s-q1"') < toc.indexOf('#s-q2"') && toc.indexOf('#s-q2"') < toc.indexOf('#s-your-q1'), 'at its old position');
+  }
+
+  /* A retired section goes back inside its own part: first in Part Two, it
+     lands under Part Two's heading, not at the end of Part One; a part left
+     with no live entries gets a list of its own in the contents. */
+  {
+    const p1 = ['---', 'title: P', 'brief-id: p', 'consumed: a', '---', '', '## Contents', '',
+      '# One', '', 'Lede one.', '', '## A1', '', 'a1.', '', '## A2', '', 'a2.', '',
+      '# Two', '', 'Lede two.', '', '## B1', '', 'b1.', '', '## B2', '', 'b2.', '',
+      '# Three', '', '## C1', '', 'c1.', ''].join('\n');
+    const p2 = p1.replace('consumed: a', 'consumed: b\nretired: [{"id": "s-b1", "why": "x"}, {"id": "s-c1", "why": "y"}]')
+      .replace('## B1\n\nb1.\n\n', '').replace('## C1\n\nc1.\n', '');
+    const pr1 = renderRound(p1, null);
+    assert.equal(pr1.rounds.rounds[0].sections['s-b1'].part, 'part-2', 'the sidecar records each section\'s part');
+    const pm = renderRound(p2, pr1.rounds).html.split('<main>')[1].split('</main>')[0];
+    const body = pm.slice(pm.indexOf('</nav>'));
+    assert.ok(body.indexOf('id="part-2"') < body.indexOf('id="s-b1"') && body.indexOf('id="s-b1"') < body.indexOf('id="s-b2"') &&
+      body.indexOf('Lede two.') < body.indexOf('id="s-b1"'), 'a retired first section sits after its part heading and lede, before its sibling');
+    assert.ok(body.indexOf('id="part-3"') < body.indexOf('id="s-c1"'), 'a part with no live sections still holds its retired one');
+    const ptoc = /<nav class="toc">[\s\S]*?<\/nav>/.exec(pm)[0];
+    assert.ok(ptoc.indexOf('href="#part-2"') < ptoc.indexOf('#s-b1"') && ptoc.indexOf('#s-b1"') < ptoc.indexOf('#s-b2"'),
+      'the retired contents entry sits under its own part');
+    assert.ok(/<a href="#part-3">[^\n]*<\/p>\n {2}<ol>\n {4}<li class="toc-diff toc-retired">[^\n]*#s-c1"/.test(ptoc),
+      'a part with no live entries gets its own list for the retired one');
+  }
+
+  /* Ghost blocks lose ids and runtime hooks in every quoting and case, and
+     parked internal links come back only when their target still exists. */
+  {
+    const raw = (t) => ['---', 'title: G', 'brief-id: g', 'consumed: ' + t, '---', '', '## Keep', '', 'k.', '', '## G', '', ':::html',
+      '<div ID=\'gid\' DATA-Q=Q7 data-sec="s" For=x title="id=keep"><a HREF=\'#s-keep\'>in</a> <a href=#gone>out</a> ' + t + '</div>', ':::', ''].join('\n');
+    const gm = renderRound(raw('b'), renderRound(raw('a'), null).rounds).html.split('<main>')[1].split('</main>')[0];
+    const del = /<div class="diff-del" inert>([\s\S]*?)<\/div><\/div>/.exec(gm)[1];
+    assert.ok(!/\s(id|data-q|data-sec|for)\s*=/i.test(del.replace(/title="[^"]*"/, '')), 'no id, data-q, data-sec or for survives in any quoting: ' + del);
+    assert.ok(del.includes('title="id=keep"'), 'a quoted value that looks like an attribute is left alone');
+    assert.ok(/<a href="#s-keep">in<\/a>/.test(del), 'a single-quoted uppercase internal link is parked and restored');
+    assert.ok(/<a>out<\/a>/.test(del), 'an unquoted link to a gone id is dropped');
+  }
+
+  /* A rebuild during round two compares with round one, not with itself. */
+  const tweak = renderRound(r2ok.replace('Brand new.', 'Brand new, fixed typo.'), second.rounds);
+  assert.equal(tweak.rounds.rounds.length, 2, 'the same consumed token is the same round');
+  assert.ok(/id="s-edit-me"[^>]*data-round-state="changed"/.test(tweak.html), 'and still shows round two against round one');
+  assert.ok(/<p class="diff-del" inert>Old text\.<\/p>/.test(tweak.html), 'with the diff against round one');
+
+  /* A different brief-id at the same path starts afresh. */
+  assert.equal(renderRound(r1.replace('r-test', 'other'), second.rounds).rounds.rounds.length, 1, 'another brief-id starts a new history');
+  assert.throws(() => render(r1.replace('consumed: a', 'retired: [{"why": "x"}]')), /needs an "id"/, 'a malformed retired list fails');
+
+  /* Through the CLI: the sidecar sits beside the output, and a trimmed build
+     leaves both files as they were. */
+  const t = mkdtempSync(join(tmpdir(), 'brief-rounds-'));
+  const md = join(t, 'r.md');
+  const run = () => execFileSync(process.execPath, [join(HERE, 'build-brief.mjs'), md], { encoding: 'utf8', stdio: 'pipe' });
+  writeFileSync(md, r1);
+  assert.match(run(), /round 1/);
+  assert.match(run(), /round 1/, 'a rebuild stays in round 1');
+  const side = JSON.parse(readFileSync(join(t, 'r.html.rounds.json'), 'utf8'));
+  assert.equal(side['brief-id'], 'r-test');
+  const before = readFileSync(join(t, 'r.html'), 'utf8');
+  writeFileSync(md, r2);
+  assert.throws(run, /missing: s-q2/, 'the CLI fails on a trimmed section');
+  assert.equal(readFileSync(join(t, 'r.html'), 'utf8'), before, 'and leaves the old brief untouched');
+  writeFileSync(md, r2ok);
+  assert.match(run(), /round 2/);
+
+  /* check-coverage.py: every answer and comment needs a home in the new round.
+     Q1 has a `Your Q1 answer` section, Q2 was revised, the comment has no reply
+     until one is added. */
+  const r2rev = r2ok.replace('retired: [{"id": "s-q2", "why": "folded into Fresh"}]\n', '')
+    .replace('## References', '## Q2 Another?\n\nHmm, revised.\n\n## References');
+  const t2 = mkdtempSync(join(tmpdir(), 'brief-cover-'));
+  const md2 = join(t2, 'c.md');
+  const run2 = () => execFileSync(process.execPath, [join(HERE, 'build-brief.mjs'), md2], { encoding: 'utf8', stdio: 'pipe' });
+  writeFileSync(md2, r1); run2();
+  const tok1 = JSON.parse(readFileSync(join(t2, 'c.html.rounds.json'), 'utf8')).rounds[0].builds[0];
+  writeFileSync(md2, r2rev); run2();
+  const resp = join(t2, 'responses.json');
+  writeFileSync(resp, JSON.stringify({ brief: 'r-test', build: tok1,
+    answers: [{ id: 'Q1', answer: 'A please', ticked: false }, { id: 'Q2', answer: 'Not sure', ticked: false },
+      { id: 'Q3', answer: '', ticked: true }],
+    comments: [{ selected_text: 'Same text', near_question: null, comment: 'Is this   still TRUE in 2026?' }] }));
+  /* Editing the source without rebuilding makes the history stale: refused. */
+  writeFileSync(md2, r2rev + '\nmore.\n');
+  try { execFileSync('python3', [join(HERE, 'check-coverage.py'), md2, resp], { stdio: 'pipe' }); assert.fail('stale'); }
+  catch (e) { assert.equal(e.status, 2, 'a source edited since its build is refused'); }
+  writeFileSync(md2, r2rev);
+  const cover = () => execFileSync('python3', [join(HERE, 'check-coverage.py'), md2, resp], { encoding: 'utf8', stdio: 'pipe' });
+  let failed = null;
+  try { cover(); } catch (e) { failed = e; }
+  assert.ok(failed && failed.status === 1, 'an unanswered comment fails the coverage check');
+  assert.match(failed.stdout, /answer +Q1 +covered .*section: Your Q1 answer/, 'an answer section is a home');
+  assert.match(failed.stdout, /answer +Q2 +covered .*Q2 revised since round 1/, 'a revised question is a home');
+  assert.match(failed.stdout, /comment .*UNCOVERED/, 'the comment is listed as uncovered');
+  assert.match(failed.stdout, /3 of 4 covered/);
+  writeFileSync(md2, r2rev.replace('consumed: b', 'consumed: b\nreplies: [{"match": "is this still true in 2026?", "reply": "Yes."}]')); run2();
+  assert.match(cover(), /4 of 4 covered/, 'a reply matching the first forty characters covers the comment');
+  /* Q2 unrevised and unanswered fails; a different brief-id is refused. */
+  writeFileSync(md2, r2rev.replace('Hmm, revised.', 'Hmm.')); run2();
+  try { cover(); failed = null; } catch (e) { failed = e; }
+  assert.ok(failed && /answer +Q2 +UNCOVERED/.test(failed.stdout), 'an untouched question with an answer is uncovered');
+  /* A reply matching the answer's words is no home: the page shows replies only under comments. */
+  writeFileSync(md2, r2rev.replace('Hmm, revised.', 'Hmm.').replace('consumed: b',
+    'consumed: b\nreplies: [{"match": "not sure", "reply": "Fine."}, {"match": "is this still true in 2026?", "reply": "Yes."}]')); run2();
+  try { cover(); failed = null; } catch (e) { failed = e; }
+  assert.ok(failed && /answer +Q2 +UNCOVERED/.test(failed.stdout), 'a replies: entry never covers an answer');
+  writeFileSync(resp, JSON.stringify({ brief: 'someone-else', answers: [], comments: [] }));
+  try { cover(); failed = null; } catch (e) { failed = e; }
+  assert.ok(failed && failed.status === 2, 'responses for another brief are refused');
+  rmSync(t2, { recursive: true, force: true });
+  rmSync(t, { recursive: true, force: true });
 }
 
 /* ── reproducibility ─────────────────────────────────────────────────────── */

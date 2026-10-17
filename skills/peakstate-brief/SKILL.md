@@ -458,10 +458,20 @@ stands. Comments are keyed by `selected_text` +
 `anchored: false` lost its highlight and was recovered from the drawer; treat it
 exactly like any other. Entries under `drafts` are text the reader typed but never
 saved — read them, but confirm before acting, since they may be abandoned thoughts. After
-processing, update whatever register/doc the questions came from and, if
-questions remain, regenerate the SAME brief file (same `{{BRIEF_ID}}`, same
-path) with resolved questions removed or marked, so their saved state stays
-meaningful.
+processing, update whatever register/doc the questions came from.
+
+**The round-trip rule.** Answers always come back as the SAME brief regenerated
+(same `brief-id`, same path, fresh `consumed:`) and redelivered, never a new file.
+**Never trim:** an answered `## Qn` becomes `## Your Qn answer: ...`, anything else
+dropped goes under `retired:` with a reason, and the build fails otherwise. From
+round two the build draws a paragraph-level diff for the reader: removed blocks
+struck in red, added ones in green, retired sections struck in place, and New /
+Changed / Retired pills in the contents ("Rounds" in
+`reference/markdown-format.md`). **Before delivering, run
+`python3 assets/check-coverage.py <brief.md> <responses.json>`**: it fails on any
+answer or comment with no home. An answer's home is a `## Your Qn answer`
+section or a revised question; a comment's home is a `replies:` entry. A reply
+never covers an answer, because the page shows replies only under comments.
 
 ## SOURCED — run it when it is available, and show your working
 

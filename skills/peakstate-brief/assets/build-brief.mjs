@@ -20,7 +20,7 @@
    the day a brief needs reference links, setext headings or autolink edge
    cases. */
 
-import { readFileSync, writeFileSync, realpathSync } from 'node:fs';
+import { readFileSync, writeFileSync, realpathSync, existsSync } from 'node:fs';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
@@ -417,7 +417,8 @@ function renderBlock(lines, ctx) {
   const c = /^:::(\S*)\s*(.*)$/.exec(t);
   if (c) {
     const inner = lines.slice(1, lines[lines.length - 1].trim() === ':::' ? -1 : undefined);
-    if (c[1] === 'html' || c[1] === '') return inner.join('\n');
+    /* Raw HTML is one block to the round diff, whatever it holds. */
+    if (c[1] === 'html' || c[1] === '') return inner.length ? BLK + inner.join('\n') + BLK_END : '';
     /* A gallery holds one image per line, `![caption](src)`, each becoming a
        captioned figure in a thumbnail grid. A line starting with `<` is a
        figure written by hand and passes through verbatim. `:::gallery pairs`
@@ -439,7 +440,7 @@ function renderBlock(lines, ctx) {
     return '<div class="' + cls + '">\n' + renderBody(inner, ctx) + '\n</div>';
   }
 
-  if (t.startsWith('<')) return lines.join('\n');
+  if (t.startsWith('<')) return BLK + lines.join('\n') + BLK_END;
 
   const h = /^(#{3,6})\s+(.*?)(?:\s*\{#([^}]+)\})?$/.exec(t);
   if (h) {
@@ -585,7 +586,7 @@ function frontMatter(src) {
    this list fails the build, because a misspelt option otherwise does nothing
    and says nothing. Add a key here in the same change that starts reading it. */
 const KNOWN_KEYS = new Set(['title', 'head-title', 'brief-id', 'eyebrow', 'sub', 'replies',
-  'addressed', 'consumed', 'highlights', 'define', 'notes', 'tabs', 'visibility', 'publish-slug', 'publish-project',
+  'addressed', 'consumed', 'highlights', 'define', 'notes', 'tabs', 'retired', 'visibility', 'publish-slug', 'publish-project',
   'publish-project-uid', 'publish-brief-uid', 'publish-short-id', 'publish-tenant']);
 
 function checkFrontMatter(meta) {
@@ -905,6 +906,334 @@ function dropPrivate(parts) {
 }
 
 export function render(source, opts = {}) {
+  return renderDoc(source, opts).html;
+}
+
+/* ── rounds ───────────────────────────────────────────────────────────────
+   A brief goes back and forth: the reader answers, the author regenerates the
+   same brief-id at the same path. The sidecar `<output>.rounds.json` records
+   each round's sections (id, heading, a hash of the rendered text), so the
+   next round can say what is new, what changed and what went.
+
+   A round is keyed on `consumed:` when the front matter has one, else on the
+   source hash. `consumed:` changes once per reply to the reader, so an author
+   rebuilding five times while drafting round 3 still gets one round 3,
+   compared against round 2. Without it every source edit is a round.
+
+   Returns { html, rounds }. `prev` is the parsed sidecar or null. */
+export function renderRound(source, prev, opts = {}) {
+  return renderDoc(source, { ...opts, rounds: { prev, date: opts.date } });
+}
+
+/* The text a reader sees, minus footnote numbers: adding one source renumbers
+   every marker after it alphabetically, and that is not a change to the prose. */
+const sectionText = (html) => html.replace(/<sup class="fn[^"]*">[\s\S]*?<\/sup>/g, '')
+  .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const plainTitle = (s) => (s.q ? s.q + ' ' : '') + inline(s.title).replace(/<[^>]*>/g, '')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
+function parseRetired(raw) {
+  if (!raw) return [];
+  let list;
+  try { list = JSON.parse(raw); } catch (e) {
+    throw new Error('retired: expected a JSON array of {"id": "s-x", "why": "..."}, got: ' + raw.slice(0, 60));
+  }
+  if (!Array.isArray(list) || list.some((r) => !r || typeof r.id !== 'string' || !r.id)) {
+    throw new Error('retired: every entry needs an "id", e.g. [{"id": "s-x", "why": "..."}]');
+  }
+  return list;
+}
+
+/* ── paragraph-level diff ─────────────────────────────────────────────────
+   From round two each changed section is compared, block by block, with the
+   same section as the last round rendered it. A block is a leaf paragraph,
+   list item, dt or dd, table row, heading, blockquote, pre or figure, and a
+   raw HTML block (`:::html`, or a line opening with `<`) is one block whole:
+   renderBlock fences those with BLK markers, which are stripped before the
+   page is written. Blocks are matched on their text (footnote numbers out),
+   longest common subsequence first. An added block gets `diff-add`; a removed
+   one is put back where it was, struck through, as `diff-del`, with no ids
+   and `inert`, so the runtime never counts it as a question, an answer, a
+   footnote target or a definition. An edit is a removal and an addition, so
+   it reads as the old block above the new one. */
+const BLK = '<!--diff:blk-->', BLK_END = '<!--/diff:blk-->';
+const ATOMS = new Set(['p', 'li', 'dt', 'dd', 'tr', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'figure']);
+const LISTY = { tr: 1, li: 1, dt: 1, dd: 1 };
+const WRAP = { tr: ['<table class="diff-wrap"><tbody>', '</tbody></table>'], li: ['<ul class="diff-wrap">', '</ul>'],
+  dt: ['<dl class="diff-wrap">', '</dl>'], dd: ['<dl class="diff-wrap">', '</dl>'] };
+
+/* Top-level atoms only: a list item is one block with any list nested in it,
+   so an edit to a nested item shows the whole item as edited, never missed.
+   ponytail: text outside every atom (a bare figure caption in a div) is not
+   compared; the section still reads as changed from its hash. */
+function leafBlocks(html) {
+  const out = [];
+  const re = /<!--diff:blk-->|<([a-zA-Z][\w-]*)\b[^>]*>/g;
+  let m;
+  while ((m = re.exec(html))) {
+    let end, tag = '';
+    if (m[0] === BLK) {
+      const c = html.indexOf(BLK_END, re.lastIndex);
+      end = c < 0 ? html.length : c + BLK_END.length;
+    } else {
+      tag = m[1].toLowerCase();
+      if (!ATOMS.has(tag)) continue;
+      const t = new RegExp('<(/?)' + tag + '\\b[^>]*>', 'gi');
+      t.lastIndex = re.lastIndex;
+      let depth = 1, n;
+      while (depth && (n = t.exec(html))) depth += n[1] ? -1 : 1;
+      end = depth ? html.length : t.lastIndex;
+    }
+    const h = html.slice(m.index, end);
+    out.push({ start: m.index, end, tag, html: h,
+      key: tag ? tag + ':' + sectionText(h.replace(/<span class="rnum">[^<]*<\/span>/g, '')) : 'raw:' + h.replace(/\s+/g, ' ') });
+    re.lastIndex = end;
+  }
+  return out;
+}
+
+function lcsOps(a, b) {
+  const n = a.length, m = b.length;
+  const d = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) {
+    d[i][j] = a[i].key === b[j].key ? d[i + 1][j + 1] + 1 : Math.max(d[i + 1][j], d[i][j + 1]);
+  }
+  const ops = [];
+  let i = 0, j = 0;
+  while (i < n || j < m) {
+    if (i < n && j < m && a[i].key === b[j].key) ops.push(['=', a[i++], b[j++]]);
+    else if (j >= m || (i < n && d[i + 1][j] >= d[i][j + 1])) ops.push(['-', a[i++], null]);
+    else ops.push(['+', null, b[j++]]);
+  }
+  return ops;
+}
+
+/* Old HTML put back on the page: no ids (they would duplicate the live ones),
+   nothing a script or the runtime would pick up, and internal links parked on
+   data-ghost-href until the page is done (an old link may point at an id that
+   has gone; renderDoc restores the ones that still resolve). */
+const GHOST_DROP = new Set(['id', 'for', 'data-doc', 'data-draft', 'data-q', 'data-sec', 'data-tablabel', 'aria-labelledby']);
+/* One attribute at a time, so a value is consumed whole and a name inside a
+   quoted value is never mistaken for an attribute. Names are case-insensitive;
+   values may be double-quoted, single-quoted or bare. */
+const ATTR = /(\s+)([^\s"'>\/=]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
+const ghostAttrs = (attrs) => attrs.replace(ATTR, (all, sp, name, val) => {
+  const n = name.toLowerCase();
+  if (GHOST_DROP.has(n)) return '';
+  const v = val ? val.replace(/^(["'])([\s\S]*)\1$/, '$2') : '';
+  if (n === 'href' && v.startsWith('#')) return ' data-ghost-href="' + v.replace(/"/g, '&quot;') + '"';
+  return all;
+});
+const ghost = (html) => html
+  .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+  .replace(/<textarea\b[\s\S]*?<\/textarea>/gi, '')
+  .replace(/\s*<label class="tick">[\s\S]*?<\/label>/g, '')
+  .replace(/<input\b[^>]*>/gi, '')
+  .replace(/<([a-zA-Z][\w-]*)((?:"[^"]*"|'[^']*'|[^'">])*)>/g, (_, t, attrs) => '<' + t + ghostAttrs(attrs) + '>');
+const addClass = (html, cls, extra = '') => html.replace(/^<([a-zA-Z][\w-]*)([^>]*)>/, (_, t, attrs) =>
+  '<' + t + (/\sclass="/.test(attrs) ? attrs.replace(/\sclass="([^"]*)"/, (__, c) => ' class="' + c + ' ' + cls + '"')
+    : ' class="' + cls + '"' + attrs) + extra + '>');
+const delHtml = (b) => b.tag ? addClass(ghost(b.html), 'diff-del', ' inert')
+  : '<div class="diff-del" inert>' + ghost(b.html) + '</div>';
+const addHtml = (b) => b.tag ? addClass(b.html, 'diff-add') : '<div class="diff-add">' + b.html + '</div>';
+
+/* A section's three parts: the head, the body the diff runs on, and the tail
+   (the closing div and the evidence block, which is not diffed). */
+function splitSection(html) {
+  const open = /<div class="(?:sec|q)-body">\n?/.exec(html);
+  const tail = /\n {2}<\/div>(?:\n {2}<(?:p|details) class="l5">[\s\S]*)?\n<\/section>$/.exec(html);
+  if (!open || !tail || tail.index < open.index) return null;
+  const s = open.index + open[0].length;
+  return { head: html.slice(0, s), body: html.slice(s, tail.index), tail: html.slice(tail.index) };
+}
+
+function diffSection(nw, old) {
+  const N = splitSection(nw), O = splitSection(old);
+  if (!N || !O) return nw;
+  const ops = lcsOps(leafBlocks(O.body), leafBlocks(N.body));
+  const before = new Map(), added = new Map();
+  const put = (pos, h) => { if (!before.has(pos)) before.set(pos, []); before.get(pos).push(h); };
+  const fits = (d, a) => !LISTY[d.tag] || (!!a && (a.tag === d.tag || (d.tag[0] === 'd' && /^d[td]$/.test(a.tag))));
+  /* A removed row or item has to land among its own kind, or the parser
+     drops it. Before the next block, else after the last kept one, else wrapped. */
+  const place = (d, next, prev) => {
+    if (next && fits(d, next)) return put(next.start, delHtml(d));
+    if (prev && fits(d, prev)) return put(prev.end, delHtml(d));
+    const w = WRAP[d.tag];
+    put(next ? next.start : prev ? prev.end : N.body.length, w ? w[0] + delHtml(d) + w[1] : delHtml(d));
+  };
+  let last = null;
+  for (let k = 0; k < ops.length;) {
+    if (ops[k][0] === '=') { last = ops[k][2]; k++; continue; }
+    const dels = [], adds = [];
+    let e = k;
+    for (; e < ops.length && ops[e][0] !== '='; e++) {
+      if (ops[e][0] === '-') dels.push(ops[e][1]); else adds.push(ops[e][2]);
+    }
+    for (const b of adds) added.set(b.start, b);
+    const next = e < ops.length ? ops[e][2] : null;
+    /* The whole old run above the whole new run, so a dt/dd pair or a run of
+       rows reads as the old version, then the new one. */
+    for (const d of dels) place(d, adds[0] || next, last);
+    if (adds.length) last = adds[adds.length - 1];
+    k = e;
+  }
+  let res = '', at = 0;
+  for (const p of [...new Set([...before.keys(), ...added.keys()])].sort((a, b) => a - b)) {
+    res += N.body.slice(at, p) + (before.get(p) || []).map((h) => h + '\n').join('');
+    const a = added.get(p);
+    if (a) { res += addHtml(a); at = a.end; } else at = p;
+  }
+  res += N.body.slice(at);
+  /* A renamed heading: the old one struck through at the top of the body. */
+  let head = N.head, lead = '';
+  const h3 = (s) => (/<h3>([\s\S]*?)<\/h3>/.exec(s) || [])[1] || '';
+  if (sectionText(h3(O.head)) !== sectionText(h3(N.head))) {
+    head = head.replace('<h3>', '<h3 class="diff-add">');
+    lead = '<p class="diff-del diff-head" inert>' + ghost(h3(O.head)) + '</p>\n';
+  }
+  return head + lead + res + N.tail;
+}
+
+/* A retired section stays where it was, struck through, with the reason under
+   its heading. It keeps its own id (nothing live has it) so the contents entry
+   can point at it, and loses the classes the runtime counts sections by. */
+function retiredSection(old, sid, why) {
+  const body = ghost(old.replace(/^<section[^>]*>/, ''))
+    .replace(/(<div class="(?:sec|q)-head">[\s\S]*?\n {2}<\/div>)/, (x) => x +
+      '\n  <p class="diff-why">Retired' + (why ? ': ' + inline(why) : '.') + '</p>');
+  return '<section class="diff-retired" id="' + sid + '" data-round-state="retired" inert>' + body;
+}
+
+const PILL = { new: 'New', changed: 'Changed', retired: 'Retired' };
+const tocLi = (inner, st) => '<li class="toc-diff' + (st === 'retired' ? ' toc-retired' : '') + '"><span class="toc-entry">' +
+  inner + '</span><span class="toc-pill" data-round="' + st + '">' + PILL[st] + '</span></li>';
+const TOC_LI = /<li>(<a href="#([^"]+)"[\s\S]*?)<\/li>/g;
+
+/* Stamps each rendered section in `out` with its state against the last round,
+   diffs the changed ones, puts retired ones back, and pills the contents.
+   Returns the new sidecar and whether a diff was drawn. Only the last two
+   rounds keep their rendered HTML (`html`, `toc`): the next build diffs
+   against one of them, and the hash history stays small. */
+function stampRounds(out, allSecs, meta, build, cfg, partOf = {}) {
+  const id = meta['brief-id'] || slug(meta.title || 'brief');
+  const key = meta.consumed || build;
+  const prev = cfg.prev && cfg.prev['brief-id'] === id && Array.isArray(cfg.prev.rounds) ? cfg.prev.rounds : [];
+  const last = prev[prev.length - 1];
+  const same = !!last && last.key === key;
+  const base = same ? prev[prev.length - 2] : last;
+  const sections = {};
+  const titleOf = Object.fromEntries(allSecs.map((s) => [s.id, plainTitle(s)]));
+  const ti = out.findIndex((h) => /^<section[^>]* id="s-toc"/.test(h));
+  const tocOf = {};
+  if (ti >= 0) for (const m of out[ti].matchAll(TOC_LI)) tocOf[m[2]] = m[1];
+  const state = {};
+  for (let i = 0; i < out.length; i++) {
+    const m = /^<section[^>]* id="([^"]+)"/.exec(out[i]);
+    if (!m || m[1] === 's-toc' || !titleOf[m[1]]) continue;
+    const sid = m[1];
+    sections[sid] = { title: titleOf[sid],
+      hash: createHash('sha256').update(sectionText(out[i])).digest('hex').slice(0, 12), html: out[i] };
+    if (tocOf[sid]) sections[sid].toc = tocOf[sid];
+    if (sid in partOf) sections[sid].part = partOf[sid];
+    if (!base) continue;
+    const was = base.sections && base.sections[sid];
+    state[sid] = !was ? 'new' : was.hash === sections[sid].hash ? 'same' : 'changed';
+    if (state[sid] === 'changed' && was.html) out[i] = diffSection(out[i], was.html);
+    out[i] = out[i].replace(/^(<section[^>]*)>/, (_, open) => open + ' data-round-state="' + state[sid] + '">');
+  }
+  const round = same ? { ...last, builds: [...new Set([...(last.builds || []), build])], sections }
+    : { round: last ? last.round + 1 : 1, date: cfg.date || new Date().toISOString().slice(0, 10), key, builds: [build], sections };
+  const kept = [...prev.slice(0, same ? -1 : undefined), round];
+  const rounds = { 'brief-id': id, rounds: kept.map((r, i) => i >= kept.length - 2 ? r : { ...r,
+    sections: Object.fromEntries(Object.entries(r.sections || {}).map(([k, v]) => [k, { title: v.title, hash: v.hash }])) }) };
+  if (!base) return { rounds, diff: false };
+
+  /* No silent trimming. A section the last round had must still be here, or be
+     retired on purpose with a reason the reader will see. An answered question
+     whose answer now has its own `## Your Qn answer` section retires itself. */
+  const why = {};
+  for (const r of parseRetired(meta.retired)) why[r.id] = r.why || '';
+  const order = Object.keys(base.sections || {}).filter((sid) => sid !== 's-toc');
+  const gone = order.filter((sid) => !sections[sid]);
+  for (const sid of gone) {
+    const q = /^s-q(\d+)$/.exec(sid);
+    const ans = q && allSecs.find((s) => new RegExp('^Your Q' + q[1] + ' answer\\b', 'i').test(s.title));
+    if (!(sid in why) && ans) why[sid] = 'answered, see ' + plainTitle(ans);
+  }
+  const missing = gone.filter((sid) => !(sid in why));
+  if (missing.length) {
+    throw new Error('sections from round ' + base.round + ' are missing: ' +
+      missing.map((sid) => sid + ' (' + base.sections[sid].title + ')').join(', ') +
+      '\n  Never trim a brief between rounds. Put the section back, or list it in the front matter:' +
+      '\n  retired: [{"id": "' + missing[0] + '", "why": "what replaced it"}]');
+  }
+
+  /* Each retired section goes back inside the part it was in, after its old
+     predecessor in that part (the last earlier section of the part still on the
+     page, or just put back), else straight after the part heading and lede. A
+     sidecar from before parts were recorded, or a part that has gone, falls
+     back to the last earlier section anywhere. */
+  const at = (sid) => out.findIndex((h) => h.startsWith('<section') && h.includes(' id="' + sid + '"'));
+  const partHead = (pid) => pid ? out.findIndex((h) => h.startsWith('<h2 class="part" id="' + pid + '"')) : -1;
+  const partOfNow = (sid) => sections[sid] ? sections[sid].part : base.sections[sid].part;
+  const afterIn = new Map();
+  let after = null;
+  for (const sid of order) {
+    const old = base.sections[sid];
+    if (sections[sid] || !old.html) {
+      if (at(sid) >= 0) { after = sid; afterIn.set(partOfNow(sid), sid); }
+      continue;
+    }
+    const prevIn = afterIn.get(old.part), head = partHead(old.part);
+    let pos;
+    if (old.part !== undefined && prevIn) pos = at(prevIn) + 1;
+    else if (head >= 0) {
+      pos = head + 1;
+      while (pos < out.length && !/^<(section|h2 class="part"|\/div>|div class="endmark")/.test(out[pos])) pos++;
+    } else pos = after ? at(after) + 1 : out.findIndex((h) => h.startsWith('<section') && !h.includes(' id="s-toc"'));
+    out.splice(pos < 0 ? out.length - 1 : pos, 0, retiredSection(old.html, sid, why[sid]));
+    state[sid] = 'retired';
+    after = sid;
+    afterIn.set(old.part, sid);
+  }
+
+  /* Contents: a pill on each new, changed or retired entry, and the retired
+     entries back at their old place, after the entry before them. */
+  if (ti >= 0) {
+    const toc = out.findIndex((h) => /^<section[^>]* id="s-toc"/.test(h));
+    let html = out[toc].replace(TOC_LI, (all, inner, sid) =>
+      state[sid] === 'new' || state[sid] === 'changed' ? tocLi(inner, state[sid]) : all);
+    /* Same rule as the body: after the entry before it in its own part, else
+       first under that part's line in the contents (opening a list if the part
+       has no entries left), else after the entry before it anywhere. */
+    let prevSid = null;
+    const prevIn = new Map();
+    for (const sid of order) {
+      const old = base.sections[sid];
+      if (state[sid] === 'retired' && old.toc) {
+        const li = tocLi(ghost(old.toc), 'retired');
+        const pin = old.part !== undefined ? prevIn.get(old.part) : null;
+        const pref = old.part ? html.indexOf('<a href="#' + old.part + '">') : -1;
+        let ins = -1, txt = '';
+        if (pin || pref < 0) {
+          const p = pin || prevSid, ref = p ? html.indexOf('href="#' + p + '"') : -1;
+          ins = ref >= 0 ? html.indexOf('</li>', ref) + 5 : html.search(/<li[\s>]/);
+          txt = ref >= 0 ? '\n    ' + li : li + '\n    ';
+        } else {
+          const pEnd = html.indexOf('</p>', pref) + 4, ol = /^\n\s*<ol[^>]*>/.exec(html.slice(pEnd));
+          ins = ol ? pEnd + ol[0].length : pEnd;
+          txt = ol ? '\n    ' + li : '\n  <ol>\n    ' + li + '\n  </ol>';
+        }
+        if (ins >= 0) { html = html.slice(0, ins) + txt + html.slice(ins); prevSid = sid; prevIn.set(old.part, sid); }
+      } else if (html.includes('href="#' + sid + '"')) { prevSid = sid; prevIn.set(partOfNow(sid), sid); }
+    }
+    out[toc] = html;
+  }
+  return { rounds, diff: true };
+}
+
+function renderDoc(source, opts = {}) {
   /* Line endings and a BOM are editor artefacts, never content. Normalising
      here is what makes the same source render the same page on any machine. */
   const src = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
@@ -914,6 +1243,7 @@ export function render(source, opts = {}) {
      that lived in a private section still fails the build loudly rather than
      orphaning every marker that cited it. That gate is not weakened here. */
   const parts = opts.publish ? dropPrivate(outline(body)) : outline(body);
+  const allSecs = parts.flatMap((p) => p.sections);
   const { anchors, index, quoteCount, display, all } = collectAnchors(parts, opts.publish);
   const refs = { anchors, missing: [], quoteCount, display, all, listed: false };
   const facts = collectFacts(parts, index, quoteCount);
@@ -1005,6 +1335,25 @@ export function render(source, opts = {}) {
     for (let i = 0; i < out.length; i++) out[i] = out[i].replace(NOTES_SLOT, () => notes);
   }
 
+  const build = createHash('sha256').update(String(source).replace(/\r\n?/g, '\n')).digest('hex').slice(0, 12);
+  let rounds = null, diffAttr = '';
+  if (opts.rounds) {
+    /* Read after the hoists, so a section is recorded in the part it renders in. */
+    const partOf = {};
+    for (const p of parts) for (const s of p.sections) partOf[s.id] = p.id || '';
+    const r = stampRounds(out, allSecs, meta, build, opts.rounds, partOf);
+    rounds = r.rounds;
+    if (r.diff) diffAttr = ' data-diff';
+  } else parseRetired(meta.retired);
+  /* Old internal links in struck-through blocks keep only the targets that
+     still exist; the raw-block markers the diff reads are never shipped. */
+  const liveIds = new Set([...out.join('\n').matchAll(/\sid\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s"'=<>`]+))/gi)]
+    .map((m) => m[1] || m[2] || m[3]));
+  for (let i = 0; i < out.length; i++) {
+    out[i] = out[i].replace(/ data-ghost-href="#([^"]*)"/g, (_, a) => liveIds.has(a) ? ' href="#' + a + '"' : '')
+      .replace(/<!--\/?diff:blk-->/g, '');
+  }
+
   if (refs.missing.length) {
     throw new Error('footnote markers with no target: ' + [...new Set(refs.missing)].join(', '));
   }
@@ -1034,7 +1383,7 @@ export function render(source, opts = {}) {
      exported under one build and has not touched since is treated as received
      once a later build arrives, and leaves the export (brief.js, "sent"). Taken
      from the source, so an unchanged rebuild keeps the same token. */
-  const build = ' data-build="' + createHash('sha256').update(String(source).replace(/\r\n?/g, '\n')).digest('hex').slice(0, 12) + '"';
+  const buildAttr = ' data-build="' + build + '"';
   /* Publish-only, and private unless the front matter says otherwise. The
      ordinary render never carries these, so a brief that was never published
      cannot be mistaken for one that was. */
@@ -1042,13 +1391,14 @@ export function render(source, opts = {}) {
     ? ' data-publish-slug="' + escAttr(meta['publish-slug'] || slug(meta.title || 'brief')) + '"' +
       ' data-visibility="' + escAttr(meta.visibility || 'private') + '"'
     : '';
-  return inlineRuntime(template
+  const html = inlineRuntime(template
     .replace(/\{\{TITLE\}\}/g, escAttr(meta['head-title'] || meta.title || 'Brief'))
     .replace(/<body data-brief-id="\{\{BRIEF_ID\}\}">/, '<body data-brief-id="' +
-      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + define + tabsAttr + build + pub + '>')
+      escAttr(meta['brief-id'] || slug(meta.title || 'brief')) + '"' + addressed + replies + consumed + baked + define + tabsAttr + buildAttr + diffAttr + pub + '>')
     /* The LAST <main> in the template is the body. A function, so a `$&` or
        `$'` in the brief's own text is not expanded. */
     .replace(/<main>(?![\s\S]*<main>)[\s\S]*<\/main>/, () => '<main>\n\n' + out.join('\n\n') + '\n\n</main>'), opts);
+  return { html, rounds };
 }
 
 /* Compare real paths, not the raw argv path: ~/.claude/skills is symlinked into
@@ -1076,6 +1426,25 @@ if (invoked) {
      keystroke away. */
   const stem = join(dirname(input), basename(input).replace(/\.md$/, ''));
   const dest = output || stem + (publish ? '.publish' : '') + '.html';
-  writeFileSync(dest, render(readFileSync(input, 'utf8'), { publish }));
-  console.log('wrote ' + dest + (publish ? ' (publish render)' : ''));
+  /* The publish render is a copy of the current round for someone else, so it
+     neither reads nor writes the round history. */
+  if (publish) {
+    writeFileSync(dest, render(readFileSync(input, 'utf8'), { publish }));
+    console.log('wrote ' + dest + ' (publish render)');
+  } else {
+    const side = dest + '.rounds.json';
+    let prev = null;
+    if (existsSync(side)) {
+      try { prev = JSON.parse(readFileSync(side, 'utf8')); } catch (e) {
+        throw new Error(side + ' is not valid JSON (' + e.message + '). Fix it, or delete it to restart the round history.');
+      }
+    }
+    /* Render first, write after: a build that fails on a trimmed section must
+       leave both the old brief and its history untouched. */
+    const { html, rounds } = renderRound(readFileSync(input, 'utf8'), prev);
+    writeFileSync(dest, html);
+    writeFileSync(side, JSON.stringify(rounds, null, 2) + '\n');
+    const r = rounds.rounds[rounds.rounds.length - 1];
+    console.log('wrote ' + dest + ' (round ' + r.round + ')');
+  }
 }

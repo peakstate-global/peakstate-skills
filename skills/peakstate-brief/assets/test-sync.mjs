@@ -40,7 +40,7 @@ const published = fixture.replace(/<body (data-brief-id="[^"]+")/,
 assert.notEqual(published, fixture, 'the published fixture is stamped');
 
 const HOST_PAGE = (sandbox) => `<!doctype html><meta charset="utf-8"><title>host</title>
-<iframe id="f" sandbox="${sandbox}" src="/brief.html" style="width:900px;height:1900px;border:0"></iframe>
+<iframe id="f" sandbox="${sandbox}" src="/brief.html" style="width:900px;height:2300px;border:0"></iframe>
 <script>
   window.__seen = [];
   window.__offline = location.search.indexOf('offline') > -1;
@@ -130,7 +130,7 @@ const browser = await chromium.launch();
    races both. Neither is what these cases assert -- they assert what the
    document sends -- so the fix removes the scroll rather than forcing a click
    past a real overlay. */
-const VIEWPORT = { viewport: { width: 1000, height: 2000 } };
+const VIEWPORT = { viewport: { width: 1000, height: 2400 } };
 const out = {};
 
 /* ── 1. an unpublished brief makes no request and posts no message ───────

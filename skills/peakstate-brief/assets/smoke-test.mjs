@@ -505,6 +505,49 @@ const fnLabelled = await fp.evaluate(() => document.querySelector('sup.fn.fact a
 console.log(JSON.stringify({ fnHoverOpens, fnTwoSources, fnEnterFocusesSource, fnEnterNoJump, fnEscReturns,
   fnTapOpensNoJump, fnNoTitleAttr, fnLabelled, jsErrors: ferr }, null, 1));
 
+/* Round diff: the Diff toggle. On by default, it shows the struck-through old
+   blocks, the retired section and the contents pills; off hides them and the
+   tints. The choice is kept per brief. Removed blocks and retired sections are
+   never counted as questions or given answer boxes. */
+const rp = await browser.newPage();
+const rerr = [];
+rp.on('pageerror', (e) => rerr.push(e.message));
+await rp.goto(url);
+const dBtn = rp.locator('#diffBtn');
+const diffOffer = await dBtn.count() === 1 && !!(await dBtn.getAttribute('data-tip')) && !(await dBtn.getAttribute('title'));
+const diffDefaultOn = await dBtn.getAttribute('aria-pressed') === 'true' && await rp.locator('.diff-del').first().isVisible() &&
+  await rp.locator('section.diff-retired').isVisible() && await rp.locator('.toc-pill').first().isVisible();
+const diffNoExtraQs = await rp.evaluate(() => {
+  const live = document.querySelectorAll('section.q[data-q]').length;
+  return document.querySelectorAll('textarea.answer').length === live &&
+    !document.querySelector('.diff-del textarea, section.diff-retired textarea, section.diff-retired label.tick') &&
+    new RegExp('/' + live + ' question').test(document.getElementById('progress').textContent);
+});
+const diffPillRight = await rp.evaluate(() => [...document.querySelectorAll('nav.toc li.toc-diff')].every((li) => {
+  const p = li.querySelector('.toc-pill').getBoundingClientRect(), r = li.getBoundingClientRect();
+  return Math.abs(p.right - r.right) < 2 && li.querySelector('.tnote, a');
+}));
+const diffNoHeadingPill = await rp.evaluate(() => !document.querySelector('.round-pill, nav.round-changes, #changedBtn'));
+await dBtn.click();
+const diffOffHides = await dBtn.getAttribute('aria-pressed') === 'false' && await rp.locator('.diff-del').first().isHidden() &&
+  await rp.locator('section.diff-retired').isHidden() && await rp.locator('.toc-pill').first().isHidden() &&
+  await rp.evaluate(() => getComputedStyle(document.querySelector('.diff-add')).backgroundColor === 'rgba(0, 0, 0, 0)');
+await rp.reload();
+const diffPersisted = await rp.locator('#diffBtn').getAttribute('aria-pressed') === 'false' && await rp.locator('.diff-del').first().isHidden();
+await rp.focus('#diffBtn');
+await rp.keyboard.press('Enter');
+const diffKeyboard = await rp.locator('#diffBtn').getAttribute('aria-pressed') === 'true' && await rp.locator('.diff-del').first().isVisible();
+/* A definition card under a .diff-del wrapper is the last round's: its term is
+   not linked, though the class sits on an ancestor and not on the h4. */
+await rp.waitForSelector('.bterm', { state: 'attached', timeout: 5000 }).catch(() => {});
+const diffDefsSkipped = await rp.evaluate(() => !!document.querySelector('.diff-del .term h4') &&
+  [...document.querySelectorAll('.bterm')].some((b) => /summary page/i.test(b.textContent)) &&
+  ![...document.querySelectorAll('.bterm')].some((b) => /ghost word/i.test(b.textContent)));
+const rcExportBuild = 'build' in json && /^Q1 Confirm/.test(json.answers[0].question) &&
+  !json.answers.some((a) => a.id === 'Q9');
+console.log(JSON.stringify({ diffOffer, diffDefaultOn, diffNoExtraQs, diffPillRight, diffNoHeadingPill, diffOffHides,
+  diffPersisted, diffKeyboard, diffDefsSkipped, rcExportBuild, jsErrors: rerr }, null, 1));
+
 await browser.close();
 
 /* ── two devices carry the same comment on: the merge keeps both ──────────

@@ -14,8 +14,11 @@ It renders `assets/test-brief.md`, which holds one section per block type, and
 asserts the four hard requirements, the block shapes, that every internal anchor
 resolves, that a footnote with no target fails the build, that a fixed colour on
 SVG text or a locally re-declared `.diag` rule fails the build, and that two
-renders of one source are identical. Run it after any change to
-`build-brief.mjs`.
+renders of one source are identical. It also drives the round history through
+the CLI (the paragraph diff for every block kind, retired sections and contents
+pills, no duplicated ids, a trimmed section failing the build) and
+runs `check-coverage.py` against it, so it needs `python3` on the path. Run it
+after any change to `build-brief.mjs` or `check-coverage.py`.
 
 `assets/smoke-test.mjs` drives `assets/test-fixture.html` with Playwright and
 covers the lot: ticks, persistence, the comment popover and drawer, JSON export,
