@@ -26,3 +26,7 @@ Note: a secondary summary of Anderson's 2016 book, the source of the throughline
 > "The 2010 TEDx Houston talk has been viewed more than 20 million times and is one of the top five most viewed TED talks in the world."
 
 [S9] PBS NewsHour. (n.d.). *Hans Rosling brings life, humor, sword-swallowing to global health statistics* [Video]. Retrieved October 14, 2026, from https://www.pbs.org/newshour/show/rosling-brings-life-sword-swallowing-to-health-statistics
+
+[S10] Speakola. (n.d.). *Trey Parker and Matt Stone: 'This happened, and then this happened, and then this happens -- that's not a movie, that's not a story', NYU writing seminar - 2014*. Retrieved October 19, 2026, from https://speakola.com/arts/matt-stone-trey-parker-nyu-writing-class-2014
+> "What should happen between every beat that you've written down, is either the word 'therefore' or 'but'."
+Note: a transcript of the seminar filmed for mtvU's *Stand In*. Speakola dates it 6 June 2014.

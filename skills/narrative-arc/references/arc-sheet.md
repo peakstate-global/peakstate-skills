@@ -30,9 +30,9 @@ Fill this in before any slide or paragraph is written, and get it approved.
 
 **The spine:**
 
-| Section | Its premise, in one sentence | Moves them from saying | To saying | They feel | Move, and the line that delivers it |
-|---|---|---|---|---|---|
-| 1 | … | … | … | … | confirm: "I know you're thinking …, and you're right." |
+| Section | Link from the last section | Its premise, in one sentence | Moves them from saying | To saying | They feel | Move, and the line that delivers it |
+|---|---|---|---|---|---|---|
+| 1 | (opens) | … | … | … | … | confirm: "I know you're thinking …, and you're right." |
 
 **The moments:**
 
@@ -54,6 +54,9 @@ Rules for the spine:
 - Vocabulary comes before application: teach the options before the audience applies them to its own case.
 - The last section answers "where do I start?", not "what is the method?".
 - Read the premises alone, top to bottom. If they do not make the argument, the spine is not finished.
+- Read the premises again with each section's link between them: **but** (a turn: what the last section said meets a problem) or **therefore** (a consequence: it follows from the last section). An **and then** join means the section lists instead of argues: give it a cause, or merge it. Mostly therefore, with a but at each turn and at the peak; a but on every join makes the story reverse at every step and nothing builds.
+- A run of parallel items (a set of moves, the steps of a method) counts as one beat, joined into and out of the run by but or therefore. Inside the run, each item carries its own but or therefore (the problem, then the move that answers it), and the order follows a cause where one exists. A run longer than three items that cannot do this is a list, so make it one slide.
+- The link lives in the arc sheet and the speaker notes, never as a sentence on a slide: "not X, but Y" on a slide is the sentence-level habit this test does not ask for.
 - Read the feelings alone, top to bottom. If the room is asked to hope before it feels understood, move the understanding section earlier.
 - Read the moves alone, top to bottom. A confirm or a justify comes before the first promise, and all five moves appear.
 - Every section serves the throughline. Name any that serves it only indirectly.
@@ -84,14 +87,14 @@ Rules for the spine:
 
 **The spine:**
 
-| Section | Premise | From saying | To saying | Move |
-|---|---|---|---|---|
-| 1. Open | You hold beliefs about AI that are costing you | "This is one more AI session." | "I recognise one of these beliefs." | confirm: "I know you're thinking this is one more AI session, and you're right to be tired of them." |
-| 2. What AI is now | AI is four plays that differ in who holds the loop, cost and return | "Agents are where it is heading." | "The most autonomous play is the most expensive, not the most valuable." | justify: "Your pilots stalled because they started at the most expensive play, not because your teams got it wrong." |
-| 3. Which work | The unit is the work, never the job | "Which jobs will AI replace?" | "I can place my own work and name its posture." | encourage: "You can be the person who answers 'what do we automate?' with a reason." |
-| 4. Match | Each posture reaches for different plays | "Any AI will do." | "I know which plays fit my work." | on your side: "We'll place my own work first, so you can see me get it wrong." |
-| 5. Kill it cheaply | Most candidates should die in the room | "We should start a pilot." | "My candidate survives five questions, or I saved a quarter." | allay: "Killing an idea in the room is not failure. Here are the five questions that do it in ten minutes." |
-| 6. Price it honestly | The person at the gate sets the ceiling | "A human in the loop makes it safe." | "I know what my gate's person is for, and whether they can keep up." | allay: "The gate is where the risk sits, and you can size it before you build." |
-| 7. Start here | Start one rung lower, with a named gate and a date | "Where do I start?" | "I leave with one candidate, its play, its gate and a date." | on your side: "Pick one; I'll take the first call on it with you." |
+| Section | Link | Premise | From saying | To saying | Move |
+|---|---|---|---|---|---|
+| 1. Open | (opens) | You hold beliefs about AI that are costing you | "This is one more AI session." | "I recognise one of these beliefs." | confirm: "I know you're thinking this is one more AI session, and you're right to be tired of them." |
+| 2. What AI is now | but | AI is four plays that differ in who holds the loop, cost and return | "Agents are where it is heading." | "The most autonomous play is the most expensive, not the most valuable." | justify: "Your pilots stalled because they started at the most expensive play, not because your teams got it wrong." |
+| 3. Which work | therefore | The unit is the work, never the job | "Which jobs will AI replace?" | "I can place my own work and name its posture." | encourage: "You can be the person who answers 'what do we automate?' with a reason." |
+| 4. Match | therefore | Each posture reaches for different plays | "Any AI will do." | "I know which plays fit my work." | on your side: "We'll place my own work first, so you can see me get it wrong." |
+| 5. Kill it cheaply | but | Most candidates should die in the room | "We should start a pilot." | "My candidate survives five questions, or I saved a quarter." | allay: "Killing an idea in the room is not failure. Here are the five questions that do it in ten minutes." |
+| 6. Price it honestly | but | The person at the gate sets the ceiling | "A human in the loop makes it safe." | "I know what my gate's person is for, and whether they can keep up." | allay: "The gate is where the risk sits, and you can size it before you build." |
+| 7. Start here | therefore | Start one rung lower, with a named gate and a date | "Where do I start?" | "I leave with one candidate, its play, its gate and a date." | on your side: "Pick one; I'll take the first call on it with you." |
 
 **The moments:** the peak is section 5, where the room's own candidates die on a show of hands (a live scoring beat, the S.T.A.R. moment of type dramatisation). The open loop is a question in section 1, "which of your ideas would you bet a quarter on?", paid off in section 7. The credibility story, in the first three minutes, is the facilitator's own pilot that ran a quarter and returned nothing. The "I was wrong" beat sits in section 2: the facilitator once argued agents were the destination. The first light moment follows section 5's kills. The close mirrors the title slide and repeats the throughline.
