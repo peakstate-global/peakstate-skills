@@ -373,10 +373,12 @@ the reader re-send the same points, which is the round-trip this feature exists 
   default — never add `text-overflow: ellipsis`, `overflow: hidden`, or a
   `max-width` that clips a cell in your own `<style>` block. A clipped cell hides
   content the reader has no way to recover, and re-rendering the file to read one
-  cell is not an acceptable workaround. Verbatim data tables inside `.tblwrap`
-  keep single-line rows (readable via that wrapper's horizontal scroll) — add
-  `class="wrap"` to any long-prose cell there to wrap it instead. `class="num"`
-  right-aligns numerics, `class="nowrap"` pins a short cell to one line.
+  cell is not an acceptable workaround. The runtime sizes every simple table's
+  columns to their content: each column is as wide as its longest line, at least
+  10 characters and its longest word, and at most 60 characters (36 for a pinned
+  first column), so long prose wraps inside its column and a wide table scrolls
+  inside `.tblwrap`. Never set column widths by hand. `class="num"` right-aligns
+  numerics, `class="nowrap"` pins a short cell to one line.
 - **Large tables: pinned + highlighted.** `.tblwrap` scrolls both axes
   (65vh cap) with the header row AND first column pinned automatically — put
   the identifying value (row no. / code / name) in the FIRST column; add class

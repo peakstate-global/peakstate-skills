@@ -3716,7 +3716,57 @@ var __briefTip = (() => {
     }, true);
   }
 
-  function start() { rail(); idle(defLinks); factNotes(); lightbox(); }
+  /* Content-sized table columns. Without this a long cell stretched its whole
+     column across the window and every other column scrolled off screen (a
+     five-option comparison table, 2026-10-19). Each column gets the width of its
+     longest line, floored at MIN and at its longest word, capped at MAX (PIN_MAX
+     for a pinned first column), through a fixed-layout colgroup. Tables with
+     colspan or rowspan, ragged rows, or inside an editable document are left to
+     the browser. */
+  function sizeTables() {
+    var MIN = 10, MAX = 60, PIN_MAX = 36, PAD = 2;
+    var tables = document.querySelectorAll('main table');
+    for (var k = 0; k < tables.length; k++) {
+      var t = tables[k];
+      if (t.getAttribute('data-sized') || t.closest('[data-doc]') || t.querySelector('[colspan],[rowspan]')) continue;
+      var rows = t.rows; if (!rows.length) continue;
+      var n = rows[0].cells.length, want = [], floor = [], ok = true, i, r;
+      for (i = 0; i < n; i++) { want[i] = 0; floor[i] = 0; }
+      for (r = 0; r < rows.length && ok; r++) {
+        var cells = rows[r].cells;
+        if (cells.length !== n) { ok = false; break; }
+        for (i = 0; i < n; i++) {
+          var txt = (cells[i].innerText || cells[i].textContent || '').trim();
+          var lines = txt.split('\n'), L = 0, W = 0;
+          for (var a = 0; a < lines.length; a++) {
+            L = Math.max(L, lines[a].length);
+            var words = lines[a].split(/\s+/);
+            for (var b = 0; b < words.length; b++) W = Math.max(W, words[b].length);
+          }
+          if (cells[i].matches('.nowrap, .num')) W = L;
+          want[i] = Math.max(want[i], L);
+          floor[i] = Math.max(floor[i], Math.min(W, MAX));
+        }
+      }
+      if (!ok) continue;
+      var pinned = t.closest('.tblwrap') && !t.closest('.tblwrap.nopin');
+      var cg = document.createElement('colgroup'), sum = 0;
+      for (i = 0; i < n; i++) {
+        var cap = (i === 0 && pinned) ? PIN_MAX : MAX;
+        var w = Math.max(MIN, floor[i], Math.min(want[i], cap)) + PAD;
+        var col = document.createElement('col');
+        col.style.width = w + 'ch';
+        cg.appendChild(col); sum += w;
+      }
+      var old = t.querySelector(':scope > colgroup'); if (old) old.remove();
+      t.insertBefore(cg, t.firstChild);
+      t.style.tableLayout = 'fixed';
+      t.style.width = sum + 'ch';
+      t.setAttribute('data-sized', '1');
+    }
+  }
+
+  function start() { sizeTables(); rail(); idle(defLinks); factNotes(); lightbox(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();
