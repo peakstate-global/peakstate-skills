@@ -226,6 +226,10 @@ def self_check():
         fails.append(f"the Recommended check warns, it never fails: {check(REC)}")
     if check(GOOD):
         fails.append(f"the good page should be clean: {check(GOOD)}")
+    answered = GOOD.replace("<p>x<sup", '<h3>Your Q1 answer: a</h3><p class="assume">a</p>'
+                            '<ul class="options"><li>a</li></ul><p>x<sup')
+    if check(answered):
+        fails.append(f"an answered question keeps its assumption and options: {check(answered)}")
     cases = [
         ("no answers block", GOOD.replace('<dl class="answers"><dt>Q</dt><dd>A</dd></dl>', ""), "answers block"),
         ("missing part lede", GOOD.replace('<p class="partlede">lede</p>', ""), "part lede"),
@@ -271,7 +275,7 @@ def self_check():
             print("FAIL ", f)
         print(f"\nFAILED  {len(fails)} failure(s)")
         return 1
-    print(f"PASS  {len(cases) + 6} cases, 0 failures")
+    print(f"PASS  {len(cases) + 7} cases, 0 failures")
     return 0
 
 

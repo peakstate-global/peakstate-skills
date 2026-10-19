@@ -820,4 +820,13 @@ assert.equal(render(src.replace(/\r?\n/g, '\r\n')).replace(/\r/g, ''), html,
   assert.throws(() => render('---\ntitle: T\ntabs: parts\n---\n\n## S\n\nx\n'), /needs at least one/);
 }
 
+/* ── question headings with a full stop or colon ───────────────────────── */
+/* "## Q1. Title" once rendered as a plain section with no answer box, and the
+   linter passed it. The renderer now reads it as a question. */
+for (const sep of ['.', ':']) {
+  const qm = /<main>[\s\S]*<\/main>/.exec(render('---\ntitle: T\n---\n\n## Q1' + sep + ' Pick one\n\nBody.\n'))[0];
+  assert.ok(qm.includes('data-q="Q1"'), '"## Q1' + sep + ' Title" renders as section.q');
+  assert.ok(qm.includes('<span class="qid">Q1</span> Pick one</h3>'), 'the separator is dropped from the title');
+}
+
 console.log('build-brief: all checks passed');
