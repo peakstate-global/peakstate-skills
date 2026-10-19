@@ -147,6 +147,14 @@ directory; `MEMORY.md` in that folder is the index loaded every session).
   of an ongoing effort. Cross-link with `[[name]]`.
 - **Every new file gets its one-line pointer in `MEMORY.md`.** A memory nothing indexes is a
   memory that never loads.
+- **Promote a lesson that two projects share.** Before writing a finding to this project's
+  memory, search the other projects' memory folders for the same lesson
+  (`find ~/.claude/projects -path '*/memory/*.md' -print0 | xargs -0 semtools search "<the lesson>" --top-k 5`,
+  or grep for its key words). If it already appears in one or more other projects, it is a
+  global lesson: propose it as a user-level rule (`~/.claude/rules/` or the global `CLAUDE.md`)
+  in the report, and on approval write it there and replace each project copy with a one-line
+  pointer to the rule. A lesson seen in one project stays in that project. The two-project
+  threshold keeps one repo's quirks out of every session.
 - Suggested findings do not go to memory. Name them in the report as watch-items so they don't
   silently disappear, and let the next run's counts settle them.
 - A finding purely about this window's content, with no bearing on method, is not durable. Drop it.
