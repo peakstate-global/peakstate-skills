@@ -369,6 +369,10 @@ the reader re-send the same points, which is the round-trip this feature exists 
   discriminating values, cell ref — e.g.
   `E1 Digga broom (PSS0100) — M=Yes — X=X  BAS 2026_4!A7:AF10`. Full verbatim
   table inside `.tblwrap`.
+- **A comparison example is a table with one column per thing compared.** Each
+  cell opens with its sheet/source and row in bold (`**2018_3 r41:**`), and the
+  text that matches across columns is bold too. Tables in an example widen to
+  the window in full-width mode, so the columns get room side by side.
 - **Table cells wrap; they never truncate.** brief.css wraps every `th`/`td` by
   default — never add `text-overflow: ellipsis`, `overflow: hidden`, or a
   `max-width` that clips a cell in your own `<style>` block. A clipped cell hides

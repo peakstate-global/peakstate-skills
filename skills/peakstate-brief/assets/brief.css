@@ -1262,7 +1262,15 @@ body.fullwidth .q-body > div:not([data-nobleed]):has(table) > table {
    width and so has no content width to measure. */
 body.fullwidth .sec-body > table, body.fullwidth .q-body > table,
 body.fullwidth .sec-body > pre, body.fullwidth .q-body > pre,
-body.fullwidth .sec-body > figure, body.fullwidth .q-body > figure {
+body.fullwidth .sec-body > figure, body.fullwidth .q-body > figure,
+/* An examples block holding a table is the same case one level down: the
+   table sits in `details.example > .tblwrap`, so neither the `.tblwrap` nor the
+   `div:has(table)` rule above reached it, and a comparison table stayed at the
+   prose measure (measured 2026-10-21 at 1600px: 820px box, 1408px table). The
+   whole box widens, border and summary with it, so the table never hangs out
+   of its frame. Closed, it measures only its summary and stays at the column. */
+body.fullwidth .sec-body > details.example:has(table),
+body.fullwidth .q-body > details.example:has(table) {
   width: max-content; min-width: 100%; max-width: calc(100% + 2 * var(--bleed));
   margin-inline: 0; position: relative; left: 50%; transform: translateX(-50%);
 }
