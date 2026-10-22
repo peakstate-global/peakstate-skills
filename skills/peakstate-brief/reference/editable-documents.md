@@ -14,6 +14,9 @@ The body, in markdown, exactly as it should ship.
       </script>
     </div>
 
+- **In a markdown source, wrap the block in a `:::html` … `:::` fence.** A block starting with `<`
+  passes through only up to the first blank line, so a multi-paragraph document without the fence
+  renders its later paragraphs as raw HTML inside the editor.
 - **The source of truth is the `<script type="text/markdown">`**, which the browser never renders,
   so the original always survives and Revert always works. Do not write the rendered HTML yourself;
   the runtime renders it.
