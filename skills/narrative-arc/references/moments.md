@@ -27,7 +27,7 @@ Order the moves so a confirm or a justify comes before the first promise. A prom
 
 People judge an experience mostly by its most intense moment and its ending, and largely ignore its length (the peak-end rule). So:
 
-- **Name one emotional peak.** It is usually the S.T.A.R. moment or the confession. Spend most of the design effort on the peak and on the last 60 seconds; the middle may be plain.
+- **Name one emotional peak.** It is usually the S.T.A.R. moment or, when one is used, the confession. Spend most of the design effort on the peak and on the last 60 seconds; the middle may be plain.
 - **Script the last 60 seconds** word for word: the last line, the last image, and where to start.
 - **The close returns to the open.** The last slide mirrors the title slide's layout, and its line echoes the opening line or the throughline, so the room feels the piece was about one thing.
 - **One open loop.** Ask a question early that the room cannot yet answer, build the frame that makes the answer possible, then pay it off near the end. A question pulls only once the room knows enough to feel the gap.
@@ -52,11 +52,11 @@ Pause after it. Let the room answer its own question before you speak.
 - **The story bank first.** The story bank is a file of the author's own stories, each tagged by topic, by move and by the five-second moment it turns on (S6). For each section, pull a story from the bank before inventing an example. If the bank has no story for a section, say so on the arc sheet as a gap, and ask the author for one.
 - **Every statistic gets a person or a physical scale.** A figure stands beside one person it happened to, or is shown at a scale the room can picture: a barrow of sugar, a stack of paper (S7).
 
-## Credibility and confession
+## Credibility, and confession if it serves the piece
 
-- **Credibility in the first three minutes, through a story.** One specific moment that shows why the speaker has the right to say this. Never a CV, a list of titles or a wall of logos.
-- **One "I was wrong" beat.** A time the speaker believed what the piece now argues against, or a failure of their own. Vulnerability gives the room permission to change its own mind (S8). Place it near the peak, often straight after the slide that challenges the room most.
-- **The confession serves the argument.** What the speaker was wrong about is the belief the piece now corrects, so the beat carries the room toward the throughline. It never concedes a counter-argument: a confession that grants the other side's case comes at the moment the room trusts the speaker most, so it does the most damage to the piece. If an objection deserves a place, answer it in its own section, not in the confession.
+- **Credibility in the first three minutes, through a story.** One specific moment that shows why the speaker has the right to say this. Never a CV, a list of titles or a wall of logos. This story is required.
+- **The "I was wrong" beat is optional.** A time the speaker believed what the piece now argues against, or a failure of their own. Use one only when a true story serves the throughline; otherwise leave it out and say so in one line on the arc sheet. Never ask for one by default, and never block an arc or a build on its absence. When one is used, vulnerability gives the room permission to change its own mind (S8). Place it near the peak, often straight after the slide that challenges the room most.
+- **A confession used must serve the argument.** What the speaker was wrong about is the belief the piece now corrects, so the beat carries the room toward the throughline. It never concedes a counter-argument: a confession that grants the other side's case comes at the moment the room trusts the speaker most, so it does the most damage to the piece. If an objection deserves a place, answer it in its own section, not in the confession.
 - **Reviewers raise, the author decides.** An objection from a reviewer, a grader or a model never changes the argument or the narrative on its own, the confession included. Raise it with the author with what it would change, and change the piece only on the author's explicit approval, because the author is the one who has to stand behind it.
 
 ## Light moments

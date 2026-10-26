@@ -43,7 +43,7 @@ Fill this in before any slide or paragraph is written, and get it approved.
 | Open loop | The question planted early, and where it pays off | … and … |
 | S.T.A.R. moment | Its type (dramatisation, repeatable line, striking visual, story, shocking statistic made physical, emulated demonstration) and what the room sees | … |
 | Credibility story | One specific story, in the first three minutes | … |
-| "I was wrong" | What the speaker once believed, and what changed it | … |
+| "I was wrong" (optional, only if a true story serves the throughline) | What the speaker once believed, and what changed it, or "not used" and why | … |
 | Light moments | Each one, the first straight after the heaviest slide | … |
 | Stories | One per section, from the story bank, or marked as a gap | … |
 | Statistics | Each one, with its person or physical scale | … |
