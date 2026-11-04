@@ -140,6 +140,8 @@ def check(html):
     for sec in re.findall(r'<section class="brief-section"[^>]*>.*?</section>', b, re.S):
         head = re.search(r"<h[23][^>]*>(.*?)</h[23]>", sec, re.S)
         title = text(head.group(1)).strip() if head else ""
+        if title.startswith("Your Q"):  # an answered question keeps its options
+            continue
         if 'class="options"' in sec or re.match(r"Q\d+\b", title):
             bad(f"answer-box rule: '{title[:60]}' asks a question but is not a section.q, "
                 f"so it has no answer box. Write the heading as `## Q<n> <question>`")
@@ -244,6 +246,11 @@ def self_check():
          GOOD.replace("</main>", '<section class="brief-section" data-sec="q1-pick"><h3>Q1. Pick one</h3>'
                       '<ul class="options"><li>a</li></ul></section></main>'),
          "answer-box rule"),
+        ("answered question keeps its options",
+         GOOD.replace("</main>", '<section class="brief-section" data-sec="q9"><h3>Your Q1 answer: a</h3>'
+                      '<ul class="options"><li>a</li></ul></section><section class="brief-section" data-sec="z">'
+                      '<h3>Q2 Pick</h3><ul class="options"><li>a</li></ul></section></main>'),
+         "answer-box rule: 'Q2 Pick'"),
     ]
     for name, page, want in cases:
         got = " ".join(check(page))
