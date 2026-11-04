@@ -80,7 +80,10 @@ with their locators, each linking to its exact passage in the references.
 
 1. **Numbered questions** — each question is `<section class="q" data-q="Qn">`
    with a visible `<span class="qid">Qn</span>` in its `<h2>`, numbered `Q1, Q2…`
-   so the user can answer by number in chat.
+   so the user can answer by number in chat. In the markdown source the heading
+   is `## Q1 <question>`; the builder also accepts `Q1.`, `Q1:` and `Q1)`.
+   `brief-lint.py` fails any section that offers `a) b)` options or starts
+   `Q<n>` but did not render as a `section.q`, because it has no answer box.
 2. **A response textarea under every question** — the runtime auto-injects one
    into each `section.q`; your job is to make sure each question is a real
    `section.q` (not a bare `<h2>`), so it gets one.

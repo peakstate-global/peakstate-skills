@@ -134,6 +134,16 @@ def check(html):
             bad(f"decision-crux rule: {qid.group(1) if qid else 'a DECIDE question'} carries no "
                 f"number. Restate the crux in plain words: the cost, the benefit, the likelihood")
 
+    # Every question gets an answer box, and only a section.q gets one. A section
+    # that offers a) b) options, or whose heading starts Q<n>, but is not a
+    # section.q, is a question the reader cannot answer.
+    for sec in re.findall(r'<section class="brief-section"[^>]*>.*?</section>', b, re.S):
+        head = re.search(r"<h[23][^>]*>(.*?)</h[23]>", sec, re.S)
+        title = text(head.group(1)).strip() if head else ""
+        if 'class="options"' in sec or re.match(r"Q\d+\b", title):
+            bad(f"answer-box rule: '{title[:60]}' asks a question but is not a section.q, "
+                f"so it has no answer box. Write the heading as `## Q<n> <question>`")
+
     if "—" in b:
         n = b.count("—")
         where = re.search(r".{40}—.{40}", b)
@@ -230,6 +240,10 @@ def self_check():
          GOOD.replace(">lede<", ">" + "word " * 120 + "<"),
          "over the 400 character ceiling"),
         ("DECIDE question with no number", Q_BAD, "decision-crux rule: Q1"),
+        ("question with no answer box",
+         GOOD.replace("</main>", '<section class="brief-section" data-sec="q1-pick"><h3>Q1. Pick one</h3>'
+                      '<ul class="options"><li>a</li></ul></section></main>'),
+         "answer-box rule"),
     ]
     for name, page, want in cases:
         got = " ".join(check(page))

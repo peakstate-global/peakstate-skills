@@ -657,7 +657,9 @@ function outline(body) {
         sink = parts[parts.length - 1].lede;
         cur = null;
       } else {
-        const q = /^Q(\d+)\s+(.*)$/.exec(h[2]);
+        // `Q1 Title`, `Q1. Title`, `Q1: Title` and `Q1) Title` are all questions. A bare
+        // `Q1 ` match once let `## Q1. …` render seven questions with no answer box.
+        const q = /^Q(\d+)[.:)]?\s+(.*)$/.exec(h[2]);
         const sec = {
           q: q ? 'Q' + q[1] : null,
           title: q ? q[2] : h[2],
