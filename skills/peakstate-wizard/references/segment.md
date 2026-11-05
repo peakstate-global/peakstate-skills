@@ -16,8 +16,10 @@ the script) with a status file and a fix request added, so the companion page ca
   dry run only, to prove the failure path.
 - **PASS or FAIL per stage, decided by the script.** Each stage ends with a check the script runs
   itself (a file test, a command's answer, an HTTP status). The person never judges a log.
-- **The status file sits beside the HTML.** The segment writes `wizard-status.js` in its own
-  folder, atomically, after every stage. A dry run writes it in the temp folder instead.
+- **The status file sits in the segment's own folder.** The segment writes `wizard-status.js`
+  beside itself, atomically, after every stage. A dry run writes it in the temp folder instead.
+  When one companion serves segments in several folders, each Terminal page names its folder with
+  `data-dir`, and the page reads that folder's file.
 - **Every failure writes a fix request.** It holds the stage, the error line, the ledger name and
   the rerun command, and nothing else.
 
@@ -66,6 +68,14 @@ half-written key, an open session).
   sets up and what breaks without it.
 - **Every step, numbered.** `stepn "2 of 4" "..."`, one action per step, the small ones included
   (sign in, pick the account, click Save, wait for the confirmation).
+- **Where you are, first.** Set `WHERE` to one line that names the sitting or stage of the journey
+  this segment belongs to. The library prints it under the title.
+- **A stage that waits on the person prints their steps.** Before any prompt, typed word or wait
+  for something only the person does, call `yours "time" "what happens next" "hint" "step" ...`.
+  The steps are numbered and use the same words as the companion page, the hint is its key point,
+  and the time and the next line say how long this takes and what the terminal does after. The
+  person must never need the page to know what to do while the terminal waits. The lint fails a
+  waiting stage that does not call `yours`.
 - **White space above every block.** The helpers print a blank line before each why, step,
   prompt and confirmation. Keep that.
 - **Exact paths, checked.** A menu path comes from the vendor's current documentation, checked
@@ -92,7 +102,7 @@ version macOS ships, and passes shellcheck.
 #!/usr/bin/env bash
 # shellcheck disable=SC2329
 #
-# WIZARD_SEGMENT_LIB v1: one terminal segment of a combo wizard, from the peakstate-wizard skill.
+# WIZARD_SEGMENT_LIB v2: one terminal segment of a combo wizard, from the peakstate-wizard skill.
 # Everything above the STAGES marker is the segment library: copy it as is.
 # Author the stages below the marker.
 #
@@ -121,6 +131,16 @@ warn() { printf '\n  %s%sWarning:%s %s\n' "$BOLD" "$YELLOW" "$RESET" "$1"; }
 why()  { printf '\n  %sWhy we are doing this:%s %s\n' "$BOLD" "$RESET" "$1"; }
 stepn() { printf '\n  %s>%s Step %s: %s\n' "$BLUE" "$RESET" "$1" "$2"; }
 dry_note() { if (( DRY )); then note "(dry run: $1)"; fi; return 0; }
+# yours "time" "what happens next" "hint" "step" ...: the person's own steps while a stage waits
+# on them, numbered, with the time it takes, the hint's key point and what happens after.
+yours() {
+  local t="$1" nx="$2" h="$3" s i=0
+  shift 3
+  printf '\n  %sYour steps now%s (about %s):\n' "$BOLD" "$RESET" "$t"
+  for s in "$@"; do i=$((i + 1)); printf '\n    %s. %s\n' "$i" "$s"; done
+  if [[ -n "$h" ]]; then printf '\n  %sHint:%s %s\n' "$BOLD" "$RESET" "$h"; fi
+  printf '\n  %sNext:%s %s\n' "$BOLD" "$RESET" "$nx"
+}
 
 # wait_enter "message": waits for Return. A dry run never waits.
 wait_enter() {
@@ -258,6 +278,7 @@ main() {
   setup
   clear_screen
   printf '\n%s%s  %s%s\n' "$BOLD" "$BLUE" "$TITLE" "$RESET"
+  if [[ -n "${WHERE:-}" ]]; then printf '  %sWhere you are:%s %s\n' "$BOLD" "$RESET" "$WHERE"; fi
   printf '%s  %s stages. Each one ends with PASS or FAIL.%s\n' "$DIM" "$TOTAL" "$RESET"
   (( DRY )) && printf '\n  %sDRY RUN:%s temp folder %s, synthetic data, no real change.\n' "$BOLD" "$RESET" "$WORK"
   printf '\n  Ledger (no values in it): %s\n  Status file for the companion page: %s\n' "$LEDGER" "$STATUS_FILE"
@@ -302,6 +323,7 @@ fails a segment with a hook missing. This skeleton passes `--dry-run` as it stan
 ```bash
 SEGMENT="SEGMENT-NAME"     # the data-segment value on the companion pages
 TITLE="Wizard title: what this segment does"
+WHERE="Stage 2 of the journey: what this segment does for the person, in one line."
 NAMES=("" "Preflight" "STAGE 2 NAME")   # 1 to 6 stages, the preflight first
 DANGER_FROM=0              # first stage after which a failure leaves something unsafe; 0 = never
 SAFE_BY_HAND="One sentence: how the person restores the safe state by hand before opening Claude."
@@ -349,6 +371,7 @@ The helpers you call from a stage:
 | `stepn "2 of 4" "..."` | Prints one numbered step |
 | `say`, `note`, `warn` | A plain line, a dim line, a warning that starts with "Warning:" |
 | `wait_enter "..."` | Waits for Return; a dry run never waits |
+| `yours "time" "next" "hint" "step" ...` | Prints the person's numbered steps while a stage waits on them, with the time, the hint and what happens next |
 | `ask_secret VAR "Prompt:"` | Hidden input into `VAR`; a dry run uses a synthetic value. Add `VAR` to `SENSITIVE` straight after |
 | `confirm_word WORD "warning"` | States the warning, then asks the person to type `WORD` before an irreversible action |
 | `pass "..."` | Records PASS for the current stage in the ledger and the status file |

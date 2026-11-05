@@ -62,6 +62,8 @@ Have ready: your provider sign-in and one Terminal window. Takes about 5 minutes
 
 **Why:** This page says what changes and what stays the same, so nothing later in the wizard is a surprise. A rotation that stops half-way is the one that breaks the app.
 
+**Hint:** Read this once before you start. Nothing on this page needs an action.
+
 - The app gets a new key. The old key keeps working until the last stage turns it off.
 - This page never asks for the key. The terminal asks for it, at a hidden prompt.
 
@@ -70,6 +72,8 @@ Have ready: your provider sign-in and one Terminal window. Takes about 5 minutes
 <p class="wz-step" data-kind="Claude"></p>
 
 **Why:** A key copied into a second place keeps the old key alive after you turn it off, and that place then breaks without warning. Claude searched the app folder before it built this wizard.
+
+**Hint:** Nothing to do. If you know of another copy of the key, add a comment before you start.
 
 **Result:** Claude found the key name in one file only, `.env`, which the terminal segment updates. No other copy needs a change.
 
@@ -84,6 +88,8 @@ Have ready: your provider sign-in. Takes about 5 minutes. Safe to stop after thi
 **Why:** The app can only switch to a new key once the provider has made one. Making it first means the old key still works while you install the new one, so the app never goes down.
 
 **Why this is yours (rung 4, Claude prepares, you click):** the provider makes keys only for a signed-in person, and an admin token for Claude would be a stronger secret than the key itself. Claude checked for an API first and found none that a short-lived token can use.
+
+**Hint:** Leave the console tab open: you come back to it to turn the old key off.
 
 - Open the provider's console and sign in.
 - Go to Settings > API keys. If the menu differs, look for "API keys" or "Tokens".
@@ -102,6 +108,8 @@ Have ready: the new key on your clipboard. Takes about 10 minutes. Do not stop d
 
 **Why this is yours (rung 3, your terminal holds the secret):** the next stage asks for the key at a hidden prompt in your terminal, so Claude's session never holds it. The whole segment runs in that one terminal.
 
+**Hint:** Use one Terminal window for the whole segment and keep it open. If it stops, run the same command again with `--from` and the stage number it showed.
+
 Paste this into your Terminal window and press Return:
 
 ```
@@ -118,6 +126,8 @@ The terminal checks that curl is installed, that the app's `.env` file is there,
 
 **Why this is yours (rung 3, your terminal holds the secret):** you paste the key into a prompt that only your terminal sees.
 
+**Hint:** Press Return once after you paste. Nothing shows at a hidden prompt, so a second paste would join two keys together.
+
 - The terminal checks `.gitignore` again, right before it writes.
 - Paste the key at the prompt "New key:" and press Return. Nothing shows as you paste.
 - If the stage fails, the terminal deletes any half-written file first, then shows the fix request here.
@@ -129,6 +139,8 @@ The terminal checks that curl is installed, that the app's `.env` file is there,
 **Why:** A key that saves but does not work fails later, when nobody is watching. One test call proves the provider accepts it while you are still here.
 
 **Why this is yours (rung 3, your terminal holds the secret):** the test call reads the key from `.env` inside your terminal.
+
+**Hint:** Nothing to do but wait. A 401 answer almost always means part of the key was missed when you copied it.
 
 When the terminal prints "Segment complete. Safe to stop here.", this page moves on by itself. If it does not move within a few seconds, click "Terminal wizard complete".
 
@@ -142,6 +154,8 @@ Have ready: your provider sign-in. Takes about 5 minutes. Safe to stop after thi
 
 **Why:** A hosted copy of the app still holds the old key, and it stops working the moment the old key is off. Answer this before the next page.
 
+**Hint:** If you are not sure, check where the app is deployed before you answer. Answering no by mistake breaks the hosted copy.
+
 a) No, it runs on this computer only (Recommended: the setup Claude found)
 b) Yes, it also runs on a hosted server. Put the new key in the server's settings first, then go on
 
@@ -154,6 +168,8 @@ b) Yes, it also runs on a hosted server. Put the new key in the server's setting
 **Why this is yours (rung 4, Claude prepares, you click):** the provider turns keys off only for a signed-in person.
 
 **Warning:** turning a key off cannot be undone. Do it only after stage 3 printed PASS.
+
+**Hint:** The old key is the one without today's date in its name. Check the name twice before you click Revoke.
 
 - In the provider's console, go to Settings > API keys.
 - Find the old key, the one without today's date.
@@ -169,6 +185,8 @@ Have ready: nothing until the date. Takes about 2 minutes. Safe to stop at any p
 
 **Why:** A forgotten copy of the old key shows up as failed calls in the provider's log. Looking once, a month on, catches it before it causes harm.
 
+**Hint:** The calendar entry reminds you, so nothing here needs to be remembered.
+
 - On the date, open the provider's console and go to the usage or audit page.
 - Check that no call used the old key since you turned it off.
 - If one did, find where it came from before you do anything else.
@@ -179,6 +197,7 @@ Have ready: nothing until the date. Takes about 2 minutes. Safe to stop at any p
 ````bash
 SEGMENT="rotate"            # the data-segment value on the companion pages
 TITLE="Key rotation: install and test the new key"
+WHERE="Stage 3 of the key rotation: the terminal saves and tests the new key."
 NAMES=("" "Preflight" "Save the new key" "Test the new key")
 DANGER_FROM=2               # from stage 2 a half-written key file is possible
 SAFE_BY_HAND="Delete the file .env.new in the app folder, if it is there, before you open Claude."
@@ -234,6 +253,10 @@ stage_2() {
   why "The new key goes into the app's key file through a hidden prompt, so the key is never on screen, in a log or in the companion page."
   stepn "1 of 3" "Checking again that the key file cannot be committed, right before the write."
   safety_check
+  yours "1 minute" "the terminal writes the key file, then stage 3 tests the key with one call." \
+    "Press Return once after you paste. Nothing shows at a hidden prompt." \
+    "Paste the new key at the prompt \"New key:\"." \
+    "Press Return."
   stepn "2 of 3" "Paste the new key at the hidden prompt. Nothing shows as you paste."
   ask_secret NEW_KEY "New key:"
   SENSITIVE+=("$NEW_KEY")
