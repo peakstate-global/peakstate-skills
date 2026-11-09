@@ -30,9 +30,13 @@ Fill this in before any slide or paragraph is written, and get it approved.
 
 **The spine:**
 
-| Section | Link from the last section | Its premise, in one sentence | Moves them from saying | To saying | They feel | Move, and the line that delivers it |
-|---|---|---|---|---|---|---|
-| 1 | (opens) | … | … | … | … | confirm: "I know you're thinking …, and you're right." |
+| Section | Beat | Link from the last section | Its premise, in one sentence | Moves them from saying | To saying | They feel | Move, and the line that delivers it |
+|---|---|---|---|---|---|---|---|
+| 1 | drivers | (opens) | … | … | … | … | confirm: "I know you're thinking …, and you're right." |
+
+The beat is one of drivers, impact, root causes, solution or where to start.
+
+**First solution starts at:** minute [m] of [total] ([share]%). Floor: 40%.
 
 **The moments:**
 
@@ -50,6 +54,7 @@ Fill this in before any slide or paragraph is written, and get it approved.
 
 Rules for the spine:
 
+- Background before solutions. The drivers, the impact and the root causes come before any section that offers a fix, and together they take at least 40% of the running time.
 - The "to saying" of each section is the "from saying" of the next.
 - Vocabulary comes before application: teach the options before the audience applies them to its own case.
 - The last section answers "where do I start?", not "what is the method?".
