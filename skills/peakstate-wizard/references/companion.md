@@ -242,7 +242,11 @@ page between two stages is never skipped.
   // One status file per segment folder: data-dir on a Terminal marker names the folder, relative to this page.
   function apply(w, dir) {
     progress();
-    if (!w || !w.stages) return;
+    // No status file yet for this folder is itself the baseline: the next real file,
+    // whenever it appears, is new and must move the page. Without this, a segment that
+    // finishes its one stage inside the gap before any file existed never advanced, because
+    // the first real read below would wrongly be treated as a stale reload instead.
+    if (!w || !w.stages) { if (!(dir in handled)) handled[dir] = null; return; }
     var fix = w.fix, c = current(), seg = w.segment;
     if (fix && !fix.safe) fix.safe = fix.image === 'mounted' ? 'not-restored' : fix.image === 'ejected' ? 'restored' : '';
     steps().forEach(function (s) {

@@ -190,9 +190,12 @@ def lint_segment(sh, seg, got, checks):
     nums = sorted(n for n, _ in got)
     if nums != list(range(1, len(stages) + 1)):
         errs.append(f"{where}: the companion has pages for stages {nums}, the script has {len(stages)}")
+    has_lib_code = bool(re.search(r"^(safety_check|restore_safe|verify_end_state|write_status)\(\)", text, re.M))
     if not lib:
-        if legacy:
+        if legacy and not has_lib_code:
             checks.append(f"{where}: {sh.name} predates the segment library, so its library rules (hooks, safety check, waiting steps) were not checked")
+        elif legacy:
+            errs.append(f"{where}: {sh.name} is marked '# WIZARD_LEGACY' but defines library hooks (safety_check/restore_safe/verify_end_state/write_status), so it is a stripped-marker library segment, not a pre-library one; restore 'WIZARD_SEGMENT_LIB v<n>' instead")
         else:
             errs.append(f"{where}: {sh.name} has no 'WIZARD_SEGMENT_LIB v<n>' marker and no '# WIZARD_LEGACY' marker, so its safety rules cannot be confirmed; add the library marker back, or mark the script '# WIZARD_LEGACY' if it truly predates the library")
     for i in range(1, len(stages) + 1 if lib else 1):
