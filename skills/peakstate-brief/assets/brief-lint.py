@@ -135,14 +135,14 @@ def check(html):
                 f"number. Restate the crux in plain words: the cost, the benefit, the likelihood")
 
     # Every question gets an answer box, and only a section.q gets one. A section
-    # that offers a) b) options, or whose heading starts Q<n>, but is not a
-    # section.q, is a question the reader cannot answer.
+    # that offers a) b) options, carries an assumption line, or whose heading
+    # starts Q<n>, but is not a section.q, is a question the reader cannot answer.
     for sec in re.findall(r'<section class="brief-section"[^>]*>.*?</section>', b, re.S):
         head = re.search(r"<h[23][^>]*>(.*?)</h[23]>", sec, re.S)
         title = text(head.group(1)).strip() if head else ""
-        if title.startswith("Your Q"):  # an answered question keeps its options
+        if title.startswith("Your Q"):  # an answered question keeps its assumption and options
             continue
-        if 'class="options"' in sec or re.match(r"Q\d+\b", title):
+        if 'class="options"' in sec or 'class="assume"' in sec or re.match(r"Q\d+\b", title):
             bad(f"answer-box rule: '{title[:60]}' asks a question but is not a section.q, "
                 f"so it has no answer box. Write the heading as `## Q<n> <question>`")
 
@@ -226,6 +226,14 @@ def self_check():
         fails.append(f"the Recommended check warns, it never fails: {check(REC)}")
     if check(GOOD):
         fails.append(f"the good page should be clean: {check(GOOD)}")
+    answered = GOOD.replace("<p>x<sup", '<h3>Your Q1 answer: a</h3><p class="assume">a</p>'
+                            '<ul class="options"><li>a</li></ul><p>x<sup')
+    if check(answered):
+        fails.append(f"an answered question keeps its assumption and options: {check(answered)}")
+    retired = GOOD.replace("</main>", '<section class="diff-retired" id="s-q1" inert><h3>Q1 a</h3>'
+                           '<ul class="options"><li>a</li></ul></section></main>')
+    if check(retired):
+        fails.append(f"a retired question keeps its options: {check(retired)}")
     cases = [
         ("no answers block", GOOD.replace('<dl class="answers"><dt>Q</dt><dd>A</dd></dl>', ""), "answers block"),
         ("missing part lede", GOOD.replace('<p class="partlede">lede</p>', ""), "part lede"),
@@ -251,6 +259,10 @@ def self_check():
                       '<ul class="options"><li>a</li></ul></section><section class="brief-section" data-sec="z">'
                       '<h3>Q2 Pick</h3><ul class="options"><li>a</li></ul></section></main>'),
          "answer-box rule: 'Q2 Pick'"),
+        ("assumption line in a plain section",
+         GOOD.replace("</main>", '<section class="brief-section" data-sec="q1-assume"><h3>Pick one</h3>'
+                      '<p class="assume">a</p></section></main>'),
+         "answer-box rule: 'Pick one'"),
     ]
     for name, page, want in cases:
         got = " ".join(check(page))
@@ -271,7 +283,7 @@ def self_check():
             print("FAIL ", f)
         print(f"\nFAILED  {len(fails)} failure(s)")
         return 1
-    print(f"PASS  {len(cases) + 6} cases, 0 failures")
+    print(f"PASS  {len(cases) + 8} cases, 0 failures")
     return 0
 
 
