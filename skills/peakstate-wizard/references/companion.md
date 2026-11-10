@@ -6,9 +6,20 @@ supplies the tabs, Back and Next, saved progress, ticks, deep links, comments an
 Download payload. The add-on block below adds what a wizard needs on top. Never copy or change
 the brief runtime: reference it.
 
+## One page per journey
+
+Build one companion for the whole journey, never one page per segment. A person who follows a
+procedure over several sittings needs one place to look. Each `#` part is a sitting or stage, in
+the order the person does things, and its title says when it happens and whether it is done
+("Sitting 3: you and your partner (now)"). The segments can live in their own folders: each
+Terminal page names its folder with `data-dir`, and the page reads that folder's status file.
+When a journey outgrows an earlier set of pages, replace each old page with a one-line page that
+links to the same step id in the new one, and keep the step ids.
+
 ## The wizard folder
 
-Write every file into one folder, named after the wizard, such as `key-rotation/`:
+Write every file into one folder, named after the wizard, such as `key-rotation/`. A journey with
+several segment folders keeps the companion one level up, beside them:
 
 | File | What it is | Where it comes from |
 |---|---|---|
@@ -77,6 +88,10 @@ Every step has an explicit, stable id, a marker line, a Why block, and then the 
 - **The marker** is the first line of the body, exactly as shown, with no text inside it.
 - **The Why block** comes next on every step (`references/hands-audit.md`).
 - **The hands-audit line** comes next on every Hands and Terminal step.
+- **The Hint** comes next on every step, whatever its kind: `**Hint:**` and the one practical tip
+  the person needs on that page. Make it concrete: the shape of a good passphrase with an example
+  never to use, what to do with it (memorise it, a paper card in the safe), which address to type,
+  or "nothing to do here" with what to watch for. The lint fails a step without one.
 - **A warning** comes next on an irreversible step: mark it `data-irreversible="true"` and start the
   next paragraph with `**Warning:**`. The segment asks for a typed word before the action
   (`confirm_word`).
@@ -88,7 +103,7 @@ Every step has an explicit, stable id, a marker line, a Why block, and then the 
 |---|---|---|---|
 | Read | `data-kind="Read"` | Reads, ticks | Shows the page |
 | Hands | `data-kind="Hands"` | One physical or sign-in action, with its exact menu path | Shows the hands-audit line |
-| Terminal | `data-kind="Terminal" data-segment="<segment>" data-stage="<n>"` | Runs one segment; one page per stage | Shows the stage state, ticks a PASS, moves on by itself, shows a fix request on a FAIL, and offers "Terminal wizard complete" as the fallback |
+| Terminal | `data-kind="Terminal" data-segment="<segment>" data-stage="<n>"`, plus `data-dir="<folder>"` when the segment is not beside the page | Runs one segment; one page per stage | Shows the stage state, ticks a PASS, moves on by itself, shows a fix request on a FAIL, and offers "Terminal wizard complete" as the fallback |
 | Claude | `data-kind="Claude"` | Nothing | Shows what Claude did and its result, in a `**Result:**` paragraph |
 | Date gate | `data-kind="Date gate" data-date="YYYY-MM-DD"` | Nothing until the date | Locks the tick until the date and shows an "Add it to Google Calendar" link with the step's deep link |
 | Decision | `data-kind="Decision"` on a `## Qn ...` question section | Picks an option in the answer box | Records the choice in the payload |
@@ -138,32 +153,37 @@ Paste this block, exactly as it is, straight after the `## Answers` block of eve
 is one raw HTML block with no blank line inside it, so the brief builder passes it through
 unchanged. It adds the kind badges, the Why and hands-audit styling, the step counter, the
 terminal status box and fix request, the date-gate lock and calendar link, and the phone layout.
-It reloads `wizard-status.js` from the page's own folder every three seconds by adding a fresh
-script tag, which works on a page opened from disk.
+Every three seconds it reloads `wizard-status.js` from each segment folder the Terminal pages name
+(`data-dir`, relative to the page; the page's own folder when there is none) by adding a fresh
+script tag, which works on a page opened from disk. The first read of each folder only records it,
+so an old status file never moves the page on load. A PASS moves to the very next page, so a Hands
+page between two stages is never skipped.
 
 ````html
-<script>/* WIZARD_ADDON v1, from the peakstate-wizard skill. Copy as is. */
+<script>/* WIZARD_ADDON v2, from the peakstate-wizard skill. Copy as is. */
 (function () {
   var KINDS = ['Read', 'Hands', 'Terminal', 'Claude', 'Date gate', 'Decision'];
   var st = document.createElement('style');
   st.textContent = '.wz-badge{display:inline-block;font:600 11px/1 system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:4px 7px;border-radius:4px;margin-right:8px;vertical-align:middle;color:#fff}' +
     '.wz-Read{background:#6b7280}.wz-Hands{background:#b45309}.wz-Terminal{background:#1d4ed8}.wz-Claude{background:#7c3aed}.wz-Date-gate{background:#0f766e}.wz-Decision{background:#be185d}' +
-    '.wz-why{border-left:3px solid #6b7280;padding:6px 10px;background:rgba(107,114,128,.08)}.wz-hands{border-left:3px solid #b45309;padding:6px 10px;background:rgba(180,83,9,.07)}.wz-warn{border-left:3px solid #b91c1c;padding:6px 10px;background:rgba(185,28,28,.07)}' +
+    '.wz-why{border-left:3px solid #6b7280;padding:6px 10px;background:rgba(107,114,128,.08)}.wz-hands{border-left:3px solid #b45309;padding:6px 10px;background:rgba(180,83,9,.07)}.wz-warn{border-left:3px solid #b91c1c;padding:6px 10px;background:rgba(185,28,28,.07)}.wz-hint{border-left:3px solid #0f766e;padding:6px 10px;background:rgba(15,118,110,.07)}' +
     '.wz-progress{font:600 13px/1.4 system-ui,sans-serif;padding:6px 0 6px var(--btabs-pl,0);opacity:.8}' +
     '.wz-term,.wz-gate{margin-top:18px;padding:12px 14px;border:1px solid rgba(29,78,216,.35);border-radius:6px;background:rgba(29,78,216,.05)}.wz-gate{border-color:rgba(15,118,110,.4);background:rgba(15,118,110,.05)}' +
     '.wz-state{font-weight:600}.wz-fix{margin-top:10px;padding:10px;border:1px solid #b91c1c;border-radius:6px;background:rgba(185,28,28,.06)}.wz-fix pre{white-space:pre-wrap;font-size:12px;margin:6px 0}' +
     '.wz-term button{margin-top:8px;margin-right:8px;padding:6px 12px;border-radius:6px;border:1px solid currentColor;background:transparent;cursor:pointer;font:inherit}' +
     '@media (max-width:640px){.wz-badge{font-size:10px}.wz-term button{display:block;width:100%}}';
   document.head.appendChild(st);
-  var handled = '';
+  var handled = {};
   function steps() { return Array.prototype.filter.call(document.querySelectorAll('section.brief-section, section.q'), function (s) { return s.querySelector('.wz-step'); }); }
   function attr(s, a) { return s.querySelector('.wz-step').getAttribute(a) || ''; }
   function kindOf(s) { var k = attr(s, 'data-kind'); return KINDS.indexOf(k) < 0 ? 'Read' : k; }
+  function dirOf(s) { return attr(s, 'data-dir') || '.'; }
   function current() { var on = steps().filter(function (s) { return !s.classList.contains('tab-off'); }); return on.length === 1 ? on[0] : null; }
   function go(s) { if (s) location.hash = '#' + s.id; }
   function tick(s) { var b = s.querySelector('.tick input'); if (b && !b.checked && !b.disabled) b.click(); }
-  function inSeg(s, seg) { return kindOf(s) === 'Terminal' && attr(s, 'data-segment') === seg; }
-  function afterSeg(seg) { var all = steps(), last = -1; all.forEach(function (s, i) { if (inSeg(s, seg)) last = i; }); return all[last + 1] || null; }
+  function inSeg(s, seg, dir) { return kindOf(s) === 'Terminal' && attr(s, 'data-segment') === seg && (dir === undefined || dirOf(s) === dir); }
+  function afterSeg(seg, dir) { var all = steps(), last = -1; all.forEach(function (s, i) { if (inSeg(s, seg, dir)) last = i; }); return all[last + 1] || null; }
+  function after(s) { var all = steps(); return all[all.indexOf(s) + 1] || null; }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function title() { var h = document.querySelector('h1'); return h ? h.textContent.trim() : document.title; }
@@ -197,7 +217,7 @@ script tag, which works on a page opened from disk.
     box.appendChild(fix); box.appendChild(skip);
     cp.type = skip.type = 'button';
     cp.addEventListener('click', function () { copy(fix.querySelector('pre').textContent, cp); });
-    skip.addEventListener('click', function () { var seg = attr(s, 'data-segment'); steps().forEach(function (t) { if (inSeg(t, seg)) tick(t); }); go(afterSeg(seg)); });
+    skip.addEventListener('click', function () { var seg = attr(s, 'data-segment'), dir = dirOf(s); steps().forEach(function (t) { if (inSeg(t, seg, dir)) tick(t); }); go(afterSeg(seg, dir)); });
     (s.querySelector('.sec-body') || s).appendChild(box);
   }
   function decorate() {
@@ -207,7 +227,7 @@ script tag, which works on a page opened from disk.
       Array.prototype.forEach.call(s.querySelectorAll('p'), function (p) {
         var b = p.firstElementChild; if (!b || p.firstChild !== b || !/^(STRONG|B)$/.test(b.tagName)) return;
         var t = b.textContent;
-        if (/^Why:/.test(t)) p.classList.add('wz-why'); else if (/^Why this is yours/.test(t)) p.classList.add('wz-hands'); else if (/^Warning:/.test(t)) p.classList.add('wz-warn');
+        if (/^Why:/.test(t)) p.classList.add('wz-why'); else if (/^Why this is yours/.test(t)) p.classList.add('wz-hands'); else if (/^Warning:/.test(t)) p.classList.add('wz-warn'); else if (/^Hint:/.test(t)) p.classList.add('wz-hint');
       });
       if (k === 'Date gate' && !s.querySelector('.wz-gate')) gate(s);
       if (k === 'Terminal' && !s.querySelector('.wz-term')) terminal(s);
@@ -219,12 +239,18 @@ script tag, which works on a page opened from disk.
     var all = steps(), c = current(), i = all.indexOf(c);
     p.textContent = i < 0 ? all.length + ' steps' : 'Step ' + (i + 1) + ' of ' + all.length + ' · ' + kindOf(c);
   }
-  function apply() {
-    var w = window.WIZARD_STATUS; progress();
-    if (!w || !w.stages) return;
+  // One status file per segment folder: data-dir on a Terminal marker names the folder, relative to this page.
+  function apply(w, dir) {
+    progress();
+    // No status file yet for this folder is itself the baseline: the next real file,
+    // whenever it appears, is new and must move the page. Without this, a segment that
+    // finishes its one stage inside the gap before any file existed never advanced, because
+    // the first real read below would wrongly be treated as a stale reload instead.
+    if (!w || !w.stages) { if (!(dir in handled)) handled[dir] = null; return; }
     var fix = w.fix, c = current(), seg = w.segment;
+    if (fix && !fix.safe) fix.safe = fix.image === 'mounted' ? 'not-restored' : fix.image === 'ejected' ? 'restored' : '';
     steps().forEach(function (s) {
-      if (!inSeg(s, seg)) return;
+      if (!inSeg(s, seg, dir)) return;
       var n = attr(s, 'data-stage'), r = w.stages[n], box = s.querySelector('.wz-term'); if (!box) return;
       var fx = box.querySelector('.wz-fix'), dry = w.dryRun ? ' (dry run)' : '';
       box.querySelector('.wz-state').textContent = r === 'PASS' ? 'Stage ' + n + ': PASS' + dry : r === 'FAIL' ? 'Stage ' + n + ': FAIL' + dry : r === 'SKIP' ? 'Stage ' + n + ': skipped (the run started later)' : 'Waiting for the terminal to reach this stage.';
@@ -238,16 +264,31 @@ script tag, which works on a page opened from disk.
       }
       fx.querySelector('.wz-copy').hidden = false;
       lead.textContent = fix.safe === 'restored' ? 'The terminal stopped here and restored the safe state first. Copy the fix request and paste it into a new Claude thread. It holds the stage, the error line and the ledger name, never a secret.' : 'The terminal stopped here. Copy the fix request and paste it into a new Claude thread. It holds the stage, the error line and the ledger name, never a secret.';
-      pre.textContent = 'Fix request from the wizard "' + title() + '"\nSegment ' + seg + ', stage ' + fix.stage + ' (' + fix.name + ') failed: ' + fix.error + '\nLedger (no values in it): ' + fix.ledger + '\nRun again after the fix: ' + fix.rerun;
+      pre.textContent = 'Fix request from the wizard "' + title() + '"\nSegment ' + seg + ', stage ' + fix.stage + ' (' + fix.name + ') failed: ' + fix.error + '\nLedger (no values in it): ' + (fix.ledger || fix.log) + '\nRun again after the fix: ' + fix.rerun;
     });
-    if (w.updated === handled) return;
-    handled = w.updated;
-    if (fix) { var bad = steps().filter(function (s) { return inSeg(s, seg) && attr(s, 'data-stage') === String(fix.stage); })[0]; if (bad && c !== bad) go(bad); return; }
-    if (!c || !inSeg(c, seg)) return;
-    if (w.done) { go(afterSeg(seg)); return; }
-    if (w.stages[attr(c, 'data-stage')] === 'PASS') { var nx = steps().filter(function (s) { return inSeg(s, seg) && attr(s, 'data-stage') === String(Number(attr(c, 'data-stage')) + 1); })[0]; if (nx) go(nx); }
+    // The first read of each folder only records it, so an old status file never moves the page on load.
+    if (!(dir in handled)) { handled[dir] = w.updated; return; }
+    if (w.updated === handled[dir]) return;
+    handled[dir] = w.updated;
+    if (fix) { var bad = steps().filter(function (s) { return inSeg(s, seg, dir) && attr(s, 'data-stage') === String(fix.stage); })[0]; if (bad && c !== bad) go(bad); return; }
+    if (!c || !inSeg(c, seg, dir)) return;
+    if (w.done) { go(afterSeg(seg, dir)); return; }
+    // A PASS moves to the very next page, so a Hands page between two stages is never skipped.
+    if (w.stages[attr(c, 'data-stage')] === 'PASS') go(after(c));
   }
-  function poll() { var s = document.createElement('script'); s.src = 'wizard-status.js?t=' + Date.now(); s.onload = s.onerror = function () { s.remove(); apply(); }; document.head.appendChild(s); }
+  function dirs() { var d = []; steps().forEach(function (s) { if (kindOf(s) === 'Terminal' && d.indexOf(dirOf(s)) < 0) d.push(dirOf(s)); }); return d; }
+  function poll() {
+    var list = dirs(), i = 0;
+    function next() {
+      if (i >= list.length) { progress(); return; }
+      var dir = list[i++], s = document.createElement('script');
+      window.WIZARD_STATUS = undefined;
+      s.src = (dir === '.' ? '' : dir + '/') + 'wizard-status.js?t=' + Date.now();
+      s.onload = s.onerror = function () { var w = window.WIZARD_STATUS; s.remove(); apply(w, dir); next(); };
+      document.head.appendChild(s);
+    }
+    next();
+  }
   function start() {
     decorate(); progress(); poll(); setInterval(poll, 3000);
     window.addEventListener('hashchange', function () { setTimeout(progress, 0); });
