@@ -23,8 +23,8 @@ What it checks, mechanically:
 | Warning first | A step marked irreversible has `**Warning:**` straight after its Why lines |
 | Date gates and decisions | A Date gate has a real `data-date`; a Decision is a `## Qn` section |
 | Secrets only in the terminal | No secret-shaped value and no password field in the companion |
-| Segments | Each one exists, is executable, has 1 to 6 stages with the preflight first, one page per stage, every hook, a second `safety_check` inside a stage at or after `DANGER_FROM` when it is set, no xtrace (`set -x`, `set -eux`, `set -o xtrace`, `bash -x`), and passes `bash -n` and `shellcheck`. A segment that predates the library gets the stage count, the secret rules and the two checkers, and a `CHECK` line says its library rules were not checked |
-| Waiting stages print their steps | On segment library v2, a stage that waits on the person (`wait_enter`, `ask_secret`, `ask_line`, `confirm_word`, `wait_for`, `read -r` or `/dev/tty`) calls `yours` |
+| Segments | Each one exists, is executable, has 1 to 6 stages with the preflight first, one page per stage, every hook, a second `safety_check` inside a stage at or after `DANGER_FROM` when it is set, no xtrace (`set -x`, `set -eux`, `set -o xtrace`, `bash -x`), and passes `bash -n` and `shellcheck`. A segment that predates the library needs an explicit `# WIZARD_LEGACY` marker; with it, the segment gets the stage count, the secret rules and the two checkers, and a `CHECK` line says its library rules were not checked. Without either marker, the library check `FAIL`s outright rather than silently skipping every safety rule |
+| Waiting stages print their steps | On segment library v2, a stage that waits on the person (`wait_enter`, `ask_secret`, `ask_line`, `confirm_word`, `wait_for`, `read -r` or `/dev/tty`) calls `yours` before that wait, so the person reads their steps first |
 | Secrets stay off the screen and out of argv | No `echo` or `printf` of a secret-named variable unless the line sends it to a file or a pipe; no `Bearer $...`, `-u $...`, `--user $...` or `--password $...` on a command line |
 | Background jobs | A segment that starts one gives an exact stop command on its pages and never says Ctrl-C |
 | Data loss on a typo | A fail message that advises deleting something is listed as a `CHECK` |
@@ -182,6 +182,7 @@ def lint_segment(sh, seg, got, checks):
     names = re.search(r"^NAMES=\(\"\"((?:\s+\"[^\"]*\")+)\s*\)", text, re.M)
     stages = re.findall(r"\"([^\"]*)\"", names.group(1)) if names else []
     lib = re.search(r"WIZARD_SEGMENT_LIB v(\d+)", text)
+    legacy = re.search(r"^#\s*WIZARD_LEGACY\b", text, re.M)
     if not 1 <= len(stages) <= 6:
         errs.append(f"{where}: NAMES must list 1 to 6 stages, found {len(stages)}")
     elif lib and not stages[0].startswith("Preflight"):
@@ -190,7 +191,10 @@ def lint_segment(sh, seg, got, checks):
     if nums != list(range(1, len(stages) + 1)):
         errs.append(f"{where}: the companion has pages for stages {nums}, the script has {len(stages)}")
     if not lib:
-        checks.append(f"{where}: {sh.name} predates the segment library, so its library rules (hooks, safety check, waiting steps) were not checked")
+        if legacy:
+            checks.append(f"{where}: {sh.name} predates the segment library, so its library rules (hooks, safety check, waiting steps) were not checked")
+        else:
+            errs.append(f"{where}: {sh.name} has no 'WIZARD_SEGMENT_LIB v<n>' marker and no '# WIZARD_LEGACY' marker, so its safety rules cannot be confirmed; add the library marker back, or mark the script '# WIZARD_LEGACY' if it truly predates the library")
     for i in range(1, len(stages) + 1 if lib else 1):
         for fn in (f"require_{i}", f"stage_{i}"):
             if not re.search(rf"^{fn}\(\)", text, re.M):
@@ -203,8 +207,10 @@ def lint_segment(sh, seg, got, checks):
     authored = text.split("# ── STAGES", 1)[-1]
     if lib and int(lib.group(1)) >= 2:
         for n, b in re.findall(r"^stage_(\d+)\(\)\s*\{\s*\n(.*?)^\}", authored, re.M | re.S):
-            if WAITS.search(b) and not re.search(r"^\s+yours\s", b, re.M):
-                errs.append(f"{where}: stage {n} waits on a person, so it must print their numbered steps, the time and what comes next with yours")
+            w = WAITS.search(b)
+            y = re.search(r"^\s+yours\s", b, re.M)
+            if w and not (y and y.start() < w.start()):
+                errs.append(f"{where}: stage {n} waits on a person, so it must call yours BEFORE the wait, to print their numbered steps, the time and what comes next")
     elif lib:
         checks.append(f"{where}: {sh.name} is on segment library v{lib.group(1)}, which has no yours helper, so its waiting stages were not checked")
     danger = re.search(r"^DANGER_FROM=(\d+)", text, re.M)

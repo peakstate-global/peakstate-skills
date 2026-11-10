@@ -134,6 +134,7 @@ dry_note() { if (( DRY )); then note "(dry run: $1)"; fi; return 0; }
 # yours "time" "what happens next" "hint" "step" ...: the person's own steps while a stage waits
 # on them, numbered, with the time it takes, the hint's key point and what happens after.
 yours() {
+  if (( $# < 3 )); then echo "yours: needs time, next-step and hint before the step list" >&2; return 1; fi
   local t="$1" nx="$2" h="$3" s i=0
   shift 3
   printf '\n  %sYour steps now%s (about %s):\n' "$BOLD" "$RESET" "$t"
